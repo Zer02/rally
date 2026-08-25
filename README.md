@@ -26,6 +26,19 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `PlayerAvatar` component: deterministic color palettes from name initials
 - `TierBadge`: Rookie → Contender → Rival → Veteran → Champion
 
+### v0.0.2 — Two-confirmation result system
+* Everything works! (...mostly)
+* Slight fix needed: when entering scores, if player 1 enters a score different from player 2 after player 2 finished submitting the score result, it will go to the player who entered the score last. This only works (I think) when both players are on the enter score page at the same exact time. More tests required to see if this is always true (i.e. both players get a chance to report their scores from their perspectives, maybe middleman admin can be flagged when players' scores do not match?)
+
+- **Bug fixed:** last-write-wins score submission replaced with independent per-player reporting
+- Each player submits their own version of the result independently after a match
+- If both players report the same winner → match auto-completes and ratings update
+- If players report different winners → match is flagged as `disputed` for admin review
+- Matches view now shows three sections: disputed (needs resolution), needs your attention, waiting for opponent
+- Admin dispute resolution: either player choice can be selected as canonical winner (proper role-based admin panel coming later)
+- `ResultModal` now shows info banner explaining the two-confirmation flow
+- `supabase-migration-v0.0.2.sql` added — run this in SQL Editor to add the new columns (safe, additive only)
+
 ---
 
 ## Quick start

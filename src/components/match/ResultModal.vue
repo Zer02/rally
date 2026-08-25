@@ -3,18 +3,21 @@
     <div class="backdrop" @click.self="$emit('close')">
       <div class="modal card">
         <div class="modal-header card-header">
-          <h3>Submit result</h3>
+          <h3>Submit your result</h3>
           <button class="close-btn" @click="$emit('close')">✕</button>
         </div>
 
         <div class="modal-body">
+          <div class="flash flash-info" style="margin-bottom:1rem;font-size:0.8rem">
+            Both players submit independently. Ratings only update once you both agree on the winner.
+          </div>
+
           <p class="match-label">
             <strong>{{ match.challenger?.display_name || match.challenger?.username }}</strong>
             vs
             <strong>{{ match.opponent?.display_name || match.opponent?.username }}</strong>
           </p>
 
-          <!-- Game scores -->
           <div class="games-section">
             <div class="field-label" style="margin-bottom:0.75rem">Game scores</div>
             <div v-for="(_, i) in games" :key="i" class="game-row">
@@ -41,13 +44,12 @@
             </button>
           </div>
 
-          <!-- Auto-detected winner -->
           <div v-if="detectedWinner" class="winner-preview">
             <span class="muted" style="font-size:0.8rem">Detected winner</span>
             <strong>{{ detectedWinner }}</strong>
           </div>
 
-          <div v-if="submitError" class="flash flash-error">{{ submitError }}</div>
+          <div v-if="submitError" class="flash flash-error" style="margin-top:0.75rem">{{ submitError }}</div>
         </div>
 
         <div class="modal-footer">
@@ -58,7 +60,7 @@
             @click="submit"
           >
             <span v-if="submitting" class="spinner" />
-            <span v-else>Confirm result</span>
+            <span v-else>Submit my result</span>
           </button>
         </div>
       </div>
@@ -70,7 +72,7 @@
 import { ref, computed } from 'vue'
 import type { Match } from '@/types'
 
-const props = defineProps<{ match: Match }>()
+const props = defineProps<{ match: Match; reporterId: string }>()
 const emit  = defineEmits(['close', 'submit'])
 
 const games       = ref([{ c: null as number | null, o: null as number | null }])
@@ -93,9 +95,9 @@ function detectWinner() {
       else if (g.o > g.c) oWins++
     }
   }
-  if (cWins > oWins) detectedWinnerId.value = props.match.challenger_id
+  if (cWins > oWins)      detectedWinnerId.value = props.match.challenger_id
   else if (oWins > cWins) detectedWinnerId.value = props.match.opponent_id
-  else detectedWinnerId.value = null
+  else                    detectedWinnerId.value = null
 }
 
 function addGame()    { games.value.push({ c: null, o: null }) }
@@ -110,21 +112,14 @@ async function submit() {
     ? props.match.opponent_id
     : props.match.challenger_id
 
-  const cScores = games.value.map(g => g.c ?? 0)
-  const oScores = games.value.map(g => g.o ?? 0)
-
-  try {
-    emit('submit', {
-      matchId:          props.match.id,
-      winnerId:         detectedWinnerId.value,
-      loserId,
-      challengerScores: cScores,
-      opponentScores:   oScores,
-    })
-  } catch (e: any) {
-    submitError.value = e.message
-    submitting.value = false
-  }
+  emit('submit', {
+    matchId:          props.match.id,
+    reporterId:       props.reporterId,
+    winnerId:         detectedWinnerId.value,
+    loserId,
+    challengerScores: games.value.map(g => g.c ?? 0),
+    opponentScores:   games.value.map(g => g.o ?? 0),
+  })
 }
 </script>
 
