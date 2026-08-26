@@ -1,4 +1,4 @@
-// src/types/index.ts — v0.0.2
+// src/types/index.ts — v0.0.3
 
 export interface Profile {
   id:           string
@@ -6,6 +6,7 @@ export interface Profile {
   display_name: string | null
   unit:         string | null
   avatar_url:   string | null
+  is_admin:     boolean
   created_at:   string
 }
 
@@ -30,7 +31,6 @@ export interface Match {
   winner_id:        string | null
   challenger_score: string | null
   opponent_score:   string | null
-  // two-confirmation fields (v0.0.2)
   challenger_reported_winner: string | null
   challenger_reported_score:  string | null
   opponent_reported_winner:   string | null

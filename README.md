@@ -39,6 +39,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `ResultModal` now shows info banner explaining the two-confirmation flow
 - `supabase-migration-v0.0.2.sql` added — run this in SQL Editor to add the new columns (safe, additive only)
 
+### v0.0.3 — Score perspective fix, stale data fix, admin roles
+* Leaderboard and profile scores don't update after submitting new matches 
+* The matches should show scores when submitting and after submitted from the perspective of the player (if player 1 lost it should show as L 6-11, not 11-6 since that would be from winner's perspective)
+* Finally, admin privileges are given to everyone? How should I fix this? Create an admin account and only give them access?
+
+- **Bug fixed:** scores now always display from the viewer's perspective (W 9–6 not W 6–9)
+- **Bug fixed:** leaderboard and profile ratings now update immediately after match completion — both stores refresh in parallel after `finalise()`
+- **Bug fixed:** player data re-fetched fresh before Elo calculation to avoid stale ratings being used
+- **Admin system:** `is_admin` boolean added to `profiles` table
+- Dispute resolution UI now only visible to admins — regular players see a passive notice instead
+- `useAuth` now loads full profile on session start, exposes `isAdmin` computed
+- `supabase-migration-v0.0.3.sql` — run this and replace `YOUR_EMAIL_HERE` with your email to grant yourself admin
 ---
 
 ## Quick start

@@ -1,7 +1,9 @@
 <template>
   <main class="page">
     <div class="container">
-      <div v-if="!me" class="muted" style="padding:3rem 0;text-align:center">Loading…</div>
+      <div v-if="!me" style="text-align:center;padding:3rem 0">
+        <span class="spinner" style="width:28px;height:28px;border-width:3px" />
+      </div>
 
       <template v-else>
         <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
@@ -16,7 +18,6 @@
           <TierBadge :rating="me.rating" />
         </div>
 
-        <!-- Stats -->
         <div class="stat-grid" style="margin-bottom:2rem">
           <div class="stat-cell">
             <p class="stat-label">Rating</p>
@@ -36,7 +37,6 @@
           </div>
         </div>
 
-        <!-- My matches -->
         <div class="card" style="overflow:hidden">
           <div class="card-header"><h3>My matches</h3></div>
           <div v-if="myMatches.length === 0" style="padding:2rem;text-align:center;color:var(--txt-muted)">
@@ -53,7 +53,8 @@
                   <span v-else class="loss">L</span>
                 </td>
                 <td>{{ opponentName(m) }}</td>
-                <td class="mono">{{ formatScore(m) }}</td>
+                <!-- Score always from MY perspective: my games first -->
+                <td class="mono">{{ myScore(m) }}</td>
                 <td>
                   <span class="delta" :class="m.winner_id === user?.id ? 'delta-pos' : 'delta-neg'">
                     {{ m.winner_id === user?.id ? '+' : '' }}{{ myDelta(m) }}
@@ -103,9 +104,8 @@ const myMatches = computed(() =>
 )
 
 function opponentName(m: Match) {
-  const oppId = m.challenger_id === user.value?.id ? m.opponent_id : m.challenger_id
-  const opp   = m.challenger_id === user.value?.id ? m.opponent : m.challenger
-  return opp?.display_name || opp?.username || oppId
+  const opp = m.challenger_id === user.value?.id ? m.opponent : m.challenger
+  return opp?.display_name || opp?.username || '?'
 }
 
 function myDelta(m: Match) {
@@ -113,11 +113,17 @@ function myDelta(m: Match) {
   return m.opponent_delta ?? '?'
 }
 
-function formatScore(m: Match) {
+// Always show score from viewer's perspective: my points — opponent's points
+function myScore(m: Match): string {
   if (!m.challenger_score || !m.opponent_score) return '—'
-  const cs = m.challenger_score.split(',')
-  const os = m.opponent_score.split(',')
-  return cs.map((s, i) => `${s}–${os[i]}`).join(', ')
+  const cs = m.challenger_score.split(',').map(Number)
+  const os = m.opponent_score.split(',').map(Number)
+  const iAmChallenger = m.challenger_id === user.value?.id
+  return cs.map((c, i) => {
+    const mine = iAmChallenger ? c : os[i]
+    const theirs = iAmChallenger ? os[i] : c
+    return `${mine}–${theirs}`
+  }).join(', ')
 }
 
 function formatDate(iso: string | null) {
