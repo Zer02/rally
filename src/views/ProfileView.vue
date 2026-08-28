@@ -53,7 +53,6 @@
                   <span v-else class="loss">L</span>
                 </td>
                 <td>{{ opponentName(m) }}</td>
-                <!-- Score always from MY perspective: my games first -->
                 <td class="mono">{{ myScore(m) }}</td>
                 <td>
                   <span class="delta" :class="m.winner_id === user?.id ? 'delta-pos' : 'delta-neg'">
@@ -71,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
 import { useAuth } from '@/composables/useAuth'
@@ -85,6 +84,13 @@ const { user } = useAuth()
 
 onMounted(async () => {
   await Promise.all([playersStore.fetch(), matchesStore.fetch(100)])
+  playersStore.subscribe()
+  matchesStore.subscribe()
+})
+
+onUnmounted(() => {
+  playersStore.unsubscribe()
+  matchesStore.unsubscribe()
 })
 
 const me     = computed(() => playersStore.byId(user.value?.id ?? ''))
@@ -113,14 +119,13 @@ function myDelta(m: Match) {
   return m.opponent_delta ?? '?'
 }
 
-// Always show score from viewer's perspective: my points — opponent's points
 function myScore(m: Match): string {
   if (!m.challenger_score || !m.opponent_score) return '—'
   const cs = m.challenger_score.split(',').map(Number)
   const os = m.opponent_score.split(',').map(Number)
   const iAmChallenger = m.challenger_id === user.value?.id
   return cs.map((c, i) => {
-    const mine = iAmChallenger ? c : os[i]
+    const mine   = iAmChallenger ? c     : os[i]
     const theirs = iAmChallenger ? os[i] : c
     return `${mine}–${theirs}`
   }).join(', ')

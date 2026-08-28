@@ -1,4 +1,4 @@
-// src/stores/matches.ts — v0.0.3
+// src/stores/matches.ts — v0.0.4
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -14,9 +14,10 @@ const MATCH_SELECT = `
 `
 
 export const useMatchesStore = defineStore('matches', () => {
-  const matches = ref<Match[]>([])
-  const loading = ref(false)
-  const error   = ref<string | null>(null)
+  const matches     = ref<Match[]>([])
+  const loading     = ref(false)
+  const error       = ref<string | null>(null)
+  let   subscription: ReturnType<typeof supabase.channel> | null = null
 
   const completed = computed(() => matches.value.filter(m => m.status === 'completed'))
   const disputed  = computed(() => matches.value.filter(m => m.status === 'disputed'))
@@ -35,6 +36,29 @@ export const useMatchesStore = defineStore('matches', () => {
     if (err) { error.value = err.message }
     else { matches.value = (data ?? []) as Match[] }
     loading.value = false
+  }
+
+  // Subscribe to realtime match changes
+  function subscribe() {
+    if (subscription) return
+
+    subscription = supabase
+      .channel('matches-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'matches' },
+        async () => {
+          await fetch()
+        }
+      )
+      .subscribe()
+  }
+
+  function unsubscribe() {
+    if (subscription) {
+      supabase.removeChannel(subscription)
+      subscription = null
+    }
   }
 
   async function challenge(challengerId: string, opponentId: string) {
@@ -70,14 +94,13 @@ export const useMatchesStore = defineStore('matches', () => {
     const isChallenger = reporterId === match.challenger_id
     const scoreStr     = challengerScores.map((s, i) => `${s}-${opponentScores[i]}`).join(',')
 
-    await supabase.from('matches').update({
-      ...(isChallenger
+    await supabase.from('matches').update(
+      isChallenger
         ? { challenger_reported_winner: winnerId, challenger_reported_score: scoreStr }
         : { opponent_reported_winner:   winnerId, opponent_reported_score:   scoreStr }
-      ),
-    }).eq('id', matchId)
+    ).eq('id', matchId)
 
-    // Re-fetch fresh state to check if other player has also reported
+    // Re-fetch fresh state to check if both have reported
     const { data: fresh } = await supabase
       .from('matches').select('*').eq('id', matchId).single()
 
@@ -94,7 +117,8 @@ export const useMatchesStore = defineStore('matches', () => {
       }
     }
 
-    // Refresh both stores so UI updates immediately
+    // Realtime subscriptions will handle store refresh,
+    // but also do it manually to ensure immediate UI update
     const playersStore = usePlayersStore()
     await Promise.all([fetch(), playersStore.fetch()])
   }
@@ -103,7 +127,6 @@ export const useMatchesStore = defineStore('matches', () => {
     const playersStore = usePlayersStore()
     const loserId = winnerId === match.challenger_id ? match.opponent_id : match.challenger_id
 
-    // Re-fetch fresh player data to avoid stale ratings
     await playersStore.fetch()
     const winner = playersStore.byId(winnerId)
     const loser  = playersStore.byId(loserId)
@@ -118,7 +141,6 @@ export const useMatchesStore = defineStore('matches', () => {
     const challengerDelta = isChallWinner ? result.winnerDelta : result.loserDelta
     const opponentDelta   = isChallWinner ? result.loserDelta  : result.winnerDelta
 
-    // Use winner's reported score as canonical
     const rawScore = winnerId === match.challenger_id
       ? match.challenger_reported_score
       : match.opponent_reported_score
@@ -175,6 +197,7 @@ export const useMatchesStore = defineStore('matches', () => {
 
   return {
     matches, loading, error, completed, disputed, pending,
-    fetch, challenge, respond, submitResult, resolveDispute,
+    fetch, subscribe, unsubscribe,
+    challenge, respond, submitResult, resolveDispute,
   }
 })

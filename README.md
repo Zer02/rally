@@ -27,8 +27,8 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `TierBadge`: Rookie → Contender → Rival → Veteran → Champion
 
 ### v0.0.2 — Two-confirmation result system
-* Everything works! (...mostly)
-* Slight fix needed: when entering scores, if player 1 enters a score different from player 2 after player 2 finished submitting the score result, it will go to the player who entered the score last. This only works (I think) when both players are on the enter score page at the same exact time. More tests required to see if this is always true (i.e. both players get a chance to report their scores from their perspectives, maybe middleman admin can be flagged when players' scores do not match?)
+> Everything works! (...mostly)
+> Slight fix needed: when entering scores, if player 1 enters a score different from player 2 after player 2 finished submitting the score result, it will go to the player who entered the score last. This only works (I think) when both players are on the enter score page at the same exact time. More tests required to see if this is always true (i.e. both players get a chance to report their scores from their perspectives, maybe middleman admin can be flagged when players' scores do not match?)
 
 - **Bug fixed:** last-write-wins score submission replaced with independent per-player reporting
 - Each player submits their own version of the result independently after a match
@@ -39,10 +39,10 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `ResultModal` now shows info banner explaining the two-confirmation flow
 - `supabase-migration-v0.0.2.sql` added — run this in SQL Editor to add the new columns (safe, additive only)
 
-### v0.0.3 — Score perspective fix, stale data fix, admin roles
-* Leaderboard and profile scores don't update after submitting new matches 
-* The matches should show scores when submitting and after submitted from the perspective of the player (if player 1 lost it should show as L 6-11, not 11-6 since that would be from winner's perspective)
-* Finally, admin privileges are given to everyone? How should I fix this? Create an admin account and only give them access?
+### v0.0.2.1 — Score perspective fix, stale data fix, admin roles
+> Leaderboard and profile scores don't update after submitting new matches 
+> The matches should show scores when submitting and after submitted from the perspective of the player (if player 1 lost it should show as L 6-11, not 11-6 since that would be from winner's perspective)
+> Finally, admin privileges are given to everyone? How should I fix this? Create an admin account and only give them access?
 
 - **Bug fixed:** scores now always display from the viewer's perspective (W 9–6 not W 6–9)
 - **Bug fixed:** leaderboard and profile ratings now update immediately after match completion — both stores refresh in parallel after `finalise()`
@@ -51,6 +51,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - Dispute resolution UI now only visible to admins — regular players see a passive notice instead
 - `useAuth` now loads full profile on session start, exposes `isAdmin` computed
 - `supabase-migration-v0.0.3.sql` — run this and replace `YOUR_EMAIL_HERE` with your email to grant yourself admin
+
+### v0.0.2.2 — Leaderboard and profile scores still not updating
+> Leaderboard and profile scores still not updating after match completion without a page refresh
+
+- Running on v0.0.2 codebase with v0.0.2.1 patch prepared but not yet applied
+- Confirmed working: signup, login, challenge flow, two-confirmation result submission, email confirmation disable
+- **Known issue:** scores display from challenger perspective instead of viewer's
+- **Known issue:** leaderboard and profile don't reflect new match results without manual page refresh
+- **Known issue:** dispute resolution visible to all users instead of admin only
+- Pending: apply v0.0.2.1 patch + realtime subscriptions (v0.0.3+) to resolve all three
 ---
 
 ## Quick start

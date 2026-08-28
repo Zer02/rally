@@ -67,7 +67,7 @@
                 <td class="mono">{{ p.rating }}</td>
                 <td class="mono">{{ p.season_wins }}–{{ p.season_losses }}</td>
                 <td>
-                  <span v-if="p.streak > 1" class="delta delta-pos">W{{ p.streak }}</span>
+                  <span v-if="p.streak > 1"  class="delta delta-pos">W{{ p.streak }}</span>
                   <span v-else-if="p.streak < -1" class="delta delta-neg">L{{ Math.abs(p.streak) }}</span>
                   <span v-else class="muted">—</span>
                 </td>
@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useAuth } from '@/composables/useAuth'
 import TierBadge from '@/components/ui/TierBadge.vue'
@@ -97,7 +97,14 @@ import type { Player } from '@/types'
 const store = usePlayersStore()
 const { user, isAuthed } = useAuth()
 
-onMounted(() => store.fetch())
+onMounted(() => {
+  store.fetch()
+  store.subscribe()  // live updates
+})
+
+onUnmounted(() => {
+  store.unsubscribe()
+})
 
 function name(p: Player) {
   return p.profile?.display_name || p.profile?.username || 'Unknown'
