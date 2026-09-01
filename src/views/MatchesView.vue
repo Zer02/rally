@@ -19,10 +19,13 @@
           </div>
           <div style="display:flex;flex-direction:column;gap:0.75rem">
             <div v-for="m in matchesStore.disputed" :key="m.id" class="card" style="padding:1.25rem">
-              <div style="font-size:0.9rem;font-weight:500;color:var(--txt-primary);margin-bottom:0.75rem">
+              <div style="font-size:0.9rem;font-weight:500;color:var(--txt-primary);margin-bottom:0.375rem">
                 {{ m.challenger?.display_name || m.challenger?.username }}
                 vs
                 {{ m.opponent?.display_name || m.opponent?.username }}
+              </div>
+              <div style="font-size:0.72rem;color:var(--txt-muted);margin-bottom:0.75rem;font-style:italic">
+                {{ disputeReason(m) }}
               </div>
               <div style="font-size:0.8rem;color:var(--txt-muted);margin-bottom:4px">
                 <span style="color:var(--txt-secondary)">{{ m.challenger?.display_name }} says:</span>
@@ -169,6 +172,18 @@ function reportedWinnerName(m: Match, side: 'challenger' | 'opponent') {
   if (!winnerId) return 'not yet submitted'
   if (winnerId === m.challenger_id) return m.challenger?.display_name || m.challenger?.username
   return m.opponent?.display_name || m.opponent?.username
+}
+
+// Explains *why* a match landed in disputed — winner disagreement and score
+// disagreement need different handling by the admin, so don't lump them together.
+function disputeReason(m: Match) {
+  const winnerDisagree = m.challenger_reported_winner !== m.opponent_reported_winner
+  const scoreDisagree  = m.challenger_reported_score  !== m.opponent_reported_score
+
+  if (winnerDisagree && scoreDisagree) return 'Players disagree on both winner and score'
+  if (winnerDisagree)                  return 'Players disagree on who won'
+  if (scoreDisagree)                   return 'Same winner reported, but scores don\u2019t match — check for a typo'
+  return 'Flagged for review'
 }
 
 async function accept(id: string)  { await matchesStore.respond(id, true) }

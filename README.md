@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.1**
+> Current version: **v0.0.2.3**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -61,6 +61,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Known issue:** leaderboard and profile don't reflect new match results without manual page refresh
 - **Known issue:** dispute resolution visible to all users instead of admin only
 - Pending: apply v0.0.2.1 patch + realtime subscriptions (v0.0.3+) to resolve all three
+
+### v0.0.2.3 — Root cause fix for Elo/W-L not updating, score mismatch dispute check, realtime subscriptions
+> Applied the v0.0.2.1 patch and dug into why Elo/W-L still weren't updating — turned out `finalise()` in `matches.ts` was reading from the players store, but that store was never populated on the matches page, so it silently failed every time. Separately found that if both players agreed on the winner but reported different scores, the match auto-completed anyway instead of flagging for review.
+
+- **Bug fixed:** root cause of Elo/W-L not updating — `finalise()` now fetches player rows directly from Supabase instead of relying on the (unpopulated) players store
+- **Bug fixed:** matches where both players agree on the winner but report different scores now correctly go to `disputed` instead of silently auto-completing
+- Disputed match cards now show *why* a match was flagged — different winner reported vs. same winner but mismatched scores
+- Realtime subscriptions (`subscribe()` / `unsubscribe()`) added to both `players` and `matches` stores
+- `MatchesView` loads both stores on mount so player data is always available before a result is finalized
+- `LeaderboardView` and `ProfileView` subscribe on mount, unsubscribe on unmount
+- Score perspective fix carried over and confirmed working — always shows viewer's score first
+- Error toast added to `MatchesView` so silent failures surface visibly instead of failing quietly
+- Admin gate confirmed on dispute resolution — only `is_admin = true` profiles see resolve buttons
+- `tsconfig.json` fixed with `"types": ["vite/client"]` and `"moduleResolution": "bundler"`
+- Requires running in Supabase SQL Editor: `alter publication supabase_realtime add table public.players;` and the same for `public.matches`
 ---
 
 ## Quick start

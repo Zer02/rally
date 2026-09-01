@@ -1,4 +1,4 @@
-// src/stores/matches.ts — v0.0.4
+// src/stores/matches.ts — v0.0.2.3
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -110,9 +110,14 @@ export const useMatchesStore = defineStore('matches', () => {
     const opponentReport   = fresh.opponent_reported_winner
 
     if (challengerReport && opponentReport) {
-      if (challengerReport === opponentReport) {
+      const winnerMatches = challengerReport === opponentReport
+      const scoresMatch   = fresh.challenger_reported_score === fresh.opponent_reported_score
+
+      if (winnerMatches && scoresMatch) {
         await finalise(fresh, challengerReport)
       } else {
+        // Winner and/or score disagree — flag for admin review rather than
+        // silently trusting whichever side reported second.
         await supabase.from('matches').update({ status: 'disputed' }).eq('id', matchId)
       }
     }
