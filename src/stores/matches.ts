@@ -1,4 +1,4 @@
-// src/stores/matches.ts — v0.0.2.3
+// src/stores/matches.ts — v0.0.2.4
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -94,17 +94,17 @@ export const useMatchesStore = defineStore('matches', () => {
     const isChallenger = reporterId === match.challenger_id
     const scoreStr     = challengerScores.map((s, i) => `${s}-${opponentScores[i]}`).join(',')
 
-    await supabase.from('matches').update(
+    const { error: reportErr } = await supabase.from('matches').update(
       isChallenger
         ? { challenger_reported_winner: winnerId, challenger_reported_score: scoreStr }
         : { opponent_reported_winner:   winnerId, opponent_reported_score:   scoreStr }
     ).eq('id', matchId)
+    if (reportErr) throw new Error(reportErr.message)
 
     // Re-fetch fresh state to check if both have reported
-    const { data: fresh } = await supabase
+    const { data: fresh, error: fetchErr } = await supabase
       .from('matches').select('*').eq('id', matchId).single()
-
-    if (!fresh) throw new Error('Could not re-fetch match')
+    if (fetchErr || !fresh) throw new Error(fetchErr?.message ?? 'Could not re-fetch match')
 
     const challengerReport = fresh.challenger_reported_winner
     const opponentReport   = fresh.opponent_reported_winner
@@ -118,7 +118,9 @@ export const useMatchesStore = defineStore('matches', () => {
       } else {
         // Winner and/or score disagree — flag for admin review rather than
         // silently trusting whichever side reported second.
-        await supabase.from('matches').update({ status: 'disputed' }).eq('id', matchId)
+        const { error: disputeErr } = await supabase
+          .from('matches').update({ status: 'disputed' }).eq('id', matchId)
+        if (disputeErr) throw new Error(disputeErr.message)
       }
     }
 
@@ -154,41 +156,28 @@ export const useMatchesStore = defineStore('matches', () => {
     const cScores = parts.map((s: string) => parseInt(s.split('-')[0]))
     const oScores = parts.map((s: string) => parseInt(s.split('-')[1]))
 
-    await supabase.from('matches').update({
-      winner_id:        winnerId,
-      challenger_score: cScores.join(','),
-      opponent_score:   oScores.join(','),
-      status:           'completed',
-      quality:          result.quality,
-      challenger_delta: challengerDelta,
-      opponent_delta:   opponentDelta,
-      completed_at:     new Date().toISOString(),
-    }).eq('id', match.id)
-
-    await Promise.all([
-      supabase.from('players').update({
-        rating:       result.winnerNewRating,
-        uncertainty:  result.winnerUncertainty,
-        streak:       Math.max(0, winner.streak) + 1,
-        season_wins:  winner.season_wins  + 1,
-        career_wins:  winner.career_wins  + 1,
-        last_played:  new Date().toISOString(),
-      }).eq('profile_id', winnerId),
-
-      supabase.from('players').update({
-        rating:        result.loserNewRating,
-        uncertainty:   result.loserUncertainty,
-        streak:        Math.min(0, loser.streak) - 1,
-        season_losses: loser.season_losses + 1,
-        career_losses: loser.career_losses + 1,
-        last_played:   new Date().toISOString(),
-      }).eq('profile_id', loserId),
-
-      supabase.from('elo_history').insert([
-        { profile_id: winnerId, rating: result.winnerNewRating, match_id: match.id },
-        { profile_id: loserId,  rating: result.loserNewRating,  match_id: match.id },
-      ]),
-    ])
+    // Single RPC call, run as SECURITY DEFINER server-side — this is what
+    // actually fixes the "players table never updates" bug. Doing these as
+    // separate client-side updates meant whichever player DIDN'T trigger
+    // finalise() had their row silently rejected by RLS (no error thrown,
+    // just 0 rows affected), so rating/streak/W-L only ever moved once.
+    const { error: rpcErr } = await supabase.rpc('finalize_match', {
+      p_match_id:           match.id,
+      p_winner_id:          winnerId,
+      p_loser_id:           loserId,
+      p_winner_rating:      result.winnerNewRating,
+      p_winner_uncertainty: result.winnerUncertainty,
+      p_winner_streak:      Math.max(0, winner.streak) + 1,
+      p_loser_rating:       result.loserNewRating,
+      p_loser_uncertainty:  result.loserUncertainty,
+      p_loser_streak:       Math.min(0, loser.streak) - 1,
+      p_quality:            result.quality,
+      p_challenger_delta:   challengerDelta,
+      p_opponent_delta:     opponentDelta,
+      p_challenger_score:   cScores.join(','),
+      p_opponent_score:     oScores.join(','),
+    })
+    if (rpcErr) throw new Error(rpcErr.message)
 
     await playersStore.fetch()
   }

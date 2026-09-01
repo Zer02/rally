@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.2.3**
+> Current version: **v0.0.2.4**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -76,6 +76,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - Admin gate confirmed on dispute resolution — only `is_admin = true` profiles see resolve buttons
 - `tsconfig.json` fixed with `"types": ["vite/client"]` and `"moduleResolution": "bundler"`
 - Requires running in Supabase SQL Editor: `alter publication supabase_realtime add table public.players;` and the same for `public.matches`
+---
+
+### v0.0.2.4 — Players table (rating, streak, season W-L) not syncing after match completion
+> Matches tab shows all matches with correct scores and per-match deltas, but the leaderboard and profile "top" stats (rating, season W-L) are stuck after the very first match, even though way more matches have been played and completed.
+
+- **Bug fixed:** root cause was `finalise()` updating the winner's and loser's `players` rows directly from the client — whichever player didn't trigger the finalization had their row silently rejected by RLS (Supabase doesn't throw on an RLS-blocked update, it just affects 0 rows), so rating/streak/season W-L only ever moved on the very first match
+- New Postgres function `finalize_match()` (`SECURITY DEFINER`) does the match update, both players' stat updates, and the `elo_history` insert atomically, server-side — no longer subject to either player's individual RLS permissions
+- `finalise()` now calls this via a single `supabase.rpc('finalize_match', ...)` instead of three separate client-side writes
+- All Supabase calls in `matches.ts` now check their `error` result and throw instead of failing silently — future permission/write issues will surface in the error toast instead of hiding
+- `supabase-migration-v0.0.2.4.sql` added — run this in SQL Editor to create the function and grant execute to authenticated users
 ---
 
 ## Quick start
