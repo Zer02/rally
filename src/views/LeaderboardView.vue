@@ -35,51 +35,53 @@
 
         <!-- Full table -->
         <div class="card" style="overflow:hidden;margin-top:1.5rem">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Player</th>
-                <th>Tier</th>
-                <th>Rating</th>
-                <th>Season</th>
-                <th>Streak</th>
-                <th v-if="isAuthed"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(p, i) in store.sorted"
-                :key="p.id"
-                :class="{ 'my-row': p.profile_id === user?.id }"
-              >
-                <td class="mono muted">{{ i + 1 }}</td>
-                <td>
-                  <RouterLink :to="`/player/${p.profile_id}`" style="display:flex;align-items:center;gap:8px">
-                    <PlayerAvatar :name="name(p)" :size="28" />
-                    <div>
-                      <div>{{ name(p) }}</div>
-                      <div v-if="p.profile?.unit" class="muted" style="font-size:0.72rem">Unit {{ p.profile.unit }}</div>
-                    </div>
-                  </RouterLink>
-                </td>
-                <td><TierBadge :rating="p.rating" /></td>
-                <td class="mono">{{ p.rating }}</td>
-                <td class="mono">{{ p.season_wins }}–{{ p.season_losses }}</td>
-                <td>
-                  <span v-if="p.streak > 1"  class="delta delta-pos">W{{ p.streak }}</span>
-                  <span v-else-if="p.streak < -1" class="delta delta-neg">L{{ Math.abs(p.streak) }}</span>
-                  <span v-else class="muted">—</span>
-                </td>
-                <td v-if="isAuthed && p.profile_id !== user?.id">
-                  <RouterLink
-                    :to="{ name: 'challenge', query: { opponent: p.profile_id } }"
-                    class="btn btn-ghost btn-sm"
-                  >Challenge</RouterLink>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-scroll">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Player</th>
+                  <th>Tier</th>
+                  <th>Rating</th>
+                  <th>Season</th>
+                  <th>Streak</th>
+                  <th v-if="isAuthed"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(p, i) in store.sorted"
+                  :key="p.id"
+                  :class="{ 'my-row': p.profile_id === user?.id }"
+                >
+                  <td class="mono muted">{{ i + 1 }}</td>
+                  <td>
+                    <RouterLink :to="`/player/${p.profile_id}`" style="display:flex;align-items:center;gap:8px">
+                      <PlayerAvatar :name="name(p)" :size="28" />
+                      <div>
+                        <div>{{ name(p) }}</div>
+                        <div v-if="p.profile?.unit" class="muted" style="font-size:0.72rem">Unit {{ p.profile.unit }}</div>
+                      </div>
+                    </RouterLink>
+                  </td>
+                  <td><TierBadge :rating="p.rating" /></td>
+                  <td class="mono">{{ p.rating }}</td>
+                  <td class="mono">{{ p.season_wins }}–{{ p.season_losses }}</td>
+                  <td>
+                    <span v-if="p.streak > 1"  class="delta delta-pos">W{{ p.streak }}</span>
+                    <span v-else-if="p.streak < -1" class="delta delta-neg">L{{ Math.abs(p.streak) }}</span>
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td v-if="isAuthed && p.profile_id !== user?.id">
+                    <RouterLink
+                      :to="{ name: 'challenge', query: { opponent: p.profile_id } }"
+                      class="btn btn-ghost btn-sm"
+                    >Challenge</RouterLink>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </template>
     </div>

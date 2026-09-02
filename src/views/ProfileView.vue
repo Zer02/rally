@@ -42,27 +42,29 @@
           <div v-if="myMatches.length === 0" style="padding:2rem;text-align:center;color:var(--txt-muted)">
             No matches yet.
           </div>
-          <table v-else class="table">
-            <thead>
-              <tr><th>Result</th><th>Opponent</th><th>Score</th><th>Δ</th><th>Date</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="m in myMatches" :key="m.id">
-                <td>
-                  <span v-if="m.winner_id === user?.id" class="win">W</span>
-                  <span v-else class="loss">L</span>
-                </td>
-                <td>{{ opponentName(m) }}</td>
-                <td class="mono">{{ myScore(m) }}</td>
-                <td>
-                  <span class="delta" :class="m.winner_id === user?.id ? 'delta-pos' : 'delta-neg'">
-                    {{ m.winner_id === user?.id ? '+' : '' }}{{ myDelta(m) }}
-                  </span>
-                </td>
-                <td class="muted mono">{{ formatDate(m.completed_at) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div v-else class="table-scroll">
+            <table class="table">
+              <thead>
+                <tr><th>Result</th><th>Opponent</th><th>Score</th><th>Δ</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in myMatches" :key="m.id">
+                  <td>
+                    <span v-if="m.winner_id === user?.id" class="win">W</span>
+                    <span v-else class="loss">L</span>
+                  </td>
+                  <td>{{ opponentName(m) }}</td>
+                  <td class="mono">{{ myScore(m) }}</td>
+                  <td>
+                    <span class="delta" :class="m.winner_id === user?.id ? 'delta-pos' : 'delta-neg'">
+                      {{ m.winner_id === user?.id ? '+' : '' }}{{ myDelta(m) }}
+                    </span>
+                  </td>
+                  <td class="muted mono">{{ formatDate(m.completed_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </template>
     </div>

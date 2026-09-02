@@ -169,7 +169,22 @@ select.input { cursor: pointer; }
 .win   { color: var(--net); font-weight: 600; }
 .loss  { color: var(--ace); }
 
+/* ── Table scroll wrapper ── */
+/* Lets a wide table scroll horizontally inside a card instead of the
+   card's own overflow:hidden clipping/cutting off the last column(s). */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
 @media (max-width: 600px) {
   .page { padding: 1rem 0 5rem; }
   .stat-value { font-size: 1.1rem; }
+
+  /* auto-fit was leaving 2 orphaned empty grid cells (rendered as a solid
+     block in the grid's own background) whenever a 4th stat wrapped to
+     its own row. Force a clean 2x2 instead. */
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Keep table columns from wrapping mid-word (e.g. "Sep 1" breaking into
+     "Se"/"1") — let the table scroll horizontally instead via .table-scroll */
+  .table { min-width: 460px; }
+  .table th, .table td { white-space: nowrap; padding: 0.6rem 0.75rem; }
 }

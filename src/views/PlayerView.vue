@@ -42,24 +42,26 @@
         <div class="card" style="overflow:hidden">
           <div class="card-header"><h3>Match history</h3></div>
           <div v-if="!playerMatches.length" style="padding:2rem;text-align:center;color:var(--txt-muted)">No matches yet.</div>
-          <table v-else class="table">
-            <thead>
-              <tr><th>Result</th><th>Opponent</th><th>Score</th><th>Δ Rating</th><th>Date</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="m in playerMatches" :key="m.id">
-                <td><span v-if="m.winner_id === playerId" class="win">W</span><span v-else class="loss">L</span></td>
-                <td>{{ oppName(m) }}</td>
-                <td class="mono">{{ formatScore(m) }}</td>
-                <td>
-                  <span class="delta" :class="m.winner_id === playerId ? 'delta-pos' : 'delta-neg'">
-                    {{ m.winner_id === playerId ? '+' : '' }}{{ myDelta(m) }}
-                  </span>
-                </td>
-                <td class="muted mono">{{ formatDate(m.completed_at) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div v-else class="table-scroll">
+            <table class="table">
+              <thead>
+                <tr><th>Result</th><th>Opponent</th><th>Score</th><th>Δ Rating</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in playerMatches" :key="m.id">
+                  <td><span v-if="m.winner_id === playerId" class="win">W</span><span v-else class="loss">L</span></td>
+                  <td>{{ oppName(m) }}</td>
+                  <td class="mono">{{ formatScore(m) }}</td>
+                  <td>
+                    <span class="delta" :class="m.winner_id === playerId ? 'delta-pos' : 'delta-neg'">
+                      {{ m.winner_id === playerId ? '+' : '' }}{{ myDelta(m) }}
+                    </span>
+                  </td>
+                  <td class="muted mono">{{ formatDate(m.completed_at) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div v-if="isAuthed && playerId !== user?.id" style="margin-top:1rem;text-align:right">
