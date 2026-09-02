@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.2.4**
+> Current version: **v0.0.2.5**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -86,6 +86,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `finalise()` now calls this via a single `supabase.rpc('finalize_match', ...)` instead of three separate client-side writes
 - All Supabase calls in `matches.ts` now check their `error` result and throw instead of failing silently — future permission/write issues will surface in the error toast instead of hiding
 - `supabase-migration-v0.0.2.4.sql` added — run this in SQL Editor to create the function and grant execute to authenticated users
+---
+
+### v0.0.2.5 — Lock down finalize_match before real launch
+> Asked if it was ready to open up to the club — realized the finalize_match RPC from v0.0.2.4 trusted whatever values the client sent with no check on who was calling it, so any logged-in user could call it directly with made-up ratings.
+
+- **Security fix:** `finalize_match()` now verifies the caller is the winner, the loser, or an admin before writing anything — raises an exception otherwise
+- `finalize_match()` also now verifies the match exists, isn't already completed, and that the winner/loser IDs actually belong to that match before writing
+- `supabase-migration-v0.0.2.5.sql` added — run this to replace the function from v0.0.2.4 with the hardened version
+- `reset-for-launch.sql` added — one-time operational script (not an app migration) to wipe test match/rating history and reset every player back to a clean starting state before opening the app to the real club
 ---
 
 ## Quick start
