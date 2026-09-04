@@ -14,18 +14,21 @@
         <!-- Top 3 podium -->
         <div v-if="store.sorted.length >= 3" class="podium">
           <RouterLink :to="`/player/${store.sorted[1].profile_id}`" class="podium-spot second">
+            <span class="crown crown-silver" aria-hidden="true">🥈</span>
             <PlayerAvatar :name="name(store.sorted[1])" :size="48" />
             <div class="podium-rank">2</div>
             <div class="podium-name">{{ name(store.sorted[1]) }}</div>
             <div class="podium-rating mono">{{ store.sorted[1].rating }}</div>
           </RouterLink>
           <RouterLink :to="`/player/${store.sorted[0].profile_id}`" class="podium-spot first">
+            <span class="crown crown-gold" aria-hidden="true">👑</span>
             <PlayerAvatar :name="name(store.sorted[0])" :size="56" />
             <div class="podium-rank gold">1</div>
             <div class="podium-name">{{ name(store.sorted[0]) }}</div>
             <div class="podium-rating mono">{{ store.sorted[0].rating }}</div>
           </RouterLink>
           <RouterLink :to="`/player/${store.sorted[2].profile_id}`" class="podium-spot third">
+            <span class="crown crown-bronze" aria-hidden="true">🥉</span>
             <PlayerAvatar :name="name(store.sorted[2])" :size="44" />
             <div class="podium-rank">3</div>
             <div class="podium-name">{{ name(store.sorted[2]) }}</div>
@@ -59,7 +62,10 @@
                     <RouterLink :to="`/player/${p.profile_id}`" style="display:flex;align-items:center;gap:8px">
                       <PlayerAvatar :name="name(p)" :size="28" />
                       <div>
-                        <div>{{ name(p) }}</div>
+                        <div style="display:flex;align-items:center;gap:5px">
+                          {{ name(p) }}
+                          <span v-if="rankCrown(i + 1)" class="crown crown-sm" :class="`crown-${rankCrown(i + 1)?.tier}`" aria-hidden="true">{{ rankCrown(i + 1)?.emoji }}</span>
+                        </div>
                         <div v-if="p.profile?.unit" class="muted" style="font-size:0.72rem">Unit {{ p.profile.unit }}</div>
                       </div>
                     </RouterLink>
@@ -111,6 +117,16 @@ onUnmounted(() => {
 function name(p: Player) {
   return p.profile?.display_name || p.profile?.username || 'Unknown'
 }
+
+const CROWNS = {
+  1: { emoji: '👑', tier: 'gold' },
+  2: { emoji: '🥈', tier: 'silver' },
+  3: { emoji: '🥉', tier: 'bronze' },
+} as const
+
+function rankCrown(rank: number) {
+  return CROWNS[rank as keyof typeof CROWNS] ?? null
+}
 </script>
 
 <style scoped>
@@ -123,4 +139,9 @@ function name(p: Player) {
 .podium-rating { font-size: 0.78rem; color: var(--txt-muted); }
 .first .podium-name { font-size: 0.95rem; }
 .my-row td { background: rgba(232,200,74,0.04); }
+
+.crown { line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
+.podium-spot .crown { font-size: 1.3rem; margin-bottom: 0.1rem; }
+.podium-spot.first .crown { font-size: 1.6rem; }
+.crown-sm { font-size: 0.85rem; }
 </style>
