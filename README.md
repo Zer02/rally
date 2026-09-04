@@ -96,11 +96,12 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `supabase-migration-v0.0.2.5.sql` added — run this to replace the function from v0.0.2.4 with the hardened version
 
 ### v0.0.2.6 — Admin flag column, mobile hamburger nav, leaderboard crowns
-> Added the missing `is_admin` column on `profiles` (referenced by app code but never migrated in), then a round of leaderboard/nav styling: a proper mobile nav menu and gold/silver/bronze crowns for the top 3 players.
+> Added the missing `is_admin` column on `profiles` (referenced by app code but never migrated in), then a round of leaderboard/nav styling: a proper mobile nav menu and gold/silver/bronze crowns for the top 3 players. Podium crowns were first added as icons next to the avatar, then moved inside the avatar circle in place of initials — initials for the top 3 could otherwise land on an unlucky/inappropriate two-letter combination.
 
 - `supabase-migration-v0.0.2.6.sql` added — adds `profiles.is_admin` (boolean, default false) with a supporting index
 - `AppNav.vue` — replaced the horizontal-scroll mobile nav with a hamburger button (top right) that toggles a dropdown panel; menu auto-closes on route change and sign-out
-- `LeaderboardView.vue` — added crown icons (👑 gold / 🥈 silver / 🥉 bronze) on the podium and next to the #1–#3 rows in the standings table
+- `LeaderboardView.vue` — podium's top 3 avatars show 👑/🥈/🥉 in place of initials; standings table still shows small crowns next to the #1–#3 names
+- `PlayerAvatar.vue` — added an optional `override` prop to show custom content (e.g. an emoji) in place of computed initials
 - `reset-for-launch.sql` added — one-time operational script (not an app migration) to wipe test match/rating history and reset every player back to a clean starting state before opening the app to the real club
 ---
 

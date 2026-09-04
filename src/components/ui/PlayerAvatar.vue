@@ -6,9 +6,9 @@
       height: size + 'px',
       background: bg,
       color: fg,
-      fontSize: Math.round(size * 0.38) + 'px',
+      fontSize: (override ? Math.round(size * 0.5) : Math.round(size * 0.38)) + 'px',
     }"
-  >{{ initials }}</div>
+  >{{ override ?? initials }}</div>
 </template>
 
 <script setup lang="ts">
@@ -17,6 +17,7 @@ import { computed } from 'vue'
 const props = defineProps<{
   name: string
   size?: number
+  override?: string
 }>()
 
 const size = computed(() => props.size ?? 36)

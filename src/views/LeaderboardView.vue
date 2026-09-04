@@ -14,22 +14,19 @@
         <!-- Top 3 podium -->
         <div v-if="store.sorted.length >= 3" class="podium">
           <RouterLink :to="`/player/${store.sorted[1].profile_id}`" class="podium-spot second">
-            <span class="crown crown-silver" aria-hidden="true">🥈</span>
-            <PlayerAvatar :name="name(store.sorted[1])" :size="48" />
+            <PlayerAvatar :name="name(store.sorted[1])" :size="48" override="🥈" />
             <div class="podium-rank">2</div>
             <div class="podium-name">{{ name(store.sorted[1]) }}</div>
             <div class="podium-rating mono">{{ store.sorted[1].rating }}</div>
           </RouterLink>
           <RouterLink :to="`/player/${store.sorted[0].profile_id}`" class="podium-spot first">
-            <span class="crown crown-gold" aria-hidden="true">👑</span>
-            <PlayerAvatar :name="name(store.sorted[0])" :size="56" />
+            <PlayerAvatar :name="name(store.sorted[0])" :size="56" override="👑" />
             <div class="podium-rank gold">1</div>
             <div class="podium-name">{{ name(store.sorted[0]) }}</div>
             <div class="podium-rating mono">{{ store.sorted[0].rating }}</div>
           </RouterLink>
           <RouterLink :to="`/player/${store.sorted[2].profile_id}`" class="podium-spot third">
-            <span class="crown crown-bronze" aria-hidden="true">🥉</span>
-            <PlayerAvatar :name="name(store.sorted[2])" :size="44" />
+            <PlayerAvatar :name="name(store.sorted[2])" :size="44" override="🥉" />
             <div class="podium-rank">3</div>
             <div class="podium-name">{{ name(store.sorted[2]) }}</div>
             <div class="podium-rating mono">{{ store.sorted[2].rating }}</div>
@@ -141,7 +138,5 @@ function rankCrown(rank: number) {
 .my-row td { background: rgba(232,200,74,0.04); }
 
 .crown { line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
-.podium-spot .crown { font-size: 1.3rem; margin-bottom: 0.1rem; }
-.podium-spot.first .crown { font-size: 1.6rem; }
 .crown-sm { font-size: 0.85rem; }
 </style>
