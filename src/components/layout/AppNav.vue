@@ -10,6 +10,7 @@
         <template v-if="isAuthed">
           <RouterLink to="/challenge" class="nav-link">Challenge</RouterLink>
           <RouterLink to="/profile"   class="nav-link">Profile</RouterLink>
+          <RouterLink v-if="isAdmin" to="/referee" class="nav-link">Referee</RouterLink>
           <button class="btn btn-ghost btn-sm" @click="handleSignOut">Sign out</button>
         </template>
         <template v-else>
@@ -36,6 +37,7 @@
         <template v-if="isAuthed">
           <RouterLink to="/challenge" class="nav-drop-link" @click="menuOpen = false">Challenge</RouterLink>
           <RouterLink to="/profile"   class="nav-drop-link" @click="menuOpen = false">Profile</RouterLink>
+          <RouterLink v-if="isAdmin" to="/referee" class="nav-drop-link" @click="menuOpen = false">Referee</RouterLink>
           <button class="btn btn-ghost btn-sm nav-drop-signout" @click="handleSignOut">Sign out</button>
         </template>
         <template v-else>
@@ -51,7 +53,7 @@ import { ref, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useRouter } from 'vue-router'
 
-const { isAuthed, signOut } = useAuth()
+const { isAuthed, isAdmin, signOut } = useAuth()
 const router = useRouter()
 const menuOpen = ref(false)
 

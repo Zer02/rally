@@ -10,6 +10,7 @@ const routes = [
   { path: '/profile',    name: 'profile',     component: () => import('@/views/ProfileView.vue'),   meta: { requiresAuth: true } },
   { path: '/player/:id', name: 'player',      component: () => import('@/views/PlayerView.vue') },
   { path: '/challenge',  name: 'challenge',   component: () => import('@/views/ChallengeView.vue'), meta: { requiresAuth: true } },
+  { path: '/referee',    name: 'referee',     component: () => import('@/views/RefereeView.vue'),   meta: { requiresAuth: true, requiresAdmin: true } },
 ]
 
 const router = createRouter({
@@ -21,7 +22,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return true
 
-  const { isAuthed, loading } = useAuth()
+  const { isAuthed, isAdmin, loading } = useAuth()
 
   // Wait for auth to resolve on first load
   if (loading.value) {
@@ -33,6 +34,7 @@ router.beforeEach(async (to) => {
   }
 
   if (!isAuthed.value) return { name: 'login', query: { redirect: to.fullPath } }
+  if (to.meta.requiresAdmin && !isAdmin.value) return { name: 'home' }
   return true
 })
 

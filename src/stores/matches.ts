@@ -189,9 +189,45 @@ export const useMatchesStore = defineStore('matches', () => {
     await fetch()
   }
 
+  // Referee flow — an admin enters a live result directly for any two
+  // players, skipping the normal challenge/accept/two-sided-report cycle.
+  // The match is created already "reported" by both sides (with the same
+  // winner + score an admin just entered) and finalized immediately.
+  // Relies on the admin-insert RLS policy from v0.0.2.7 and the existing
+  // admin authorization already built into finalize_match (v0.0.2.5).
+  async function recordAsAdmin(
+    challengerId:     string,
+    opponentId:       string,
+    winnerId:         string,
+    challengerScores: number[],
+    opponentScores:   number[],
+  ) {
+    const scoreStr = challengerScores.map((s, i) => `${s}-${opponentScores[i]}`).join(',')
+
+    const { data: created, error: insertErr } = await supabase
+      .from('matches')
+      .insert({
+        challenger_id:              challengerId,
+        opponent_id:                opponentId,
+        status:                     'accepted',
+        challenger_reported_winner: winnerId,
+        challenger_reported_score:  scoreStr,
+        opponent_reported_winner:   winnerId,
+        opponent_reported_score:    scoreStr,
+      })
+      .select()
+      .single()
+    if (insertErr) throw new Error(insertErr.message)
+
+    await finalise(created, winnerId)
+
+    const playersStore = usePlayersStore()
+    await Promise.all([fetch(), playersStore.fetch()])
+  }
+
   return {
     matches, loading, error, completed, disputed, pending,
     fetch, subscribe, unsubscribe,
-    challenge, respond, submitResult, resolveDispute,
+    challenge, respond, submitResult, resolveDispute, recordAsAdmin,
   }
 })

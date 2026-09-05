@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.2.6**
+> Current version: **v0.0.2.7**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -102,6 +102,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `AppNav.vue` — replaced the horizontal-scroll mobile nav with a hamburger button (top right) that toggles a dropdown panel; menu auto-closes on route change and sign-out
 - `LeaderboardView.vue` — podium's top 3 avatars show 👑/🥈/🥉 in place of initials; standings table still shows small crowns next to the #1–#3 names
 - `PlayerAvatar.vue` — added an optional `override` prop to show custom content (e.g. an emoji) in place of computed initials
+
+### v0.0.2.7 — Referee mode for admins
+> Admins can now record a match result directly for any two players, skipping the normal challenge → accept → two-sided-report flow entirely. Built for in-person refereeing — an admin standing at the table enters the final score once, live.
+
+- `supabase-migration-v0.0.2.7.sql` added — new RLS policy lets `is_admin = true` users insert a `matches` row for any two players (previously insert was restricted to `auth.uid() = challenger_id`). No changes needed to `finalize_match()` itself — it already authorizes admin callers as of v0.0.2.5.
+- `matches.ts` — new `recordAsAdmin()` action: creates the match already "reported" by both sides with the entered result, then finalizes it immediately.
+- `RefereeView.vue` added — new admin-only page (`/referee`): pick two players, enter game scores, submit. Auto-detects the winner from scores the same way the regular result modal does.
+- `router/index.ts` — new route guarded by `requiresAdmin`; non-admins are redirected home.
+- `AppNav.vue` — "Referee" link shown only to admins, in both the desktop nav and the mobile dropdown.
 - `reset-for-launch.sql` added — one-time operational script (not an app migration) to wipe test match/rating history and reset every player back to a clean starting state before opening the app to the real club
 ---
 
@@ -167,7 +176,8 @@ rally/
         ├── MatchesView.vue
         ├── ChallengeView.vue
         ├── ProfileView.vue
-        └── PlayerView.vue
+        ├── PlayerView.vue
+        └── RefereeView.vue
 ```
 
 ---
