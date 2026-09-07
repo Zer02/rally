@@ -39,6 +39,22 @@
           </div>
         </div>
 
+        <!-- Head-to-head — only when logged in and viewing someone else -->
+        <div v-if="headToHead" class="card" style="margin-bottom:1.5rem">
+          <p class="stat-label" style="margin-bottom:0.4rem">Head-to-head</p>
+          <p style="font-size:1.05rem;font-weight:500;color:var(--txt-primary)">
+            {{ headToHead.summary }}
+          </p>
+          <p class="muted" style="font-size:0.8rem;margin-top:0.2rem">
+            {{ headToHead.wins }}–{{ headToHead.losses }} all-time vs. {{ pname }}
+          </p>
+        </div>
+
+        <div class="card" style="margin-bottom:1.5rem;padding:1.25rem 1.25rem 0.75rem">
+          <div class="card-header" style="margin-bottom:0.25rem"><h3>Rating history</h3></div>
+          <RatingChart :history="ratingHistory" />
+        </div>
+
         <div class="card" style="overflow:hidden">
           <div class="card-header"><h3>Match history</h3></div>
           <div v-if="!playerMatches.length" style="padding:2rem;text-align:center;color:var(--txt-muted)">No matches yet.</div>
@@ -80,8 +96,10 @@ import { useRoute } from 'vue-router'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
 import { useAuth } from '@/composables/useAuth'
+import { supabase } from '@/lib/supabase'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
+import RatingChart from '@/components/ui/RatingChart.vue'
 import type { Match } from '@/types'
 
 const route        = useRoute()
@@ -91,9 +109,19 @@ const { user, isAuthed } = useAuth()
 
 const loading  = ref(true)
 const playerId = route.params.id as string
+const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
 
 onMounted(async () => {
-  await Promise.all([playersStore.fetch(), matchesStore.fetch(100)])
+  const [, , historyRes] = await Promise.all([
+    playersStore.fetch(),
+    matchesStore.fetch(100),
+    supabase
+      .from('elo_history')
+      .select('rating, recorded_at')
+      .eq('profile_id', playerId)
+      .order('recorded_at', { ascending: true }),
+  ])
+  ratingHistory.value = historyRes.data ?? []
   loading.value = false
 })
 
@@ -109,6 +137,27 @@ const winRate = computed(() => {
 const playerMatches = computed(() =>
   matchesStore.completed.filter(m => m.challenger_id === playerId || m.opponent_id === playerId)
 )
+
+const headToHead = computed(() => {
+  if (!isAuthed.value || !user.value || user.value.id === playerId) return null
+  const meId = user.value.id
+
+  const between = matchesStore.completed.filter(m =>
+    (m.challenger_id === meId && m.opponent_id === playerId) ||
+    (m.challenger_id === playerId && m.opponent_id === meId)
+  )
+  if (!between.length) return null
+
+  const wins   = between.filter(m => m.winner_id === meId).length
+  const losses = between.length - wins
+
+  let summary: string
+  if (wins > losses)      summary = `You lead ${wins}–${losses}`
+  else if (losses > wins) summary = `You're behind ${wins}–${losses}`
+  else                    summary = `Tied ${wins}–${losses}`
+
+  return { wins, losses, summary }
+})
 
 function oppName(m: Match) {
   const opp = m.challenger_id === playerId ? m.opponent : m.challenger

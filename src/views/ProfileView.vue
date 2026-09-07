@@ -37,6 +37,11 @@
           </div>
         </div>
 
+        <div class="card" style="margin-bottom:1.5rem;padding:1.25rem 1.25rem 0.75rem">
+          <div class="card-header" style="margin-bottom:0.25rem"><h3>Rating history</h3></div>
+          <RatingChart :history="ratingHistory" />
+        </div>
+
         <div class="card" style="overflow:hidden">
           <div class="card-header"><h3>My matches</h3></div>
           <div v-if="myMatches.length === 0" style="padding:2rem;text-align:center;color:var(--txt-muted)">
@@ -72,22 +77,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
 import { useAuth } from '@/composables/useAuth'
+import { supabase } from '@/lib/supabase'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
+import RatingChart from '@/components/ui/RatingChart.vue'
 import type { Match } from '@/types'
 
 const playersStore = usePlayersStore()
 const matchesStore = useMatchesStore()
 const { user } = useAuth()
 
+const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
+
 onMounted(async () => {
   await Promise.all([playersStore.fetch(), matchesStore.fetch(100)])
   playersStore.subscribe()
   matchesStore.subscribe()
+
+  if (user.value?.id) {
+    const { data } = await supabase
+      .from('elo_history')
+      .select('rating, recorded_at')
+      .eq('profile_id', user.value.id)
+      .order('recorded_at', { ascending: true })
+    ratingHistory.value = data ?? []
+  }
 })
 
 onUnmounted(() => {

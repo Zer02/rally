@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.2.7**
+> Current version: **v0.0.2.8**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -116,6 +116,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - No new SQL required — this was a client-side logic fix only
 ---
 
+### v0.0.2.8 — Head-to-head + rating history chart
+> Followed the roadmap: head-to-head record and rating-over-time chart on player profiles, plus finishing the mobile leaderboard card-list layout that was left incomplete during the earlier mobile styling pass.
+
+- New `RatingChart.vue` component — hand-rolled SVG sparkline (no new dependency), colored green/red based on whether rating is up or down since the chart's start, with a dashed baseline at the starting rating
+- Rating history chart added to both `ProfileView.vue` (your own trend) and `PlayerView.vue` (any player's trend), pulling directly from `elo_history`
+- Head-to-head record added to `PlayerView.vue` — shown only when logged in and viewing someone else ("You lead 3–1 all-time vs. Roger"), computed from existing `matches` data, no new queries needed
+- Finished the leaderboard mobile card list from the earlier styling pass — the `.leaderboard-cards`/`.lb-card`/etc. CSS was never actually written; it's now in place with a clean mobile/desktop toggle at the existing 600px breakpoint
+- Checked off "Rating history chart" and "Head-to-head records" in the roadmap below
+---
+
 ## Quick start
 
 ### 1. Supabase setup
@@ -195,8 +205,8 @@ rally/
 
 ## What's next
 
-- [ ] Rating history chart on player profiles
+- [x] Rating history chart on player profiles
 - [ ] Push/email notifications for incoming challenges
 - [ ] Admin: season reset, dispute resolution
-- [ ] Head-to-head records between two players
+- [x] Head-to-head records between two players
 - [ ] Weekly digest (most active player, biggest rating swing)

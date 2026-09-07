@@ -33,8 +33,8 @@
           </RouterLink>
         </div>
 
-        <!-- Full table -->
-        <div class="card" style="overflow:hidden;margin-top:1.5rem">
+        <!-- Full table — desktop -->
+        <div class="card leaderboard-table" style="overflow:hidden;margin-top:1.5rem">
           <div class="table-scroll">
             <table class="table">
               <thead>
@@ -84,6 +84,41 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Standings — mobile card list, same data, no horizontal scroll needed -->
+        <div class="leaderboard-cards">
+          <div
+            v-for="(p, i) in store.sorted"
+            :key="p.id"
+            class="lb-card"
+            :class="{ 'my-row': p.profile_id === user?.id }"
+          >
+            <div class="lb-rank mono muted">{{ i + 1 }}</div>
+            <RouterLink :to="`/player/${p.profile_id}`" class="lb-player">
+              <PlayerAvatar :name="name(p)" :size="36" />
+              <div class="lb-main">
+                <div class="lb-name-row">
+                  <span class="lb-name">{{ name(p) }}</span>
+                  <span v-if="rankCrown(i + 1)" class="crown crown-sm" :class="`crown-${rankCrown(i + 1)?.tier}`" aria-hidden="true">{{ rankCrown(i + 1)?.emoji }}</span>
+                  <TierBadge :rating="p.rating" />
+                </div>
+                <div class="lb-sub muted">
+                  <span v-if="p.profile?.unit">Unit {{ p.profile.unit }} · </span>{{ p.season_wins }}–{{ p.season_losses }}
+                  <span v-if="p.streak > 1"  class="delta delta-pos" style="margin-left:0.4rem">W{{ p.streak }}</span>
+                  <span v-else-if="p.streak < -1" class="delta delta-neg" style="margin-left:0.4rem">L{{ Math.abs(p.streak) }}</span>
+                </div>
+              </div>
+            </RouterLink>
+            <div class="lb-right">
+              <div class="lb-rating mono">{{ p.rating }}</div>
+              <RouterLink
+                v-if="isAuthed && p.profile_id !== user?.id"
+                :to="{ name: 'challenge', query: { opponent: p.profile_id } }"
+                class="btn btn-ghost btn-sm"
+              >Challenge</RouterLink>
+            </div>
           </div>
         </div>
       </template>
@@ -139,4 +174,30 @@ function rankCrown(rank: number) {
 
 .crown { line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
 .crown-sm { font-size: 0.85rem; }
+
+/* Mobile card list — hidden on desktop, shown instead of the table below 600px */
+.leaderboard-cards { display: none; }
+
+.lb-card {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--table-mid); border: 1px solid var(--line);
+  border-radius: var(--radius-md); padding: 0.75rem 0.9rem;
+}
+.lb-card.my-row { background: rgba(232,200,74,0.05); border-color: rgba(232,200,74,0.25); }
+.lb-rank { width: 1.25rem; text-align: center; font-size: 0.85rem; flex-shrink: 0; }
+.lb-player { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; text-decoration: none; }
+.lb-main { min-width: 0; }
+.lb-name-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.lb-name {
+  font-weight: 500; color: var(--txt-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9rem;
+}
+.lb-sub { font-size: 0.75rem; margin-top: 0.15rem; }
+.lb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; flex-shrink: 0; }
+.lb-rating { font-size: 1rem; font-weight: 500; color: var(--txt-primary); }
+
+@media (max-width: 600px) {
+  .leaderboard-table { display: none; }
+  .leaderboard-cards { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.5rem; }
+}
 </style>
