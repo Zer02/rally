@@ -1,4 +1,4 @@
-// src/stores/matches.ts — v0.0.2.4
+// src/stores/matches.ts — v0.0.2.7
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -130,7 +130,7 @@ export const useMatchesStore = defineStore('matches', () => {
     await Promise.all([fetch(), playersStore.fetch()])
   }
 
-  async function finalise(match: any, winnerId: string) {
+  async function finalise(match: any, winnerId: string, rawScoreOverride?: string) {
     const playersStore = usePlayersStore()
     const loserId = winnerId === match.challenger_id ? match.opponent_id : match.challenger_id
 
@@ -148,9 +148,15 @@ export const useMatchesStore = defineStore('matches', () => {
     const challengerDelta = isChallWinner ? result.winnerDelta : result.loserDelta
     const opponentDelta   = isChallWinner ? result.loserDelta  : result.winnerDelta
 
-    const rawScore = winnerId === match.challenger_id
+    // IMPORTANT: rawScore must come from the SAME report as winnerId, never
+    // derived independently from winnerId's challenger/opponent role. If a
+    // caller (e.g. admin dispute resolution) picks a winner that doesn't
+    // match challenger_reported_winner/opponent_reported_winner, guessing
+    // the score by role produces a self-contradictory match (winner and
+    // score from two different, disagreeing submissions).
+    const rawScore = rawScoreOverride ?? (winnerId === match.challenger_id
       ? match.challenger_reported_score
-      : match.opponent_reported_score
+      : match.opponent_reported_score)
 
     const parts   = (rawScore ?? '').split(',')
     const cScores = parts.map((s: string) => parseInt(s.split('-')[0]))
@@ -182,52 +188,31 @@ export const useMatchesStore = defineStore('matches', () => {
     await playersStore.fetch()
   }
 
-  async function resolveDispute(matchId: string, winnerId: string) {
+  // Admin picks an ENTIRE report to trust — winner and score together —
+  // rather than picking a winner independently. This is what prevents an
+  // admin resolving a dispute from ending up with a winner from one
+  // player's report and a score from the other's, which produces a
+  // match where the "winner" actually has fewer points on record.
+  async function resolveDispute(matchId: string, useChallengerReport: boolean) {
     const match = matches.value.find(m => m.id === matchId)
     if (!match) throw new Error('Match not found')
-    await finalise(match, winnerId)
+
+    const winnerId = useChallengerReport
+      ? match.challenger_reported_winner
+      : match.opponent_reported_winner
+    const rawScore = useChallengerReport
+      ? match.challenger_reported_score
+      : match.opponent_reported_score
+
+    if (!winnerId) throw new Error('Selected report has no recorded winner')
+
+    await finalise(match, winnerId, rawScore)
     await fetch()
-  }
-
-  // Referee flow — an admin enters a live result directly for any two
-  // players, skipping the normal challenge/accept/two-sided-report cycle.
-  // The match is created already "reported" by both sides (with the same
-  // winner + score an admin just entered) and finalized immediately.
-  // Relies on the admin-insert RLS policy from v0.0.2.7 and the existing
-  // admin authorization already built into finalize_match (v0.0.2.5).
-  async function recordAsAdmin(
-    challengerId:     string,
-    opponentId:       string,
-    winnerId:         string,
-    challengerScores: number[],
-    opponentScores:   number[],
-  ) {
-    const scoreStr = challengerScores.map((s, i) => `${s}-${opponentScores[i]}`).join(',')
-
-    const { data: created, error: insertErr } = await supabase
-      .from('matches')
-      .insert({
-        challenger_id:              challengerId,
-        opponent_id:                opponentId,
-        status:                     'accepted',
-        challenger_reported_winner: winnerId,
-        challenger_reported_score:  scoreStr,
-        opponent_reported_winner:   winnerId,
-        opponent_reported_score:    scoreStr,
-      })
-      .select()
-      .single()
-    if (insertErr) throw new Error(insertErr.message)
-
-    await finalise(created, winnerId)
-
-    const playersStore = usePlayersStore()
-    await Promise.all([fetch(), playersStore.fetch()])
   }
 
   return {
     matches, loading, error, completed, disputed, pending,
     fetch, subscribe, unsubscribe,
-    challenge, respond, submitResult, resolveDispute, recordAsAdmin,
+    challenge, respond, submitResult, resolveDispute,
   }
 })

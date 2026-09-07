@@ -15,7 +15,7 @@
         <section v-if="isAdmin && matchesStore.disputed.length" style="margin-bottom:2rem">
           <h3 style="margin-bottom:0.875rem">⚠️ Disputed results</h3>
           <div class="flash flash-error" style="margin-bottom:0.875rem">
-            Players reported conflicting results. As admin, pick the correct winner.
+            Players reported conflicting results. As admin, pick which report is correct.
           </div>
           <div style="display:flex;flex-direction:column;gap:0.75rem">
             <div v-for="m in matchesStore.disputed" :key="m.id" class="card" style="padding:1.25rem">
@@ -37,12 +37,17 @@
                 {{ reportedWinnerName(m, 'opponent') }} won
                 <span v-if="m.opponent_reported_score" class="mono" style="margin-left:4px">({{ m.opponent_reported_score }})</span>
               </div>
-              <div style="display:flex;gap:0.5rem">
-                <button class="btn btn-ghost btn-sm" @click="resolve(m.id, m.challenger_id)">
-                  {{ m.challenger?.display_name || 'Challenger' }} wins
+              <div style="font-size:0.72rem;color:var(--txt-muted);margin-bottom:0.5rem">
+                Pick whichever report is correct — winner and score are applied together, so you can't mix one player's winner with the other's score.
+              </div>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" @click="resolve(m.id, true)">
+                  Use {{ m.challenger?.display_name || 'challenger' }}'s report
+                  — {{ reportedWinnerName(m, 'challenger') }} won ({{ m.challenger_reported_score }})
                 </button>
-                <button class="btn btn-ghost btn-sm" @click="resolve(m.id, m.opponent_id)">
-                  {{ m.opponent?.display_name || 'Opponent' }} wins
+                <button class="btn btn-ghost btn-sm" @click="resolve(m.id, false)">
+                  Use {{ m.opponent?.display_name || 'opponent' }}'s report
+                  — {{ reportedWinnerName(m, 'opponent') }} won ({{ m.opponent_reported_score }})
                 </button>
               </div>
             </div>
@@ -198,7 +203,10 @@ async function submitResult(payload: any) {
   activeMatch.value = null
 }
 
-async function resolve(matchId: string, winnerId: string) {
-  await matchesStore.resolveDispute(matchId, winnerId)
+// useChallengerReport: true = trust challenger's winner+score together,
+// false = trust opponent's — never mix a winner from one report with a
+// score from the other (that's the bug this replaces).
+async function resolve(matchId: string, useChallengerReport: boolean) {
+  await matchesStore.resolveDispute(matchId, useChallengerReport)
 }
 </script>

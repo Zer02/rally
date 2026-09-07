@@ -94,24 +94,26 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Security fix:** `finalize_match()` now verifies the caller is the winner, the loser, or an admin before writing anything — raises an exception otherwise
 - `finalize_match()` also now verifies the match exists, isn't already completed, and that the winner/loser IDs actually belong to that match before writing
 - `supabase-migration-v0.0.2.5.sql` added — run this to replace the function from v0.0.2.4 with the hardened version
-
-### v0.0.2.6 — Admin flag column, mobile hamburger nav, leaderboard crowns
-> Added the missing `is_admin` column on `profiles` (referenced by app code but never migrated in), then a round of leaderboard/nav styling: a proper mobile nav menu and gold/silver/bronze crowns for the top 3 players. Podium crowns were first added as icons next to the avatar, then moved inside the avatar circle in place of initials — initials for the top 3 could otherwise land on an unlucky/inappropriate two-letter combination.
-
-- `supabase-migration-v0.0.2.6.sql` added — adds `profiles.is_admin` (boolean, default false) with a supporting index
-- `AppNav.vue` — replaced the horizontal-scroll mobile nav with a hamburger button (top right) that toggles a dropdown panel; menu auto-closes on route change and sign-out
-- `LeaderboardView.vue` — podium's top 3 avatars show 👑/🥈/🥉 in place of initials; standings table still shows small crowns next to the #1–#3 names
-- `PlayerAvatar.vue` — added an optional `override` prop to show custom content (e.g. an emoji) in place of computed initials
-
-### v0.0.2.7 — Referee mode for admins
-> Admins can now record a match result directly for any two players, skipping the normal challenge → accept → two-sided-report flow entirely. Built for in-person refereeing — an admin standing at the table enters the final score once, live.
-
-- `supabase-migration-v0.0.2.7.sql` added — new RLS policy lets `is_admin = true` users insert a `matches` row for any two players (previously insert was restricted to `auth.uid() = challenger_id`). No changes needed to `finalize_match()` itself — it already authorizes admin callers as of v0.0.2.5.
-- `matches.ts` — new `recordAsAdmin()` action: creates the match already "reported" by both sides with the entered result, then finalizes it immediately.
-- `RefereeView.vue` added — new admin-only page (`/referee`): pick two players, enter game scores, submit. Auto-detects the winner from scores the same way the regular result modal does.
-- `router/index.ts` — new route guarded by `requiresAdmin`; non-admins are redirected home.
-- `AppNav.vue` — "Referee" link shown only to admins, in both the desktop nav and the mobile dropdown.
 - `reset-for-launch.sql` added — one-time operational script (not an app migration) to wipe test match/rating history and reset every player back to a clean starting state before opening the app to the real club
+---
+
+### v0.0.2.6 — RLS was row-level only, not column-level — locked down direct table writes
+> Asked what we needed to check before launch — reviewed the original supabase-schema.sql RLS policies directly instead of assuming they were fine.
+
+- **Security fix:** `matches` UPDATE policy only restricted which rows a participant could touch, not which columns — either player could previously write directly to `status`/`winner_id`/`quality`/deltas/`completed_at`/the other player's report fields, bypassing `finalize_match()` entirely. Added a `BEFORE UPDATE` trigger (`enforce_match_update_rules`) enforcing: completion fields are off-limits outside `finalize_match()`, only the invited opponent can accept/decline, and each side can only write their own report fields
+- **Security fix:** dropped `"Users update own player"` policy on `players` — allowed a user to write their own `rating` directly with no match required. All legitimate rating changes now go exclusively through `finalize_match()` (`SECURITY DEFINER`, bypasses RLS)
+- Dropped `"System inserts players"` and `"System inserts elo"` policies (both `with check (true)`, unrestricted insert) — unnecessary, since both auto-create paths already run as `SECURITY DEFINER` and bypass RLS
+- `finalize_match()` updated to set a local `rally.internal_write` flag before writing, so the new matches trigger lets its own writes through without re-litigating what it already validated
+- `supabase-migration-v0.0.2.6.sql` added — run this to apply all of the above
+---
+
+### v0.0.2.7 — Dispute resolution could produce a winner and score from different reports
+> Admin resolved a score-typo dispute (both players agreed on the winner, scores differed slightly) by clicking the other player's name — resulting match showed that player as the winner with a score where they scored fewer points than their opponent.
+
+- **Bug fixed:** `resolveDispute()` previously took just a `winnerId` and `finalise()` derived the score independently based on whether that winner was the challenger or opponent — meaning an admin could end up combining one player's reported *winner* with the other player's reported *score*, producing an internally contradictory match. Admin resolution now passes which player's **entire report** (winner + score together) to trust, guaranteeing they always come from the same original submission
+- Dispute cards now show *why* a match was flagged — different winner reported vs. same winner but mismatched scores — so the admin knows which case they're resolving
+- Resolve buttons reworded to "Use [player]'s report" instead of "[player] wins", to make clear the admin is picking a whole submission, not independently choosing a winner
+- No new SQL required — this was a client-side logic fix only
 ---
 
 ## Quick start
@@ -176,8 +178,7 @@ rally/
         ├── MatchesView.vue
         ├── ChallengeView.vue
         ├── ProfileView.vue
-        ├── PlayerView.vue
-        └── RefereeView.vue
+        └── PlayerView.vue
 ```
 
 ---
