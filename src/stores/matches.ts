@@ -210,9 +210,42 @@ export const useMatchesStore = defineStore('matches', () => {
     await fetch()
   }
 
+  // Admin-only: record a completed match directly for two other players,
+  // skipping the normal challenge/accept/report flow entirely. Player A
+  // is treated as the "challenger" and Player B as the "opponent" purely
+  // for score-perspective bookkeeping — it has no bearing on who won.
+  // Relies on the "Admins create matches for anyone" insert policy to
+  // pass RLS, and reuses finalise() so rating math and the finalize_match
+  // RPC call are identical to every other path.
+  async function recordAsAdmin(
+    playerAId: string,
+    playerBId: string,
+    winnerId:  string,
+    aScores:   number[],
+    bScores:   number[],
+  ) {
+    const scoreStr = aScores.map((s, i) => `${s}-${bScores[i]}`).join(',')
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('matches')
+      .insert({
+        challenger_id: playerAId,
+        opponent_id:   playerBId,
+        status:        'accepted',
+      })
+      .select()
+      .single()
+    if (insertErr) throw new Error(insertErr.message)
+
+    // rawScoreOverride is always from Player A's (challenger's) perspective,
+    // which is exactly how scoreStr was built above.
+    await finalise(inserted, winnerId, scoreStr)
+    await fetch()
+  }
+
   return {
     matches, loading, error, completed, disputed, pending,
     fetch, subscribe, unsubscribe,
-    challenge, respond, submitResult, resolveDispute,
+    challenge, respond, submitResult, resolveDispute, recordAsAdmin,
   }
 })

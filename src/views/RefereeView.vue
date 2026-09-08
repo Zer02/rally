@@ -74,6 +74,21 @@
           <span v-else>Record match →</span>
         </button>
       </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1.25rem">
+        <div class="field-label" style="margin-bottom:0.4rem">Season tools</div>
+        <p class="muted" style="font-size:0.8rem;margin-bottom:0.75rem">
+          Zeroes out season W-L for every player. Career totals and rating are untouched.
+        </p>
+        <button
+          class="btn btn-ghost"
+          :disabled="resettingSeason"
+          @click="confirmResetSeason"
+        >
+          <span v-if="resettingSeason" class="spinner" />
+          <span v-else>Reset season</span>
+        </button>
+      </div>
     </div>
   </main>
 </template>
@@ -121,6 +136,23 @@ function detectWinner() {
 
 function addGame()    { games.value.push({ a: null, b: null }) }
 function removeGame() { games.value.pop(); detectWinner() }
+
+const resettingSeason = ref(false)
+
+async function confirmResetSeason() {
+  if (!confirm('Reset season W-L for every player? This cannot be undone.')) return
+  resettingSeason.value = true
+  flash.value = ''
+  try {
+    await store.resetSeason()
+    flash.value = 'Season reset.'
+    flashType.value = 'success'
+  } catch (e: any) {
+    flash.value = e.message
+    flashType.value = 'error'
+  }
+  resettingSeason.value = false
+}
 
 async function submit() {
   if (!detectedWinnerId.value || !playerAId.value || !playerBId.value) return

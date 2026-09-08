@@ -55,5 +55,15 @@ export const usePlayersStore = defineStore('players', () => {
     return players.value.find(p => p.profile_id === id)
   }
 
-  return { players, loading, error, sorted, fetch, byId, subscribe, unsubscribe }
+  // Admin-only: zero out season_wins/season_losses for every player.
+  // Career totals and rating are untouched — this is a season reset,
+  // not a full wipe. Authorization is enforced server-side by the
+  // reset_season() RPC (SECURITY DEFINER, checks profiles.is_admin).
+  async function resetSeason() {
+    const { error: err } = await supabase.rpc('reset_season')
+    if (err) throw new Error(err.message)
+    await fetch()
+  }
+
+  return { players, loading, error, sorted, fetch, byId, subscribe, unsubscribe, resetSeason }
 })

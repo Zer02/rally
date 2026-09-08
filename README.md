@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.2.8**
+> Current version: **v0.0.2.9**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -124,6 +124,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - Head-to-head record added to `PlayerView.vue` — shown only when logged in and viewing someone else ("You lead 3–1 all-time vs. Roger"), computed from existing `matches` data, no new queries needed
 - Finished the leaderboard mobile card list from the earlier styling pass — the `.leaderboard-cards`/`.lb-card`/etc. CSS was never actually written; it's now in place with a clean mobile/desktop toggle at the existing 600px breakpoint
 - Checked off "Rating history chart" and "Head-to-head records" in the roadmap below
+---
+
+### v0.0.2.9 — Referee page was broken since introduction; season reset
+> `RefereeView.vue` called `matches.recordAsAdmin()`, which didn't actually exist anywhere in `matches.ts` — the Referee page has been non-functional since it was first added. Implemented it, and added the season-reset tool that was still missing from the admin flow.
+
+- **Bug fixed:** added `recordAsAdmin()` to `matches.ts` — inserts a match directly (Player A as challenger, Player B as opponent, purely for score bookkeeping) and reuses the existing `finalise()` path, so it goes through the same `finalize_match` RPC and rating math as every other match
+- Depends on the "Admins create matches for anyone" insert policy (v0.0.2.7) already being applied — no new RLS changes needed for this part
+- Added `reset_season()` RPC (admin-gated server-side) and a "Season tools" section on `RefereeView.vue` to zero out season W-L for every player without touching career totals or rating
+- `supabase-migration-v0.0.2.9.sql` added — run this in SQL Editor to create `reset_season()` and grant execute to authenticated users
 ---
 
 ## Quick start
