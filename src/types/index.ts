@@ -54,13 +54,31 @@ export interface EloHistory {
   recorded_at: string
 }
 
+export interface Season {
+  id:            string
+  season_number: number
+  started_at:    string
+  ended_at:      string | null
+}
+
+export interface SeasonRecord {
+  id:         string
+  season_id:  string
+  profile_id: string
+  wins:       number
+  losses:     number
+  created_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
-      profiles:    { Row: Profile; Insert: Omit<Profile, 'created_at'>; Update: Partial<Profile> }
-      players:     { Row: Player; Insert: Omit<Player, 'id'>; Update: Partial<Player> }
-      matches:     { Row: Match; Insert: Omit<Match, 'id' | 'created_at'>; Update: Partial<Match> }
-      elo_history: { Row: EloHistory; Insert: Omit<EloHistory, 'id' | 'recorded_at'>; Update: Partial<EloHistory> }
+      profiles:       { Row: Profile;      Insert: Omit<Profile, 'created_at'>;             Update: Partial<Profile> }
+      players:        { Row: Player;       Insert: Omit<Player, 'id'>;                       Update: Partial<Player> }
+      matches:        { Row: Match;        Insert: Omit<Match, 'id' | 'created_at'>;         Update: Partial<Match> }
+      elo_history:    { Row: EloHistory;   Insert: Omit<EloHistory, 'id' | 'recorded_at'>;   Update: Partial<EloHistory> }
+      seasons:        { Row: Season;       Insert: Omit<Season, 'id' | 'started_at'>;        Update: Partial<Season> }
+      season_records: { Row: SeasonRecord; Insert: Omit<SeasonRecord, 'id' | 'created_at'>;  Update: Partial<SeasonRecord> }
     }
   }
 }

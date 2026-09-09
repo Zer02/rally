@@ -18,6 +18,16 @@
           <TierBadge :rating="me.rating" />
         </div>
 
+        <div class="field" style="max-width:200px;margin-bottom:1.25rem">
+          <label class="field-label">Season</label>
+          <select v-model="selectedSeasonId" class="input">
+            <option value="current">Current season</option>
+            <option v-for="s in seasonsStore.pastSeasons" :key="s.id" :value="s.id">
+              Season {{ s.season_number }}
+            </option>
+          </select>
+        </div>
+
         <div class="stat-grid" style="margin-bottom:2rem">
           <div class="stat-cell">
             <p class="stat-label">Rating</p>
@@ -28,8 +38,8 @@
             <p class="stat-value">#{{ myRank }}</p>
           </div>
           <div class="stat-cell">
-            <p class="stat-label">Season W–L</p>
-            <p class="stat-value" style="font-size:1.1rem">{{ me.season_wins }}–{{ me.season_losses }}</p>
+            <p class="stat-label">{{ selectedSeasonId === 'current' ? 'Season W–L' : 'Season W–L (past)' }}</p>
+            <p class="stat-value" style="font-size:1.1rem">{{ mySeasonRecord }}</p>
           </div>
           <div class="stat-cell">
             <p class="stat-label">Win rate</p>
@@ -77,9 +87,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
+import { useSeasonsStore } from '@/stores/seasons'
 import { useAuth } from '@/composables/useAuth'
 import { supabase } from '@/lib/supabase'
 import TierBadge from '@/components/ui/TierBadge.vue'
@@ -89,12 +100,14 @@ import type { Match } from '@/types'
 
 const playersStore = usePlayersStore()
 const matchesStore = useMatchesStore()
+const seasonsStore = useSeasonsStore()
 const { user } = useAuth()
 
 const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
+const selectedSeasonId = ref('current')
 
 onMounted(async () => {
-  await Promise.all([playersStore.fetch(), matchesStore.fetch(100)])
+  await Promise.all([playersStore.fetch(), matchesStore.fetch(100), seasonsStore.fetchSeasons()])
   playersStore.subscribe()
   matchesStore.subscribe()
 
@@ -108,6 +121,10 @@ onMounted(async () => {
   }
 })
 
+watch(selectedSeasonId, (id) => {
+  if (id !== 'current') seasonsStore.fetchRecords(id)
+})
+
 onUnmounted(() => {
   playersStore.unsubscribe()
   matchesStore.unsubscribe()
@@ -116,6 +133,13 @@ onUnmounted(() => {
 const me     = computed(() => playersStore.byId(user.value?.id ?? ''))
 const myName = computed(() => me.value?.profile?.display_name || me.value?.profile?.username || 'You')
 const myRank = computed(() => playersStore.sorted.findIndex(p => p.profile_id === user.value?.id) + 1)
+
+const mySeasonRecord = computed(() => {
+  if (!me.value) return '0–0'
+  if (selectedSeasonId.value === 'current') return `${me.value.season_wins}–${me.value.season_losses}`
+  const record = seasonsStore.recordFor(selectedSeasonId.value, me.value.profile_id)
+  return record ? `${record.wins}–${record.losses}` : '—'
+})
 
 const winRate = computed(() => {
   if (!me.value) return 0

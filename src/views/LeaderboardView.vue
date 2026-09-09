@@ -1,9 +1,20 @@
 <template>
   <main class="page">
     <div class="container">
-      <div class="page-header">
-        <p class="eyebrow">Building League</p>
-        <h1>Standings</h1>
+      <div class="page-header" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+        <div>
+          <p class="eyebrow">Building League</p>
+          <h1>Standings</h1>
+        </div>
+        <div class="field" style="min-width:170px">
+          <label class="field-label">Season</label>
+          <select v-model="selectedSeasonId" class="input">
+            <option value="current">Current season</option>
+            <option v-for="s in seasonsStore.pastSeasons" :key="s.id" :value="s.id">
+              Season {{ s.season_number }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <div v-if="store.loading" style="text-align:center;padding:3rem 0">
@@ -69,7 +80,7 @@
                   </td>
                   <td><TierBadge :rating="p.rating" /></td>
                   <td class="mono">{{ p.rating }}</td>
-                  <td class="mono">{{ p.season_wins }}–{{ p.season_losses }}</td>
+                  <td class="mono">{{ seasonRecordDisplay(p) }}</td>
                   <td>
                     <span v-if="p.streak > 1"  class="delta delta-pos">W{{ p.streak }}</span>
                     <span v-else-if="p.streak < -1" class="delta delta-neg">L{{ Math.abs(p.streak) }}</span>
@@ -105,7 +116,7 @@
                   <TierBadge :rating="p.rating" />
                 </div>
                 <div class="lb-sub muted">
-                  <span v-if="p.profile?.unit">Unit {{ p.profile.unit }} · </span>{{ p.season_wins }}–{{ p.season_losses }}
+                  <span v-if="p.profile?.unit">Unit {{ p.profile.unit }} · </span>{{ seasonRecordDisplay(p) }}
                   <span v-if="p.streak > 1"  class="delta delta-pos" style="margin-left:0.4rem">W{{ p.streak }}</span>
                   <span v-else-if="p.streak < -1" class="delta delta-neg" style="margin-left:0.4rem">L{{ Math.abs(p.streak) }}</span>
                 </div>
@@ -127,24 +138,42 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
+import { useSeasonsStore } from '@/stores/seasons'
 import { useAuth } from '@/composables/useAuth'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import type { Player } from '@/types'
 
 const store = usePlayersStore()
+const seasonsStore = useSeasonsStore()
 const { user, isAuthed } = useAuth()
+
+const selectedSeasonId = ref('current')
 
 onMounted(() => {
   store.fetch()
   store.subscribe()  // live updates
+  seasonsStore.fetchSeasons()
 })
 
 onUnmounted(() => {
   store.unsubscribe()
 })
+
+// Past seasons' records are only fetched on demand, once the dropdown
+// actually lands on them — "current" needs nothing extra since its W-L
+// already lives on the player rows from store.fetch().
+watch(selectedSeasonId, (id) => {
+  if (id !== 'current') seasonsStore.fetchRecords(id)
+})
+
+function seasonRecordDisplay(p: Player): string {
+  if (selectedSeasonId.value === 'current') return `${p.season_wins}–${p.season_losses}`
+  const record = seasonsStore.recordFor(selectedSeasonId.value, p.profile_id)
+  return record ? `${record.wins}–${record.losses}` : '—'
+}
 
 function name(p: Player) {
   return p.profile?.display_name || p.profile?.username || 'Unknown'

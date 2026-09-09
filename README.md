@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.2.9**
+> Current version: **v0.0.3.0**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -135,6 +135,32 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `supabase-migration-v0.0.2.9.sql` added — run this in SQL Editor to create `reset_season()` and grant execute to authenticated users
 ---
 
+### v0.0.2.10 — Season history + season dropdown on Leaderboard/Profile
+> Asked for a way to see a player's record from a past season, not just the current one. `reset_season()` was previously destructive — it zeroed season_wins/season_losses with no record of what they'd been. Added actual season history so past seasons aren't lost the next time someone hits reset.
+
+- New `seasons` table (one row per season; the row with `ended_at IS NULL` is the one in progress) and `season_records` table (archived per-player W-L, written once at reset time)
+- `reset_season()` now archives every player's current season_wins/season_losses into `season_records` before zeroing them, closes out the active season, and opens the next one — instead of just wiping the numbers
+- New `useSeasonsStore` (`src/stores/seasons.ts`) — fetches the season list and caches archived records per season on demand
+- Leaderboard and Profile pages both got a "Season" dropdown: "Current season" reads live from `players.*` as always; past seasons pull from `season_records`. Ranking/sort order is unaffected — only the W-L figure shown changes, since rating itself was never season-scoped
+- A player who joined after a given season closed shows "—" for that season rather than 0–0
+- **Note:** this only starts tracking from now — any seasons reset before this migration ran are unrecoverable, since they were never archived
+- `supabase-migration-v0.0.2.10.sql` added — run this in SQL Editor to create the two new tables and replace `reset_season()`
+---
+
+### v0.0.3.0 — Multi-league foundation: schema + league switcher
+> First step of the multi-sport/multi-league expansion. Leagues are opt-in, admin is per-league, and the old single-league app becomes one seeded "Table Tennis" league so nothing existing breaks. This version lands the schema and the nav switcher UI — the leaderboard, matches, challenge, profile, and referee pages do NOT filter by league yet, that's the next chunk of work (v0.0.3.1+).
+
+- New `leagues` table and `league_admins` join table; `players`, `matches`, and `elo_history` all gain a `league_id` column
+- `players`' unique constraint changes from `unique(profile_id)` to `unique(profile_id, league_id)` — one stats row per player per league now, instead of one per player total
+- New `is_league_admin(league_id)` helper (super-admin OR admin of that specific league) replaces the raw `is_admin` checks inside `finalize_match()` and `reset_season()`
+- New `create_league()` RPC — any authenticated user can spin up a league and becomes its first admin + first member automatically
+- Joining a league is now an explicit action (`players` insert policy checks `auth.uid() = profile_id`) — the old auto-create-player-on-signup trigger is retired
+- New `useLeagueStore` (`src/stores/leagues.ts`) — tracks the leagues you've joined, which ones you can still join, and which one is currently selected (persisted to `localStorage`)
+- `AppNav.vue` reworked: the 🏓 emoji is no longer baked into the "RALLY" wordmark — it's now a standalone circular button showing your **current league's** icon. Click it for a dropdown: switch between leagues you've joined, join an existing one, or create a new one (name + sport slug + emoji icon)
+- **Known gap, by design:** switching leagues in the dropdown changes `currentLeagueId` but nothing reads it yet — Leaderboard/Matches/Challenge/Profile/PlayerView/Referee all still show the single seeded "Table Tennis" league's data regardless of selection. That threading is the next version.
+- `supabase-migration-v0.0.3.0.sql` added — run this in SQL Editor before deploying the frontend changes, since `AppNav.vue` now queries the `leagues` table on mount
+---
+
 ## Quick start
 
 ### 1. Supabase setup
@@ -180,7 +206,9 @@ rally/
     ├── router/index.ts
     ├── stores/
     │   ├── players.ts
-    │   └── matches.ts
+    │   ├── matches.ts
+    │   ├── seasons.ts
+    │   └── leagues.ts
     ├── types/index.ts
     ├── components/
     │   ├── layout/AppNav.vue
