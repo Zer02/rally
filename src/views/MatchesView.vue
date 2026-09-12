@@ -127,6 +127,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useMatchesStore } from '@/stores/matches'
 import { useAuth } from '@/composables/useAuth'
+import { onLeagueChange } from '@/composables/useLeagueWatch'
 import MatchCard from '@/components/match/MatchCard.vue'
 import ResultModal from '@/components/match/ResultModal.vue'
 import type { Match } from '@/types'
@@ -136,6 +137,7 @@ const { user, isAuthed, isAdmin } = useAuth()
 const activeMatch = ref<Match | null>(null)
 
 onMounted(() => matchesStore.fetch())
+onLeagueChange(() => matchesStore.fetch())
 
 const myPending = computed(() =>
   matchesStore.pending.filter(m => {

@@ -1,10 +1,11 @@
-// src/stores/matches.ts — v0.0.2.7
+// src/stores/matches.ts — v0.0.3.1
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { calculateResult } from '@/lib/rating'
 import type { Match } from '@/types'
 import { usePlayersStore } from './players'
+import { useLeagueStore } from './leagues'
 
 const MATCH_SELECT = `
   *,
@@ -26,10 +27,14 @@ export const useMatchesStore = defineStore('matches', () => {
   )
 
   async function fetch(limit = 40) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) { matches.value = []; return }
+
     loading.value = true
     const { data, error: err } = await supabase
       .from('matches')
       .select(MATCH_SELECT)
+      .eq('league_id', leagueId)
       .order('created_at', { ascending: false })
       .limit(limit)
 
@@ -62,9 +67,13 @@ export const useMatchesStore = defineStore('matches', () => {
   }
 
   async function challenge(challengerId: string, opponentId: string) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) throw new Error('No league selected')
+
     const { error: err } = await supabase.from('matches').insert({
       challenger_id: challengerId,
       opponent_id:   opponentId,
+      league_id:     leagueId,
       status:        'pending',
     })
     if (err) throw new Error(err.message)
@@ -224,6 +233,9 @@ export const useMatchesStore = defineStore('matches', () => {
     aScores:   number[],
     bScores:   number[],
   ) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) throw new Error('No league selected')
+
     const scoreStr = aScores.map((s, i) => `${s}-${bScores[i]}`).join(',')
 
     const { data: inserted, error: insertErr } = await supabase
@@ -231,6 +243,7 @@ export const useMatchesStore = defineStore('matches', () => {
       .insert({
         challenger_id: playerAId,
         opponent_id:   playerBId,
+        league_id:     leagueId,
         status:        'accepted',
       })
       .select()

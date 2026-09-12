@@ -1,7 +1,8 @@
-// src/stores/seasons.ts — v0.0.2.10
+// src/stores/seasons.ts — v0.0.3.1
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { useLeagueStore } from './leagues'
 import type { Season, SeasonRecord } from '@/types'
 
 export const useSeasonsStore = defineStore('seasons', () => {
@@ -28,10 +29,14 @@ export const useSeasonsStore = defineStore('seasons', () => {
   )
 
   async function fetchSeasons() {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) { seasons.value = []; return }
+
     loading.value = true
     const { data, error: err } = await supabase
       .from('seasons')
       .select('*')
+      .eq('league_id', leagueId)
       .order('season_number', { ascending: false })
 
     if (err) { error.value = err.message }

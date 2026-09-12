@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.0**
+> Current version: **v0.0.3.1**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -159,6 +159,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `AppNav.vue` reworked: the 🏓 emoji is no longer baked into the "RALLY" wordmark — it's now a standalone circular button showing your **current league's** icon. Click it for a dropdown: switch between leagues you've joined, join an existing one, or create a new one (name + sport slug + emoji icon)
 - **Known gap, by design:** switching leagues in the dropdown changes `currentLeagueId` but nothing reads it yet — Leaderboard/Matches/Challenge/Profile/PlayerView/Referee all still show the single seeded "Table Tennis" league's data regardless of selection. That threading is the next version.
 - `supabase-migration-v0.0.3.0.sql` added — run this in SQL Editor before deploying the frontend changes, since `AppNav.vue` now queries the `leagues` table on mount
+---
+
+### v0.0.3.1 — League switching actually does something now
+> The switcher from v0.0.3.0 changed `currentLeagueId` but nothing read it — Leaderboard/Matches/Profile/Challenge/PlayerView/Referee all kept showing the seeded Table Tennis league no matter what was selected. Not a Supabase problem and no new tables needed for this part — the `league_id` columns were already there from v0.0.3.0, they just weren't being used anywhere yet.
+
+- `players.ts` and `matches.ts` fetches now filter by `league_id` from the new `useLeagueStore`, instead of pulling every league's rows into one list
+- **Real bug caught along the way:** `matches.league_id` is `NOT NULL` as of v0.0.3.0, but `challenge()` and `recordAsAdmin()` were still inserting matches without it — any new challenge or admin-recorded match would have started failing outright the moment v0.0.3.0 was deployed. Fixed both insert calls.
+- New `onLeagueChange()` composable (`src/composables/useLeagueWatch.ts`) — every page that shows league-scoped data now re-fetches automatically when the nav switcher changes leagues, instead of only updating on the next full page load
+- `seasons`/`season_records` (from v0.0.2.10) are now per-league too — they were still global, which didn't make sense once matches and ratings became per-league. `reset_season()` is rewritten to do archiving AND per-league scoping together (the v0.0.3.0 draft had accidentally dropped the archiving step when it added league scoping)
+- `create_league()` now also opens that league's first season immediately, instead of only creating one on the first reset
+- Profile page now tells you plainly if you haven't joined the currently-selected league, instead of spinning forever waiting for a player row that doesn't exist
+- `supabase-migration-v0.0.3.1.sql` added — run this after v0.0.3.0. It no longer requires v0.0.2.10 to have been run first — it creates `seasons`/`season_records` itself if they don't already exist
 ---
 
 ## Quick start

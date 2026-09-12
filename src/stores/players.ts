@@ -1,7 +1,8 @@
-// src/stores/players.ts — v0.0.4
+// src/stores/players.ts — v0.0.3.1
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { useLeagueStore } from './leagues'
 import type { Player } from '@/types'
 
 export const usePlayersStore = defineStore('players', () => {
@@ -15,10 +16,14 @@ export const usePlayersStore = defineStore('players', () => {
   )
 
   async function fetch() {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) { players.value = []; return }
+
     loading.value = true
     const { data, error: err } = await supabase
       .from('players')
       .select('*, profile:profiles(id, username, display_name, unit, avatar_url, is_admin)')
+      .eq('league_id', leagueId)
       .order('rating', { ascending: false })
 
     if (err) { error.value = err.message }
@@ -55,12 +60,15 @@ export const usePlayersStore = defineStore('players', () => {
     return players.value.find(p => p.profile_id === id)
   }
 
-  // Admin-only: zero out season_wins/season_losses for every player.
-  // Career totals and rating are untouched — this is a season reset,
-  // not a full wipe. Authorization is enforced server-side by the
-  // reset_season() RPC (SECURITY DEFINER, checks profiles.is_admin).
+  // Admin-only: zero out season_wins/season_losses for every player in
+  // the currently selected league, archiving their standing first (see
+  // reset_season() — it's not just a wipe). Authorization is enforced
+  // server-side by is_league_admin(), not by anything client-side here.
   async function resetSeason() {
-    const { error: err } = await supabase.rpc('reset_season')
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) throw new Error('No league selected')
+
+    const { error: err } = await supabase.rpc('reset_season', { p_league_id: leagueId })
     if (err) throw new Error(err.message)
     await fetch()
   }

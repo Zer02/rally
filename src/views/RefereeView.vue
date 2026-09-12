@@ -94,13 +94,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
+import { onLeagueChange } from '@/composables/useLeagueWatch'
 import type { Player } from '@/types'
 
 const store   = usePlayersStore()
 const matches = useMatchesStore()
+
+onMounted(() => store.fetch())
+onLeagueChange(() => store.fetch())
 
 const playerAId = ref('')
 const playerBId = ref('')

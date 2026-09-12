@@ -142,6 +142,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useSeasonsStore } from '@/stores/seasons'
 import { useAuth } from '@/composables/useAuth'
+import { onLeagueChange } from '@/composables/useLeagueWatch'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import type { Player } from '@/types'
@@ -160,6 +161,16 @@ onMounted(() => {
 
 onUnmounted(() => {
   store.unsubscribe()
+})
+
+// Switching leagues in the nav means everything here needs re-fetching —
+// it's a different set of players, matches, and season history entirely.
+// The past-season dropdown selection doesn't carry over either, since a
+// season id from one league means nothing in another.
+onLeagueChange(() => {
+  selectedSeasonId.value = 'current'
+  store.fetch()
+  seasonsStore.fetchSeasons()
 })
 
 // Past seasons' records are only fetched on demand, once the dropdown

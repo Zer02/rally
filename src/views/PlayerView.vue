@@ -96,6 +96,8 @@ import { useRoute } from 'vue-router'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
 import { useAuth } from '@/composables/useAuth'
+import { useLeagueStore } from '@/stores/leagues'
+import { onLeagueChange } from '@/composables/useLeagueWatch'
 import { supabase } from '@/lib/supabase'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
@@ -105,25 +107,37 @@ import type { Match } from '@/types'
 const route        = useRoute()
 const playersStore = usePlayersStore()
 const matchesStore = useMatchesStore()
+const leagueStore  = useLeagueStore()
 const { user, isAuthed } = useAuth()
 
 const loading  = ref(true)
 const playerId = route.params.id as string
 const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
 
-onMounted(async () => {
+async function loadAll() {
   const [, , historyRes] = await Promise.all([
     playersStore.fetch(),
     matchesStore.fetch(100),
-    supabase
-      .from('elo_history')
-      .select('rating, recorded_at')
-      .eq('profile_id', playerId)
-      .order('recorded_at', { ascending: true }),
+    leagueStore.currentLeagueId
+      ? supabase
+          .from('elo_history')
+          .select('rating, recorded_at')
+          .eq('profile_id', playerId)
+          .eq('league_id', leagueStore.currentLeagueId)
+          .order('recorded_at', { ascending: true })
+      : Promise.resolve({ data: [] as any[] }),
   ])
   ratingHistory.value = historyRes.data ?? []
   loading.value = false
-})
+}
+
+onMounted(loadAll)
+
+// Viewing a specific player while switching leagues is an edge case, but
+// the player row, their matches, and their rating history are all
+// league-scoped now, so it's worth re-fetching rather than showing the
+// wrong league's numbers under this player's name.
+onLeagueChange(loadAll)
 
 const player  = computed(() => playersStore.byId(playerId))
 const pname   = computed(() => player.value?.profile?.display_name || player.value?.profile?.username || 'Player')

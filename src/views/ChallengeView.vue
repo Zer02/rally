@@ -82,6 +82,7 @@ import { useRoute } from 'vue-router'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
 import { useAuth } from '@/composables/useAuth'
+import { onLeagueChange } from '@/composables/useLeagueWatch'
 import { previewPoints, qualityLabel } from '@/lib/rating'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
@@ -103,6 +104,13 @@ onMounted(async () => {
   await store.fetch()
   // Pre-select if ?opponent= query param provided
   if (route.query.opponent) selected.value = route.query.opponent as string
+})
+
+// Switching leagues means a different opponent list entirely — and
+// whoever was selected almost certainly isn't in the new one.
+onLeagueChange(() => {
+  selected.value = null
+  store.fetch()
 })
 
 const opponents = computed(() =>

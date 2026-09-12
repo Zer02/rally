@@ -2,7 +2,10 @@
   <main class="page">
     <div class="container">
       <div v-if="!me" style="text-align:center;padding:3rem 0">
-        <span class="spinner" style="width:28px;height:28px;border-width:3px" />
+        <span v-if="playersStore.loading" class="spinner" style="width:28px;height:28px;border-width:3px" />
+        <p v-else class="muted">
+          You haven't joined this league yet — use the league icon in the nav to join it first.
+        </p>
       </div>
 
       <template v-else>
@@ -92,6 +95,8 @@ import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
 import { useSeasonsStore } from '@/stores/seasons'
 import { useAuth } from '@/composables/useAuth'
+import { useLeagueStore } from '@/stores/leagues'
+import { onLeagueChange } from '@/composables/useLeagueWatch'
 import { supabase } from '@/lib/supabase'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
@@ -101,28 +106,41 @@ import type { Match } from '@/types'
 const playersStore = usePlayersStore()
 const matchesStore = useMatchesStore()
 const seasonsStore = useSeasonsStore()
+const leagueStore  = useLeagueStore()
 const { user } = useAuth()
 
 const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
 const selectedSeasonId = ref('current')
 
+async function loadRatingHistory() {
+  if (!user.value?.id || !leagueStore.currentLeagueId) { ratingHistory.value = []; return }
+
+  const { data } = await supabase
+    .from('elo_history')
+    .select('rating, recorded_at')
+    .eq('profile_id', user.value.id)
+    .eq('league_id', leagueStore.currentLeagueId)
+    .order('recorded_at', { ascending: true })
+  ratingHistory.value = data ?? []
+}
+
 onMounted(async () => {
   await Promise.all([playersStore.fetch(), matchesStore.fetch(100), seasonsStore.fetchSeasons()])
   playersStore.subscribe()
   matchesStore.subscribe()
-
-  if (user.value?.id) {
-    const { data } = await supabase
-      .from('elo_history')
-      .select('rating, recorded_at')
-      .eq('profile_id', user.value.id)
-      .order('recorded_at', { ascending: true })
-    ratingHistory.value = data ?? []
-  }
+  await loadRatingHistory()
 })
 
 watch(selectedSeasonId, (id) => {
   if (id !== 'current') seasonsStore.fetchRecords(id)
+})
+
+// A different league means a different players row, a different match
+// history, and different rating history entirely for the same person.
+onLeagueChange(async () => {
+  selectedSeasonId.value = 'current'
+  await Promise.all([playersStore.fetch(), matchesStore.fetch(100), seasonsStore.fetchSeasons()])
+  await loadRatingHistory()
 })
 
 onUnmounted(() => {
