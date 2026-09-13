@@ -70,6 +70,47 @@ export interface SeasonRecord {
   created_at: string
 }
 
+export interface Tournament {
+  id:           string
+  league_id:    string
+  name:         string
+  status:       'round_robin' | 'bracket' | 'completed'
+  created_at:   string
+  completed_at: string | null
+}
+
+export interface TournamentParticipant {
+  id:             string
+  tournament_id:  string
+  profile_id:     string
+  wins:           number
+  losses:         number
+  points_for:     number
+  points_against: number
+  adjusted_score: number | null
+  seed:           number | null
+  profile?: Profile
+}
+
+export interface TournamentMatch {
+  id:            string
+  tournament_id: string
+  phase:         'round_robin' | 'bracket'
+  round:         number | null
+  slot:          number | null
+  player_a_id:   string | null
+  player_b_id:   string | null
+  score_a:       number | null
+  score_b:       number | null
+  winner_id:     string | null
+  status:        'pending' | 'completed' | 'bye'
+  reported_by:   string | null
+  created_at:    string
+  completed_at:  string | null
+  player_a?: Profile
+  player_b?: Profile
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -77,8 +118,11 @@ export interface Database {
       players:        { Row: Player;       Insert: Omit<Player, 'id'>;                       Update: Partial<Player> }
       matches:        { Row: Match;        Insert: Omit<Match, 'id' | 'created_at'>;         Update: Partial<Match> }
       elo_history:    { Row: EloHistory;   Insert: Omit<EloHistory, 'id' | 'recorded_at'>;   Update: Partial<EloHistory> }
-      seasons:        { Row: Season;       Insert: Omit<Season, 'id' | 'started_at'>;        Update: Partial<Season> }
-      season_records: { Row: SeasonRecord; Insert: Omit<SeasonRecord, 'id' | 'created_at'>;  Update: Partial<SeasonRecord> }
+      seasons:        { Row: Season;             Insert: Omit<Season, 'id' | 'started_at'>;             Update: Partial<Season> }
+      season_records: { Row: SeasonRecord;       Insert: Omit<SeasonRecord, 'id' | 'created_at'>;       Update: Partial<SeasonRecord> }
+      tournaments:              { Row: Tournament;            Insert: Omit<Tournament, 'id' | 'created_at'>;            Update: Partial<Tournament> }
+      tournament_participants:  { Row: TournamentParticipant; Insert: Omit<TournamentParticipant, 'id'>;                Update: Partial<TournamentParticipant> }
+      tournament_matches:       { Row: TournamentMatch;       Insert: Omit<TournamentMatch, 'id' | 'created_at'>;       Update: Partial<TournamentMatch> }
     }
   }
 }

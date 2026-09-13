@@ -69,6 +69,7 @@
       <div class="nav-links">
         <RouterLink to="/leaderboard" class="nav-link">Leaderboard</RouterLink>
         <RouterLink to="/matches"     class="nav-link">Matches</RouterLink>
+        <RouterLink to="/tournament"  class="nav-link">Round Robin</RouterLink>
 
         <template v-if="isAuthed">
           <RouterLink to="/challenge" class="nav-link">Challenge</RouterLink>
@@ -96,6 +97,7 @@
       <div v-if="menuOpen" class="nav-drop">
         <RouterLink to="/leaderboard" class="nav-drop-link" @click="menuOpen = false">Leaderboard</RouterLink>
         <RouterLink to="/matches"     class="nav-drop-link" @click="menuOpen = false">Matches</RouterLink>
+        <RouterLink to="/tournament"  class="nav-drop-link" @click="menuOpen = false">Round Robin</RouterLink>
 
         <template v-if="isAuthed">
           <RouterLink to="/challenge" class="nav-drop-link" @click="menuOpen = false">Challenge</RouterLink>

@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.1**
+> Current version: **v0.0.3.2**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -171,6 +171,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `create_league()` now also opens that league's first season immediately, instead of only creating one on the first reset
 - Profile page now tells you plainly if you haven't joined the currently-selected league, instead of spinning forever waiting for a player row that doesn't exist
 - `supabase-migration-v0.0.3.1.sql` added — run this after v0.0.3.0. It no longer requires v0.0.2.10 to have been run first — it creates `seasons`/`season_records` itself if they don't already exist
+---
+
+### v0.0.3.2 — Round robin, part 1: schema + pairing + reporting
+> First slice of the round-robin/end-of-season tournament feature, designed together before writing anything: single game to 11 per match, kept fully separate from the regular ladder rating, everyone advances to an end-of-season bracket. This version covers schema + generating the pairing schedule + reporting scores. Does NOT yet include: the strength-of-schedule adjusted ranking (needs the whole round robin finished first) or the bracket itself — both are next.
+
+- New `tournaments`, `tournament_participants`, and `tournament_matches` tables, scoped to a league. Deliberately untouched: `players.rating`, `matches`, `finalize_match()` — a tournament match reported here has zero effect on the everyday ladder
+- `create_tournament()` RPC (league-admin only) — enrolls every current player in the league and generates the full round-robin pairing list (every unique pair, once each) in one shot
+- `report_tournament_match()` RPC — either player in the match, or a league admin, can report the single-game score; no accept/dispute flow needed for a one-line score
+- New `useTournamentsStore` and `/tournament` page — shows live (provisional) standings sorted by wins then point differential, a "Your matches" section to report your own games, and an admin-only override section for anyone else's pending match
+- Added "Round Robin" to the nav, visible to everyone (like Leaderboard/Matches) since viewing standings doesn't require being signed in
+- **Known gap, by design:** standings shown right now are provisional — wins and raw point differential only. The final strength-of-schedule-adjusted ranking (`adjusted_score`) and the bracket generation are the next version, since the adjustment can only be computed once every round-robin match is actually in
+- `supabase-migration-v0.0.3.2.sql` added
 ---
 
 ## Quick start
