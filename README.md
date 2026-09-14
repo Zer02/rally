@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.2**
+> Current version: **v0.0.3.4**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -183,6 +183,31 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - Added "Round Robin" to the nav, visible to everyone (like Leaderboard/Matches) since viewing standings doesn't require being signed in
 - **Known gap, by design:** standings shown right now are provisional — wins and raw point differential only. The final strength-of-schedule-adjusted ranking (`adjusted_score`) and the bracket generation are the next version, since the adjustment can only be computed once every round-robin match is actually in
 - `supabase-migration-v0.0.3.2.sql` added
+
+### v0.0.3.3 — Round robin becomes a weekly recurring season, plus ladder-style challenges
+> v0.0.3.2 built round robin as a one-shot tournament — `create_tournament()` enrolled the whole league and generated every pairing immediately, with no way to add matches later. That's not actually how this gets played: it's a weekly recurring round robin where attendance varies week to week and standings build up over a season. Reworked accordingly, and added a challenge mechanic so someone who's fallen behind (or just joined) has a way to climb without a full head-to-head catch-up.
+
+- `tournaments` is now a season shell — `create_tournament()` just creates the row, no pairings generated at creation
+- New `tournament_weeks` table + `start_tournament_week()` RPC (admin-only) — pick that week's attendees, generates one round-robin match per unique pair among just that group. First time a player shows up in any week, they're auto-enrolled at 0-0 — **no catch-up matches are generated for weeks they missed, by design**
+- `wins`/`losses`/`points_for`/`points_against` stay cumulative across the whole season, same columns as v0.0.3.2
+- New ladder-style challenges: `create_challenge()` RPC lets a player challenge anyone **currently ranked above them** (by wins, then point differential), capped at **one challenge per player per week**. New `bonus_points` column on `tournament_participants` — winning a challenge adds to it and does **not** touch wins/losses/points_for/points_against, so it can never be mistaken for a real match result
+- `report_tournament_match()` now branches on match phase — round-robin matches work exactly as before, challenge matches only ever update the winner's `bonus_points`
+- New `finalize_tournament()` RPC (admin-only) — computes the strength-of-schedule adjusted score from round-robin matches only (challenges don't have real match differentials, so they're deliberately excluded from that weighting), adds `bonus_points` as a flat top-up on top, assigns final seeds, and locks the season
+- `useTournamentsStore` rewritten: `weeks`, `currentWeek`, `startWeek()`, `createChallenge()`, `canChallenge()`, `finalizeTournament()` added; `standings` sort unchanged (wins, then point diff) and doubles as the same ranking `create_challenge()` uses server-side to decide who's eligible to be challenged
+- **Not in this version yet:** `TournamentView.vue` UI for starting a week, picking attendees, and issuing challenges — schema + store only this pass, page updates are next
+- `supabase-migration-v0.0.3.3.sql` added — run after v0.0.3.2
+
+### v0.0.3.4 — Rally is the multi-sport platform now; court queue for live events
+> SPIN and Rally are the same product going forward — no separate app, no separate rating/match/season system. Leagues already carry a generic `sport` slug and match scores are stored as free text, so a new sport is just a new `leagues` row, reusing round robin, standings, and challenges as-is. The one real gap for an in-person multi-court event (a tennis club's weekly round robin, 4-5 courts): nothing tracked which physical court a match was on. Prioritized this over the double-elimination bracket work given a real 6-week deadline — bracket is for end of season, this isn't.
+
+- `tournament_matches` gets a `court` column, a `started_at` timestamp, and a new `'in_progress'` status
+- New `call_match_to_court()` RPC (admin-only) — moves a pending match to whichever court just opened up. No auto-scheduler by design: courts are assigned by availability, not a fixed plan
+- New `uncall_match()` RPC (admin-only) — reverts a mis-called match back to pending
+- `leagues` gets an optional `court_count` (display only, e.g. "Courts 1-5" — not enforced server-side so it can change week to week)
+- `useTournamentsStore`: `inProgressMatches`, `courtsInUse` (court number → current match), `callToCourt()`, `uncallMatch()` added
+- **Design decision:** result entry stays organizer/referee-only for this use case — `report_tournament_match()` already permits league admins, so no backend change was needed, but the event UI won't expose self-report to players the way the ping pong flow does. Worth confirming this is right before the UI ships
+- **Not in this version yet:** the actual event page UI (court board, mobile match card, result entry) — schema + store only this pass
+- `supabase-migration-v0.0.3.4.sql` added — run after v0.0.3.3
 ---
 
 ## Quick start

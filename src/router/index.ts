@@ -3,15 +3,58 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
 const routes = [
-  { path: '/',           name: 'home',        component: () => import('@/views/HomeView.vue') },
-  { path: '/login',      name: 'login',       component: () => import('@/views/LoginView.vue') },
-  { path: '/leaderboard',name: 'leaderboard', component: () => import('@/views/LeaderboardView.vue') },
-  { path: '/matches',    name: 'matches',     component: () => import('@/views/MatchesView.vue') },
-  { path: '/profile',    name: 'profile',     component: () => import('@/views/ProfileView.vue'),   meta: { requiresAuth: true } },
-  { path: '/player/:id', name: 'player',      component: () => import('@/views/PlayerView.vue') },
-  { path: '/challenge',  name: 'challenge',   component: () => import('@/views/ChallengeView.vue'), meta: { requiresAuth: true } },
-  { path: '/referee',    name: 'referee',     component: () => import('@/views/RefereeView.vue'),   meta: { requiresAuth: true, requiresAdmin: true } },
-]
+  { path: "/", name: "home", component: () => import("@/views/HomeView.vue") },
+  {
+    path: "/login",
+    name: "login",
+    component: () => import("@/views/LoginView.vue"),
+  },
+  {
+    path: "/leaderboard",
+    name: "leaderboard",
+    component: () => import("@/views/LeaderboardView.vue"),
+  },
+  {
+    path: "/matches",
+    name: "matches",
+    component: () => import("@/views/MatchesView.vue"),
+  },
+  {
+    path: "/profile",
+    name: "profile",
+    component: () => import("@/views/ProfileView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/player/:id",
+    name: "player",
+    component: () => import("@/views/PlayerView.vue"),
+  },
+  {
+    path: "/challenge",
+    name: "challenge",
+    component: () => import("@/views/ChallengeView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/referee",
+    name: "referee",
+    component: () => import("@/views/RefereeView.vue"),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: "/tournament",
+    name: "tournament",
+    component: () => import("@/views/TournamentView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/tournament",
+    name: "tournament",
+    component: () => import("@/views/TournamentView.vue"),
+    meta: { requiresAuth: true },
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),

@@ -87,23 +87,37 @@ export interface TournamentParticipant {
   losses:         number
   points_for:     number
   points_against: number
+  bonus_points:   number
   adjusted_score: number | null
   seed:           number | null
   profile?: Profile
 }
 
+export interface TournamentWeek {
+  id:            string
+  tournament_id: string
+  week_number:   number
+  label:         string | null
+  created_at:    string
+  created_by:    string | null
+}
+
 export interface TournamentMatch {
   id:            string
   tournament_id: string
-  phase:         'round_robin' | 'bracket'
+  phase:         'round_robin' | 'bracket' | 'challenge'
   round:         number | null
   slot:          number | null
+  week_id:       string | null
+  challenger_id: string | null
   player_a_id:   string | null
   player_b_id:   string | null
   score_a:       number | null
   score_b:       number | null
   winner_id:     string | null
-  status:        'pending' | 'completed' | 'bye'
+  status:        'pending' | 'in_progress' | 'completed' | 'bye'
+  court:         number | null
+  started_at:    string | null
   reported_by:   string | null
   created_at:    string
   completed_at:  string | null
@@ -122,6 +136,7 @@ export interface Database {
       season_records: { Row: SeasonRecord;       Insert: Omit<SeasonRecord, 'id' | 'created_at'>;       Update: Partial<SeasonRecord> }
       tournaments:              { Row: Tournament;            Insert: Omit<Tournament, 'id' | 'created_at'>;            Update: Partial<Tournament> }
       tournament_participants:  { Row: TournamentParticipant; Insert: Omit<TournamentParticipant, 'id'>;                Update: Partial<TournamentParticipant> }
+      tournament_weeks:         { Row: TournamentWeek;        Insert: Omit<TournamentWeek, 'id' | 'created_at'>;        Update: Partial<TournamentWeek> }
       tournament_matches:       { Row: TournamentMatch;       Insert: Omit<TournamentMatch, 'id' | 'created_at'>;       Update: Partial<TournamentMatch> }
     }
   }
