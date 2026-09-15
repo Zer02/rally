@@ -5,11 +5,12 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/composables/useAuth'
 
 export interface League {
-  id:         string
-  name:       string
-  sport:      string
-  icon:       string
-  created_at: string
+  id:          string
+  name:        string
+  sport:       string
+  icon:        string
+  court_count: number | null
+  created_at:  string
 }
 
 const STORAGE_KEY = 'rally.currentLeagueId'

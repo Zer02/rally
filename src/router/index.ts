@@ -48,12 +48,6 @@ const routes = [
     component: () => import("@/views/TournamentView.vue"),
     meta: { requiresAuth: true },
   },
-  {
-    path: "/tournament",
-    name: "tournament",
-    component: () => import("@/views/TournamentView.vue"),
-    meta: { requiresAuth: true },
-  },
 ];
 
 const router = createRouter({

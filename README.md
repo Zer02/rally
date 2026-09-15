@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.4**
+> Current version: **v0.0.3.5**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -208,6 +208,19 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Design decision:** result entry stays organizer/referee-only for this use case — `report_tournament_match()` already permits league admins, so no backend change was needed, but the event UI won't expose self-report to players the way the ping pong flow does. Worth confirming this is right before the UI ships
 - **Not in this version yet:** the actual event page UI (court board, mobile match card, result entry) — schema + store only this pass
 - `supabase-migration-v0.0.3.4.sql` added — run after v0.0.3.3
+
+### v0.0.3.5 — Round robin was unplayable past creation; weekly UI, challenges, and the court board actually ship
+> Cloned the repo fresh and found the real bug: `create_tournament()` has created an empty season shell since v0.0.3.3, but `TournamentView.vue` was still the old v0.0.3.2 one-shot page — no button anywhere to start a week, pick attendees, issue a challenge, or call a match to a court. A season could be created and then never produce a single match from the app itself. Also found `supabase-migration-v0.0.3.4.sql` was never actually committed despite the v0.0.3.4 entry above and the last handoff both describing it as shipped — the store and types already assumed `court`/`started_at`/`in_progress`/`call_match_to_court()`/`uncall_match()` existed in the database. Same handoff-drift pattern as before; repo state over handoff claims, as always.
+
+- **Bug fixed:** the actual blocker — round robin had no working path past season creation. Rewrote `TournamentView.vue` to match what the store has supported since v0.0.3.3/3.4
+- `supabase-migration-v0.0.3.4.sql` **written and committed for real this time** — `tournament_matches.court`/`.started_at`, the `'in_progress'` status, `leagues.court_count`, `call_match_to_court()`, `uncall_match()`. Run this before anything else if you haven't already (check first — the file may not have existed in your database either)
+- New `AttendeePicker.vue` — admin picks who showed up, calls `startWeek()`; anyone new gets auto-enrolled at 0–0, matching the "no catch-up matches" design from v0.0.3.3
+- New `ChallengePanel.vue` — lists everyone currently ranked above you with a Challenge button; disabled once your one-per-week challenge is used, same rule `create_challenge()` already enforced server-side
+- New `CourtBoard.vue` — admin queue to call a pending match to a numbered court (refuses double-booking an occupied court), plus a live grid of what's on each court right now; matches involving the signed-in player are highlighted. Score entry reuses `MatchScoreRow.vue` for both admin override and self-report, so no new reporting logic was needed
+- Standings table now shows the `bonus_points` column alongside wins/losses/diff
+- Added a "Finalize season" button under admin season tools — `finalizeTournament()` has existed in the store since v0.0.3.3 but never had a UI trigger either
+- **Bug fixed:** `src/router/index.ts` had the `/tournament` route registered twice (identical duplicate block, leftover from the v0.0.3.2 hotfix being applied twice) — removed the duplicate
+- **Open question, still not resolved:** result entry is self-report-by-default everywhere (pending matches always show in "Your matches"), with the court board as an *addition* rather than the organizer-only lockdown the v0.0.3.4 entry above floated. For a tennis event where the organizer wants to control entry, an admin can currently still let players self-report an uncalled match. Locking this down per-league (not per-sport) is probably the right shape — flagging for a decision before the Bronx event, not blocking this pass
 ---
 
 ## Quick start
