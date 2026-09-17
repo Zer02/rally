@@ -51,11 +51,6 @@
             · {{ store.completedMatches.length }} / {{ store.matches.length }} matches played
           </span>
         </div>
-        <p class="muted" style="font-size:0.8rem;margin-top:0.4rem">
-          Standings are live and cumulative across the season — ranked by wins, then point
-          differential. Bonus points from challenges are added as a flat top-up once the
-          season is finalized, not baked into this ranking.
-        </p>
       </div>
 
       <!-- Standings -->
@@ -69,7 +64,6 @@
               <th>Pts for</th>
               <th>Pts against</th>
               <th>Diff</th>
-              <th>Bonus</th>
             </tr>
           </thead>
           <tbody>
@@ -82,10 +76,9 @@
               <td class="mono" :class="{ 'diff-pos': p.points_for - p.points_against > 0, 'diff-neg': p.points_for - p.points_against < 0 }">
                 {{ p.points_for - p.points_against > 0 ? '+' : '' }}{{ p.points_for - p.points_against }}
               </td>
-              <td class="mono muted">{{ p.bonus_points }}</td>
             </tr>
             <tr v-if="!store.standings.length">
-              <td colspan="7" class="muted" style="text-align:center">Nobody's enrolled yet — start a week to bring players in.</td>
+              <td colspan="6" class="muted" style="text-align:center">Nobody's enrolled yet — start a week to bring players in.</td>
             </tr>
           </tbody>
         </table>
@@ -107,30 +100,7 @@
         />
       </div>
 
-      <!-- Court board -->
-      <CourtBoard
-        v-if="isAdmin || store.inProgressMatches.length"
-        :uncalled-matches="currentWeekPendingMatches"
-        :in-progress="store.inProgressMatches"
-        :is-admin="isAdmin"
-        :my-id="user?.id"
-        :on-call="handleCall"
-        :on-uncall="handleUncall"
-        :on-report="handleReport"
-      />
-
-      <!-- Challenges -->
-      <div v-if="store.currentWeek" style="margin-bottom:1.5rem;margin-top:1.5rem">
-        <ChallengePanel
-          :standings="store.standings"
-          :my-profile-id="user?.id"
-          :used-this-week="store.myChallengeUsedThisWeek"
-          :can-challenge="store.canChallenge"
-          :on-challenge="handleChallenge"
-        />
-      </div>
-
-      <!-- Self-report: your pending matches (not yet called to a court) -->
+      <!-- Self-report: your pending matches -->
       <div v-if="myPendingMatches.length" style="margin-bottom:1.5rem">
         <h3 style="font-size:0.95rem;margin-bottom:0.6rem">Your matches</h3>
         <div v-for="m in myPendingMatches" :key="m.id" class="card tournament-match-row">
@@ -151,8 +121,6 @@
           {{ m.player_a?.display_name || m.player_a?.username }}
           <strong class="mono">{{ m.score_a }}–{{ m.score_b }}</strong>
           {{ m.player_b?.display_name || m.player_b?.username }}
-          <span v-if="m.phase === 'challenge'" class="status status-pending" style="margin-left:0.4rem">Challenge</span>
-          <span v-if="m.court" class="muted" style="margin-left:0.4rem;font-size:0.78rem">· Court {{ m.court }}</span>
         </div>
       </div>
 
@@ -161,7 +129,7 @@
         <div class="field-label" style="margin-bottom:0.4rem">Season tools</div>
         <p class="muted" style="font-size:0.8rem;margin-bottom:0.75rem">
           Locks the season, computes the strength-of-schedule adjusted score from round-robin
-          matches, adds bonus points as a flat top-up, and assigns final seeds. Cannot be undone.
+          matches, and assigns final seeds. Cannot be undone.
         </p>
         <button class="btn btn-ghost" :disabled="finalizing" @click="handleFinalize">
           <span v-if="finalizing" class="spinner" style="width:14px;height:14px;border-width:2px" />
@@ -182,8 +150,6 @@ import { useAuth } from '@/composables/useAuth'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
 import MatchScoreRow from '@/components/tournament/MatchScoreRow.vue'
 import AttendeePicker from '@/components/tournament/AttendeePicker.vue'
-import ChallengePanel from '@/components/tournament/ChallengePanel.vue'
-import CourtBoard from '@/components/tournament/CourtBoard.vue'
 
 const store = useTournamentsStore()
 const playersStore = usePlayersStore()
@@ -216,12 +182,6 @@ const myPendingMatches = computed(() =>
 const otherPendingMatches = computed(() =>
   store.pendingMatches.filter(m => m.player_a_id !== user.value?.id && m.player_b_id !== user.value?.id)
 )
-// Only this week's pending matches show up in the call-to-court queue —
-// older leftover pending matches (never called, never self-reported) are
-// still reportable directly above, just not part of the live call queue.
-const currentWeekPendingMatches = computed(() =>
-  store.currentWeekMatches.filter(m => m.status === 'pending')
-)
 
 async function handleCreate() {
   creatingSubmit.value = true
@@ -236,21 +196,9 @@ async function handleCreate() {
   creatingSubmit.value = false
 }
 
-async function handleStartWeek(attendeeIds: string[]) {
-  await store.startWeek(attendeeIds)
+async function handleStartWeek(attendeeIds: string[], targetMatches: number) {
+  await store.startWeek(attendeeIds, targetMatches)
   startingWeek.value = false
-}
-
-async function handleChallenge(profileId: string) {
-  await store.createChallenge(profileId)
-}
-
-async function handleCall(matchId: string, court: number) {
-  await store.callToCourt(matchId, court)
-}
-
-async function handleUncall(matchId: string) {
-  await store.uncallMatch(matchId)
 }
 
 async function handleReport(matchId: string, scoreA: number, scoreB: number) {

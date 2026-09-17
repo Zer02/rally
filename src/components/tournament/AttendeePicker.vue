@@ -9,6 +9,14 @@
       no catch-up matches for weeks they missed.
     </p>
 
+    <div class="field" style="margin-bottom:0.9rem;max-width:220px">
+      <label class="field-label">Target matches per player</label>
+      <input v-model.number="targetMatches" type="number" min="1" max="15" class="input" />
+      <p class="muted" style="font-size:0.76rem;margin-top:0.3rem">
+        Paired by closest current form — some players may get fewer if the group is small.
+      </p>
+    </div>
+
     <div v-if="!players.length" class="muted" style="font-size:0.85rem">
       No players in this league yet.
     </div>
@@ -22,7 +30,7 @@
     <div style="display:flex;gap:0.5rem;margin-top:1rem">
       <button
         class="btn btn-primary"
-        :disabled="selected.length < 2 || starting"
+        :disabled="selected.length < 2 || !targetMatches || starting"
         @click="start"
       >
         <span v-if="starting" class="spinner" style="width:14px;height:14px;border-width:2px" />
@@ -41,21 +49,22 @@ import type { Player } from '@/types'
 const props = defineProps<{
   players: Player[]
   nextWeekNumber: number
-  onStart: (attendeeIds: string[]) => Promise<void>
+  onStart: (attendeeIds: string[], targetMatches: number) => Promise<void>
 }>()
 
 defineEmits<{ cancel: [] }>()
 
-const selected    = ref<string[]>([])
-const starting    = ref(false)
-const startError  = ref('')
+const selected      = ref<string[]>([])
+const targetMatches = ref(5)
+const starting      = ref(false)
+const startError    = ref('')
 
 async function start() {
-  if (selected.value.length < 2) return
+  if (selected.value.length < 2 || !targetMatches.value) return
   starting.value = true
   startError.value = ''
   try {
-    await props.onStart(selected.value)
+    await props.onStart(selected.value, targetMatches.value)
     selected.value = []
   } catch (e: any) {
     startError.value = e.message

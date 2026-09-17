@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.5**
+> Current version: **v0.0.3.7**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -209,18 +209,34 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Not in this version yet:** the actual event page UI (court board, mobile match card, result entry) — schema + store only this pass
 - `supabase-migration-v0.0.3.4.sql` added — run after v0.0.3.3
 
-### v0.0.3.5 — Round robin was unplayable past creation; weekly UI, challenges, and the court board actually ship
-> Cloned the repo fresh and found the real bug: `create_tournament()` has created an empty season shell since v0.0.3.3, but `TournamentView.vue` was still the old v0.0.3.2 one-shot page — no button anywhere to start a week, pick attendees, issue a challenge, or call a match to a court. A season could be created and then never produce a single match from the app itself. Also found `supabase-migration-v0.0.3.4.sql` was never actually committed despite the v0.0.3.4 entry above and the last handoff both describing it as shipped — the store and types already assumed `court`/`started_at`/`in_progress`/`call_match_to_court()`/`uncall_match()` existed in the database. Same handoff-drift pattern as before; repo state over handoff claims, as always.
+### v0.0.3.5 — Round robin was unplayable past creation; weekly UI ships (superseded below)
+> Cloned the repo fresh and found the real bug: `create_tournament()` has created an empty season shell since v0.0.3.3, but `TournamentView.vue` was still the old v0.0.3.2 one-shot page — no button anywhere to start a week, pick attendees, issue a challenge, or call a match to a court. Also found `supabase-migration-v0.0.3.4.sql` was never actually committed despite the v0.0.3.4 entry above and the last handoff both describing it as shipped.
 
-- **Bug fixed:** the actual blocker — round robin had no working path past season creation. Rewrote `TournamentView.vue` to match what the store has supported since v0.0.3.3/3.4
-- `supabase-migration-v0.0.3.4.sql` **written and committed for real this time** — `tournament_matches.court`/`.started_at`, the `'in_progress'` status, `leagues.court_count`, `call_match_to_court()`, `uncall_match()`. Run this before anything else if you haven't already (check first — the file may not have existed in your database either)
-- New `AttendeePicker.vue` — admin picks who showed up, calls `startWeek()`; anyone new gets auto-enrolled at 0–0, matching the "no catch-up matches" design from v0.0.3.3
-- New `ChallengePanel.vue` — lists everyone currently ranked above you with a Challenge button; disabled once your one-per-week challenge is used, same rule `create_challenge()` already enforced server-side
-- New `CourtBoard.vue` — admin queue to call a pending match to a numbered court (refuses double-booking an occupied court), plus a live grid of what's on each court right now; matches involving the signed-in player are highlighted. Score entry reuses `MatchScoreRow.vue` for both admin override and self-report, so no new reporting logic was needed
-- Standings table now shows the `bonus_points` column alongside wins/losses/diff
-- Added a "Finalize season" button under admin season tools — `finalizeTournament()` has existed in the store since v0.0.3.3 but never had a UI trigger either
-- **Bug fixed:** `src/router/index.ts` had the `/tournament` route registered twice (identical duplicate block, leftover from the v0.0.3.2 hotfix being applied twice) — removed the duplicate
-- **Open question, still not resolved:** result entry is self-report-by-default everywhere (pending matches always show in "Your matches"), with the court board as an *addition* rather than the organizer-only lockdown the v0.0.3.4 entry above floated. For a tennis event where the organizer wants to control entry, an admin can currently still let players self-report an uncalled match. Locking this down per-league (not per-sport) is probably the right shape — flagging for a decision before the Bronx event, not blocking this pass
+- **Bug fixed:** the actual blocker — round robin had no working path past season creation. Rewrote `TournamentView.vue`
+- `supabase-migration-v0.0.3.4.sql` **written and committed for real this time**
+- New `AttendeePicker.vue` — admin picks who showed up, calls `startWeek()`
+- Added challenge UI (`ChallengePanel.vue`) and a court-calling UI (`CourtBoard.vue`) on top of the existing backend for both — **removed again one version later, see v0.0.3.6**
+- **Bug fixed:** `src/router/index.ts` had the `/tournament` route registered twice — removed the duplicate
+
+### v0.0.3.6 — Simplified: page had too many inputs at once, cut it back down
+> The v0.0.3.5 page put start-week, challenges, and court-calling all on screen together — too many inputs competing for attention on what's supposed to be a quick "enter the score" page. Courts don't need explicit selection either: it's always the same fixed set of physical courts at the venue, players just walk to whichever one's open, so tracking *which* court in software was unnecessary complexity for zero benefit.
+
+- **Removed from the page:** the challenge system (no more Challenge panel/buttons) and court selection (no more call-to-court queue, court number inputs, or court grid). `TournamentView.vue` is back to: standings → start week → your matches (self-report) → admin override → completed → finalize season
+- Deleted `ChallengePanel.vue` and `CourtBoard.vue` — if you already applied v0.0.3.5, delete these two files from `src/components/tournament/`
+- Standings table drops the `Bonus` column (nothing produces bonus points anymore since challenges aren't created)
+- **Not deleted:** the underlying schema and RPCs (`create_challenge()`, `call_match_to_court()`, `uncall_match()`, `tournament_matches.court`/`started_at`/`in_progress`, `tournament_participants.bonus_points`) — left in place and simply unused rather than torn out via another migration. `finalize_tournament()` still adds `bonus_points` as a top-up, which will just always be 0 now. No new SQL for this version
+- No new `supabase-migration` file — this was a client-side-only simplification
+
+### v0.0.3.7 — Smart weekly pairing, instead of a full round robin nobody could finish
+> `start_tournament_week()` generated every unique pairing among that week's attendees — 9 people showed up, it made 36 matches, way more than a 2-hour session can play. Replaced it with a pairing algorithm that targets a fixed number of matches per attendee instead (a 2-hour session tends to fit 4-6), pairing people by closeness in current form rather than brute-force combinatorics. Also added `reset-round-robin.sql` for clearing test/season data.
+
+- **New:** `tournament_participants.rr_rating` — a standard Elo (K=32, starts at 1000), updated after every completed round-robin match. Deliberately separate from `players.rating` (the main ladder's TrueSkill-lite system) — round robin pairing should reflect round-robin form specifically, not the regular ladder
+- **Rewrote `start_tournament_week()`:** now takes `p_target_matches` (admin sets it when starting the week, e.g. 5). Ranks that week's attendees by a blend of season points (points_for − points_against) and `rr_rating`, then pairs round-by-round, closest-ranked-available first. Season rematches are skipped unless a player has already played every other attendee present that week — at that point repeats are allowed rather than sitting someone out. Small groups will naturally cap below the target once they run out of distinct opponents for the session — that's expected, not a bug
+- `report_tournament_match()` updated to maintain `rr_rating` — same function, same self-report/admin-override auth, just an added Elo update on top of the existing wins/losses/points bookkeeping for round-robin (non-challenge) matches
+- `AttendeePicker.vue` gets a "Target matches per player" field (defaults to 5) alongside the attendee checklist
+- New `reset-round-robin.sql` — one-time operational script (not a migration) to clear a season or a whole league's round robin history, same pattern as `reset-for-launch.sql`
+- Tested the new pairing function directly against a local Postgres instance seeded with a 9-player and a 3-player group before shipping — confirmed: no duplicate same-week pairings, no season rematches until the exhaustion condition is actually met, and rr_rating correctly diverges from raw win count based on opponent strength
+- `supabase-migration-v0.0.3.7.sql` added — run after v0.0.3.4 (v0.0.3.5/3.6 added no SQL, safe to skip straight from 3.4 to 3.7)
 ---
 
 ## Quick start

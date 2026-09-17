@@ -44,7 +44,7 @@ export const useLeagueStore = defineStore('leagues', () => {
     loading.value = true
     const { data, error: err } = await supabase
       .from('players')
-      .select('league:leagues(id, name, sport, icon, created_at)')
+      .select('league:leagues(id, name, sport, icon, court_count, created_at)')
       .eq('profile_id', user.value.id)
 
     if (err) {

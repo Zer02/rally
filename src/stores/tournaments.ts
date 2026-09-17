@@ -171,13 +171,17 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   }
 
   // Admin-only. Starts the next week of the active season with the given
-  // attendees (profile ids) and generates that week's round-robin pairings.
-  async function startWeek(attendeeIds: string[]) {
+  // attendees (profile ids), targeting `targetMatches` matches per
+  // attendee (~4-6 fits a 2-hour session — the RPC pairs people by
+  // closeness in season points + rr_rating, avoiding season rematches
+  // until someone's played everyone else present that week).
+  async function startWeek(attendeeIds: string[], targetMatches = 5) {
     if (!active.value) throw new Error('No active season')
 
     const { data, error: err } = await supabase.rpc('start_tournament_week', {
       p_tournament_id: active.value.id,
       p_attendee_ids: attendeeIds,
+      p_target_matches: targetMatches,
     })
     if (err) throw new Error(err.message)
 
