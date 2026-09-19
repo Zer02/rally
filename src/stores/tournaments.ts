@@ -26,6 +26,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   const participants  = ref<TournamentParticipant[]>([])
   const matches        = ref<TournamentMatch[]>([])
   const weeks          = ref<TournamentWeek[]>([])
+  const pastSeasons    = ref<Tournament[]>([])
   const loading       = ref(false)
   const error         = ref<string | null>(null)
 
@@ -156,6 +157,37 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     if (!err) weeks.value = (data ?? []) as TournamentWeek[]
   }
 
+  // Finalizing a season doesn't delete anything — it just gets excluded
+  // from fetchActive()'s query. This is what makes a finalized season
+  // browsable again instead of looking like it vanished.
+  async function fetchPastSeasons() {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) { pastSeasons.value = []; return }
+
+    const { data, error: err } = await supabase
+      .from('tournaments')
+      .select('*')
+      .eq('league_id', leagueId)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+
+    if (!err) pastSeasons.value = (data ?? []) as Tournament[]
+  }
+
+  // Final standings for one past season. Returned directly rather than
+  // stored on the state, since more than one season card can be expanded
+  // at once — each panel keeps its own local copy.
+  async function fetchSeasonStandings(tournamentId: string): Promise<TournamentParticipant[]> {
+    const { data, error: err } = await supabase
+      .from('tournament_participants')
+      .select(PARTICIPANT_SELECT)
+      .eq('tournament_id', tournamentId)
+      .order('seed', { ascending: true, nullsFirst: false })
+
+    if (err) throw new Error(err.message)
+    return (data ?? []) as TournamentParticipant[]
+  }
+
   async function createTournament(name: string) {
     const leagueId = useLeagueStore().currentLeagueId
     if (!leagueId) throw new Error('No league selected')
@@ -221,7 +253,8 @@ export const useTournamentsStore = defineStore('tournaments', () => {
 
   // Admin-only. Ends the season: computes the strength-of-schedule adjusted
   // score from round-robin matches, adds bonus_points as a flat top-up,
-  // assigns final seeds, and locks the tournament.
+  // assigns final seeds, writes career round-robin stats onto each
+  // participant's players row, and locks the tournament.
   async function finalizeTournament() {
     if (!active.value) throw new Error('No active season')
 
@@ -230,7 +263,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     })
     if (err) throw new Error(err.message)
 
-    await fetchActive()
+    await Promise.all([fetchActive(), fetchPastSeasons()])
   }
 
   // Admin-only. Calls a pending match to a court, whenever that court frees
@@ -252,12 +285,38 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     await fetchMatches()
   }
 
+  // A player's own past-season results (for the Profile page's Round
+  // Robin section) — final seed/record for every completed season in
+  // this league they were part of, newest first.
+  async function fetchProfileRoundRobinHistory(profileId: string) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) return []
+
+    const { data, error: err } = await supabase
+      .from('tournament_participants')
+      .select(`
+        wins, losses, seed, adjusted_score,
+        tournament:tournaments!inner(id, name, completed_at, league_id, status)
+      `)
+      .eq('profile_id', profileId)
+      .eq('tournament.league_id', leagueId)
+      .eq('tournament.status', 'completed')
+
+    if (err) throw new Error(err.message)
+
+    type Row = { wins: number; losses: number; seed: number | null; adjusted_score: number | null; tournament: Tournament }
+    return ((data ?? []) as unknown as Row[]).sort(
+      (a, b) => new Date(b.tournament.completed_at ?? 0).getTime() - new Date(a.tournament.completed_at ?? 0).getTime()
+    )
+  }
+
   return {
-    active, participants, matches, weeks, loading, error,
+    active, participants, matches, weeks, pastSeasons, loading, error,
     standings, rankByProfileId, currentWeek, currentWeekMatches,
     pendingMatches, inProgressMatches, completedMatches, courtsInUse,
     myChallengeUsedThisWeek, canChallenge,
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
+    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
     callToCourt, uncallMatch,
   }

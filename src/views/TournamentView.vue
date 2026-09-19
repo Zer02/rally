@@ -5,6 +5,10 @@
       <h1>Round Robin</h1>
     </div>
 
+    <div style="margin-bottom:1.25rem">
+      <PastSeasonsPanel :seasons="store.pastSeasons" :get-standings="store.fetchSeasonStandings" />
+    </div>
+
     <div v-if="store.loading && !store.active" style="text-align:center;padding:3rem 0">
       <span class="spinner" style="width:28px;height:28px;border-width:3px" />
     </div>
@@ -150,6 +154,7 @@ import { useAuth } from '@/composables/useAuth'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
 import MatchScoreRow from '@/components/tournament/MatchScoreRow.vue'
 import AttendeePicker from '@/components/tournament/AttendeePicker.vue'
+import PastSeasonsPanel from '@/components/tournament/PastSeasonsPanel.vue'
 
 const store = useTournamentsStore()
 const playersStore = usePlayersStore()
@@ -165,12 +170,14 @@ const finalizing = ref(false)
 
 onMounted(() => {
   store.fetchActive()
+  store.fetchPastSeasons()
   playersStore.fetch()
 })
 onLeagueChange(() => {
   creating.value = false
   startingWeek.value = false
   store.fetchActive()
+  store.fetchPastSeasons()
   playersStore.fetch()
 })
 

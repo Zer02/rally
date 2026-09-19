@@ -11,16 +11,19 @@ export interface Profile {
 }
 
 export interface Player {
-  id:            string
-  profile_id:    string
-  rating:        number
-  uncertainty:   number
-  streak:        number
-  season_wins:   number
-  season_losses: number
-  career_wins:   number
-  career_losses: number
-  last_played:   string | null
+  id:                string
+  profile_id:        string
+  rating:            number
+  uncertainty:       number
+  streak:            number
+  season_wins:       number
+  season_losses:     number
+  career_wins:       number
+  career_losses:     number
+  last_played:       string | null
+  rr_titles:         number
+  rr_best_finish:    number | null
+  rr_seasons_played: number
   profile?: Profile
 }
 

@@ -84,6 +84,41 @@
             </table>
           </div>
         </div>
+
+        <div v-if="me && (me.rr_seasons_played > 0)" class="card" style="margin-top:1.5rem;padding:1.25rem">
+          <div class="card-header" style="margin-bottom:0.75rem"><h3>Round Robin</h3></div>
+          <div class="stat-grid" style="margin-bottom:1.25rem">
+            <div class="stat-cell">
+              <p class="stat-label">Titles</p>
+              <p class="stat-value">{{ me.rr_titles }}</p>
+            </div>
+            <div class="stat-cell">
+              <p class="stat-label">Best finish</p>
+              <p class="stat-value">{{ me.rr_best_finish ? `#${me.rr_best_finish}` : '—' }}</p>
+            </div>
+            <div class="stat-cell">
+              <p class="stat-label">Seasons played</p>
+              <p class="stat-value">{{ me.rr_seasons_played }}</p>
+            </div>
+          </div>
+
+          <div v-if="rrHistoryLoading" style="text-align:center;padding:1rem">
+            <span class="spinner" style="width:18px;height:18px;border-width:2px" />
+          </div>
+          <table v-else-if="rrHistory.length" class="table">
+            <thead>
+              <tr><th>Season</th><th>Finish</th><th>W–L</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="h in rrHistory" :key="h.tournament.id">
+                <td>{{ h.tournament.name }}</td>
+                <td class="mono">{{ h.seed ? `#${h.seed}` : '—' }}</td>
+                <td class="mono">{{ h.wins }}–{{ h.losses }}</td>
+                <td class="muted mono">{{ formatDate(h.tournament.completed_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </template>
     </div>
   </main>
@@ -94,6 +129,7 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
 import { useSeasonsStore } from '@/stores/seasons'
+import { useTournamentsStore } from '@/stores/tournaments'
 import { useAuth } from '@/composables/useAuth'
 import { useLeagueStore } from '@/stores/leagues'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
@@ -101,16 +137,21 @@ import { supabase } from '@/lib/supabase'
 import TierBadge from '@/components/ui/TierBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import RatingChart from '@/components/ui/RatingChart.vue'
-import type { Match } from '@/types'
+import type { Match, Tournament } from '@/types'
 
-const playersStore = usePlayersStore()
-const matchesStore = useMatchesStore()
-const seasonsStore = useSeasonsStore()
-const leagueStore  = useLeagueStore()
+const playersStore    = usePlayersStore()
+const matchesStore    = useMatchesStore()
+const seasonsStore    = useSeasonsStore()
+const tournamentsStore = useTournamentsStore()
+const leagueStore     = useLeagueStore()
 const { user } = useAuth()
 
 const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
 const selectedSeasonId = ref('current')
+
+interface RRHistoryRow { wins: number; losses: number; seed: number | null; adjusted_score: number | null; tournament: Tournament }
+const rrHistory        = ref<RRHistoryRow[]>([])
+const rrHistoryLoading = ref(false)
 
 async function loadRatingHistory() {
   if (!user.value?.id || !leagueStore.currentLeagueId) { ratingHistory.value = []; return }
@@ -124,11 +165,18 @@ async function loadRatingHistory() {
   ratingHistory.value = data ?? []
 }
 
+async function loadRoundRobinHistory() {
+  if (!user.value?.id) { rrHistory.value = []; return }
+  rrHistoryLoading.value = true
+  rrHistory.value = (await tournamentsStore.fetchProfileRoundRobinHistory(user.value.id)) as RRHistoryRow[]
+  rrHistoryLoading.value = false
+}
+
 onMounted(async () => {
   await Promise.all([playersStore.fetch(), matchesStore.fetch(100), seasonsStore.fetchSeasons()])
   playersStore.subscribe()
   matchesStore.subscribe()
-  await loadRatingHistory()
+  await Promise.all([loadRatingHistory(), loadRoundRobinHistory()])
 })
 
 watch(selectedSeasonId, (id) => {
@@ -140,7 +188,7 @@ watch(selectedSeasonId, (id) => {
 onLeagueChange(async () => {
   selectedSeasonId.value = 'current'
   await Promise.all([playersStore.fetch(), matchesStore.fetch(100), seasonsStore.fetchSeasons()])
-  await loadRatingHistory()
+  await Promise.all([loadRatingHistory(), loadRoundRobinHistory()])
 })
 
 onUnmounted(() => {

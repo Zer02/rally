@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.7**
+> Current version: **v0.0.3.8**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -237,6 +237,17 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - New `reset-round-robin.sql` — one-time operational script (not a migration) to clear a season or a whole league's round robin history, same pattern as `reset-for-launch.sql`
 - Tested the new pairing function directly against a local Postgres instance seeded with a 9-player and a 3-player group before shipping — confirmed: no duplicate same-week pairings, no season rematches until the exhaustion condition is actually met, and rr_rating correctly diverges from raw win count based on opponent strength
 - `supabase-migration-v0.0.3.7.sql` added — run after v0.0.3.4 (v0.0.3.5/3.6 added no SQL, safe to skip straight from 3.4 to 3.7)
+
+### v0.0.3.8 — Finalize doesn't delete anything; it just had nowhere to show up
+> Traced "finalize deletes everything" to the actual RPC first: it doesn't delete a thing — it only sets `tournaments.status = 'completed'` and writes `adjusted_score`/`seed` onto rows that already existed. The real bug: `fetchActive()` filters out completed tournaments, and there was no view anywhere that showed one. A finalized season's data was always intact, just permanently unreachable from the UI. Separately, true gap: round robin results never touched `players` at all — a season's outcome lived only inside `tournament_participants`, completely disconnected from a player's record. Both fixed this pass, no data was ever at risk.
+
+- **New:** `players.rr_titles`, `players.rr_best_finish`, `players.rr_seasons_played` — career round-robin stats, scoped per league same as `career_wins`/`season_wins`. `rr_best_finish` stays null until a player's finished at least one season (0 would wrongly read as "finished 0th")
+- `finalize_tournament()` now writes those three columns for every participant, reading the seed it just computed rather than recomputing it — same function, same admin-only auth, one more update at the end
+- New `PastSeasonsPanel.vue` — collapsible, sits at the top of the Round Robin page always (active season or not). Lists every finalized season for the league; click one to expand its final standings (seed, W–L, adjusted score). This is the direct fix for "finalize deletes everything" — the season you just finalized shows up here immediately
+- ProfileView gets a "Round Robin" card — titles / best finish / seasons played, plus a table of every season you've finished with your seed and record. Only shows once `rr_seasons_played > 0`, so it stays out of the way for anyone who's never played round robin
+- New `fetchPastSeasons()`, `fetchSeasonStandings()`, `fetchProfileRoundRobinHistory()` on the tournaments store
+- Validated `finalize_tournament()` against a local Postgres instance before shipping: ran two seasons back to back with different winners, confirmed `rr_titles`/`rr_best_finish`/`rr_seasons_played` accumulate correctly across seasons rather than overwriting (best finish takes the minimum seed ever, titles only increment on an actual 1st)
+- `supabase-migration-v0.0.3.8.sql` added — run after v0.0.3.7
 ---
 
 ## Quick start
