@@ -285,6 +285,34 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     await fetchMatches()
   }
 
+  // Admin-only. Manually creates one match for the current week — for
+  // whenever the smart pairing missed a matchup the admin wants, or a
+  // rematch is wanted on purpose. Attaches to the most recently started
+  // week; auto-enrolls either player if they're not already in the season.
+  async function addMatch(playerAId: string, playerBId: string) {
+    if (!active.value) throw new Error('No active season')
+
+    const { data, error: err } = await supabase.rpc('add_tournament_match', {
+      p_tournament_id: active.value.id,
+      p_player_a_id: playerAId,
+      p_player_b_id: playerBId,
+    })
+    if (err) throw new Error(err.message)
+
+    await Promise.all([fetchParticipants(), fetchMatches()])
+    return data as string
+  }
+
+  // Admin-only. Deletes a match that's lingering and won't be played —
+  // only allowed while it's still pending/in_progress, since a completed
+  // match is a real result. Nothing to re-fetch besides matches: a
+  // pending/in_progress match never touched wins/losses/points/rr_rating.
+  async function cancelMatch(matchId: string) {
+    const { error: err } = await supabase.rpc('cancel_tournament_match', { p_match_id: matchId })
+    if (err) throw new Error(err.message)
+    await fetchMatches()
+  }
+
   // A player's own past-season results (for the Profile page's Round
   // Robin section) — final seed/record for every completed season in
   // this league they were part of, newest first.
@@ -318,6 +346,6 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
     fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
-    callToCourt, uncallMatch,
+    callToCourt, uncallMatch, addMatch, cancelMatch,
   }
 })

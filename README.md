@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.8**
+> Current version: **v0.0.3.9**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -248,6 +248,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - New `fetchPastSeasons()`, `fetchSeasonStandings()`, `fetchProfileRoundRobinHistory()` on the tournaments store
 - Validated `finalize_tournament()` against a local Postgres instance before shipping: ran two seasons back to back with different winners, confirmed `rr_titles`/`rr_best_finish`/`rr_seasons_played` accumulate correctly across seasons rather than overwriting (best finish takes the minimum seed ever, titles only increment on an actual 1st)
 - `supabase-migration-v0.0.3.8.sql` added — run after v0.0.3.7
+
+### v0.0.3.9 — Manual add/remove for matches, since old pending ones were piling up with no way to clear them
+> Screenshot showed the same few players (one especially) with a wall of repeated pending matches — that's expected given the design: a week's pairings that never get played just sit as 'pending' forever, and nothing ever cleared them. Added the two direct controls rather than any auto-expiry: admin can add a one-off match to the current week, and remove any match that's never going to be played.
+
+- New `add_tournament_match(p_tournament_id, p_player_a_id, p_player_b_id)` — admin-only, attaches to the most recently started week, auto-enrolls either player if needed. Doesn't check for an existing pairing this week on purpose — it's also how you'd add a rematch deliberately
+- New `cancel_tournament_match(p_match_id)` — admin-only, deletes a match outright. Only allowed on `pending`/`in_progress` — refuses on `completed`, since that's a real result, not something lingering. Safe to hard-delete: a pending/in_progress match has never been counted in anyone's wins/losses/points/rr_rating, only `report_tournament_match()` on completion does that
+- New `AddMatchForm.vue` — "Add a match" button next to "Start week", only shown once a week exists (the RPC requires one). Two player dropdowns, sourced from the league's player list same as the attendee picker
+- `MatchScoreRow.vue` gets an optional `onRemove` prop — when passed, shows a "Remove" button next to Report/Override with a confirm prompt. Wired in for admins on both "Your matches" and "Other pending matches"
+- Validated both RPCs against a local Postgres instance before shipping: confirmed `add_tournament_match` refuses before a week exists and refuses a self-match, and `cancel_tournament_match` deletes a pending match but correctly refuses once that same match is completed
+- `supabase-migration-v0.0.3.9.sql` added — run after v0.0.3.8
 ---
 
 ## Quick start

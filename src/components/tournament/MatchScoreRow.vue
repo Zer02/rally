@@ -22,6 +22,16 @@
         <span v-if="submitting" class="spinner" style="width:12px;height:12px;border-width:2px" />
         <span v-else>{{ adminMode ? 'Override' : 'Report' }}</span>
       </button>
+      <button
+        v-if="onRemove"
+        class="btn btn-ghost btn-sm"
+        :disabled="removing"
+        title="Remove — this match won't be played"
+        @click="remove"
+      >
+        <span v-if="removing" class="spinner" style="width:12px;height:12px;border-width:2px" />
+        <span v-else>Remove</span>
+      </button>
     </div>
   </div>
 </template>
@@ -35,11 +45,13 @@ const props = defineProps<{
   myId?: string
   adminMode?: boolean
   onReport: (matchId: string, scoreA: number, scoreB: number) => Promise<void>
+  onRemove?: (matchId: string) => Promise<void>
 }>()
 
 const scoreA = ref<number | null>(null)
 const scoreB = ref<number | null>(null)
 const submitting = ref(false)
+const removing = ref(false)
 
 const canSubmit = computed(() =>
   scoreA.value !== null && scoreB.value !== null &&
@@ -52,6 +64,14 @@ async function submit() {
   submitting.value = true
   await props.onReport(props.match.id, scoreA.value as number, scoreB.value as number)
   submitting.value = false
+}
+
+async function remove() {
+  if (!props.onRemove) return
+  if (!confirm("Remove this match? It won't be played.")) return
+  removing.value = true
+  await props.onRemove(props.match.id)
+  removing.value = false
 }
 </script>
 

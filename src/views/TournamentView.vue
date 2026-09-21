@@ -89,18 +89,27 @@
       </div>
 
       <!-- Admin: start a week -->
-      <div v-if="isAdmin" style="margin-bottom:1.5rem">
-        <div v-if="!startingWeek">
-          <button class="btn btn-primary" @click="startingWeek = true">
+      <div v-if="isAdmin" style="margin-bottom:1.5rem;display:flex;flex-direction:column;gap:0.75rem">
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button v-if="!startingWeek" class="btn btn-primary" @click="startingWeek = true">
             Start week {{ nextWeekNumber }}
+          </button>
+          <button v-if="store.currentWeek && !addingMatch" class="btn btn-ghost" @click="addingMatch = true">
+            Add a match
           </button>
         </div>
         <AttendeePicker
-          v-else
+          v-if="startingWeek"
           :players="playersStore.players"
           :next-week-number="nextWeekNumber"
           :on-start="handleStartWeek"
           @cancel="startingWeek = false"
+        />
+        <AddMatchForm
+          v-if="addingMatch"
+          :players="playersStore.players"
+          :on-add="handleAddMatch"
+          @cancel="addingMatch = false"
         />
       </div>
 
@@ -108,14 +117,14 @@
       <div v-if="myPendingMatches.length" style="margin-bottom:1.5rem">
         <h3 style="font-size:0.95rem;margin-bottom:0.6rem">Your matches</h3>
         <div v-for="m in myPendingMatches" :key="m.id" class="card tournament-match-row">
-          <MatchScoreRow :match="m" :my-id="user?.id" :on-report="handleReport" />
+          <MatchScoreRow :match="m" :my-id="user?.id" :on-report="handleReport" :on-remove="isAdmin ? handleRemove : undefined" />
         </div>
       </div>
 
       <div v-if="isAdmin && otherPendingMatches.length" style="margin-bottom:1.5rem">
         <h3 style="font-size:0.95rem;margin-bottom:0.6rem">Other pending matches (admin override)</h3>
         <div v-for="m in otherPendingMatches" :key="m.id" class="card tournament-match-row">
-          <MatchScoreRow :match="m" :my-id="user?.id" admin-mode :on-report="handleReport" />
+          <MatchScoreRow :match="m" :my-id="user?.id" admin-mode :on-report="handleReport" :on-remove="handleRemove" />
         </div>
       </div>
 
@@ -154,6 +163,7 @@ import { useAuth } from '@/composables/useAuth'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
 import MatchScoreRow from '@/components/tournament/MatchScoreRow.vue'
 import AttendeePicker from '@/components/tournament/AttendeePicker.vue'
+import AddMatchForm from '@/components/tournament/AddMatchForm.vue'
 import PastSeasonsPanel from '@/components/tournament/PastSeasonsPanel.vue'
 
 const store = useTournamentsStore()
@@ -166,6 +176,7 @@ const createError = ref('')
 const newName = ref('')
 const reportError = ref('')
 const startingWeek = ref(false)
+const addingMatch = ref(false)
 const finalizing = ref(false)
 
 onMounted(() => {
@@ -176,6 +187,7 @@ onMounted(() => {
 onLeagueChange(() => {
   creating.value = false
   startingWeek.value = false
+  addingMatch.value = false
   store.fetchActive()
   store.fetchPastSeasons()
   playersStore.fetch()
@@ -206,6 +218,20 @@ async function handleCreate() {
 async function handleStartWeek(attendeeIds: string[], targetMatches: number) {
   await store.startWeek(attendeeIds, targetMatches)
   startingWeek.value = false
+}
+
+async function handleAddMatch(playerAId: string, playerBId: string) {
+  await store.addMatch(playerAId, playerBId)
+  addingMatch.value = false
+}
+
+async function handleRemove(matchId: string) {
+  reportError.value = ''
+  try {
+    await store.cancelMatch(matchId)
+  } catch (e: any) {
+    reportError.value = e.message
+  }
 }
 
 async function handleReport(matchId: string, scoreA: number, scoreB: number) {
