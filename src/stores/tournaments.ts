@@ -30,18 +30,20 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   const loading       = ref(false)
   const error         = ref<string | null>(null)
 
-  // Live, unadjusted standings — sorted by wins, then point differential.
-  // This is the same ordering create_challenge() uses server-side to decide
-  // who's ranked above whom, so it doubles as the "can I challenge them"
-  // reference order. bonus_points is shown alongside but doesn't affect
-  // this sort — it only shows up in the final adjusted_score once the
-  // season is finalized.
+  // Live, unadjusted standings — sorted by wins, then total games won
+  // (points_for). Differential deliberately isn't part of this: with
+  // short first-to-4 no-ad sets, a 4-3 loss and a 4-0 loss should count
+  // the same for tiebreak purposes — total games won rewards playing
+  // close matches instead of rewarding blowouts. Same ordering
+  // create_challenge() uses server-side to decide who's ranked above
+  // whom, so it doubles as the "can I challenge them" reference order.
+  // bonus_points is shown alongside but doesn't affect this sort — it
+  // only shows up in the final adjusted_score once the season is
+  // finalized.
   const standings = computed(() =>
     [...participants.value].sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins
-      const diffA = a.points_for - a.points_against
-      const diffB = b.points_for - b.points_against
-      return diffB - diffA
+      return b.points_for - a.points_for
     })
   )
 
@@ -251,9 +253,10 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     await Promise.all([fetchParticipants(), fetchMatches()])
   }
 
-  // Admin-only. Ends the season: computes the strength-of-schedule adjusted
-  // score from round-robin matches, adds bonus_points as a flat top-up,
-  // assigns final seeds, writes career round-robin stats onto each
+  // Admin-only. Ends the season: assigns final seeds by wins, then total
+  // games won (points_for) plus bonus_points as a flat top-up — no
+  // differential or opponent-strength weighting, same ordering as the
+  // live standings. Also writes career round-robin stats onto each
   // participant's players row, and locks the tournament.
   async function finalizeTournament() {
     if (!active.value) throw new Error('No active season')

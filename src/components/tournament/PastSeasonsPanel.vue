@@ -20,7 +20,7 @@
           </div>
           <table v-else-if="standingsBySeason[s.id]?.length" class="table">
             <thead>
-              <tr><th>Seed</th><th>Player</th><th>W–L</th><th>Adjusted</th></tr>
+              <tr><th>Seed</th><th>Player</th><th>W–L</th><th>Points</th></tr>
             </thead>
             <tbody>
               <tr v-for="p in standingsBySeason[s.id]" :key="p.id">

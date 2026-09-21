@@ -141,8 +141,7 @@
       <div v-if="isAdmin" class="card" style="padding:1.25rem">
         <div class="field-label" style="margin-bottom:0.4rem">Season tools</div>
         <p class="muted" style="font-size:0.8rem;margin-bottom:0.75rem">
-          Locks the season, computes the strength-of-schedule adjusted score from round-robin
-          matches, and assigns final seeds. Cannot be undone.
+          Locks the season and assigns final seeds by wins, then total games won. Cannot be undone.
         </p>
         <button class="btn btn-ghost" :disabled="finalizing" @click="handleFinalize">
           <span v-if="finalizing" class="spinner" style="width:14px;height:14px;border-width:2px" />

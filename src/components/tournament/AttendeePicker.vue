@@ -6,7 +6,8 @@
     </div>
     <p class="muted" style="font-size:0.8rem;margin-bottom:0.9rem">
       Pick who's here today. Anyone not already in the season gets enrolled at 0–0 —
-      no catch-up matches for weeks they missed.
+      no catch-up matches for weeks they missed. Starting this week also clears any
+      match still pending from the last one — if it wasn't played, it's not coming back.
     </p>
 
     <div class="field" style="margin-bottom:0.9rem;max-width:220px">

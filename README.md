@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.9**
+> Current version: **v0.0.3.11**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -258,6 +258,25 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `MatchScoreRow.vue` gets an optional `onRemove` prop — when passed, shows a "Remove" button next to Report/Override with a confirm prompt. Wired in for admins on both "Your matches" and "Other pending matches"
 - Validated both RPCs against a local Postgres instance before shipping: confirmed `add_tournament_match` refuses before a week exists and refuses a self-match, and `cancel_tournament_match` deletes a pending match but correctly refuses once that same match is completed
 - `supabase-migration-v0.0.3.9.sql` added — run after v0.0.3.8
+
+### v0.0.3.10 — Auto-clear unplayed matches when a new week starts
+> The v0.0.3.9 remove button worked but put the cleanup on the admin every single week. Moved it into `start_tournament_week()` itself: starting a new week now deletes anything still `pending`/`in_progress` from before, automatically. `cancel_tournament_match()` and the manual "Remove" button from v0.0.3.9 are unchanged and still there for trimming mid-week if wanted.
+
+- `start_tournament_week()`: one delete statement added right after the new week is created, before pairing — clears every leftover `pending`/`in_progress` match tournament-wide. `completed` matches are never touched, so nothing already played is at risk
+- `AttendeePicker.vue` copy updated to say this out loud before the admin hits the button — starting a week is now a point of no return for whatever didn't get played
+- Validated against a local Postgres instance: started a week, completed one match, left two pending, started a second week, confirmed the completed one survived and the two pending ones were gone
+- `supabase-migration-v0.0.3.10.sql` added — run after v0.0.3.9
+
+### v0.0.3.11 — Differential is out of the tiebreak entirely
+> Format's now no-ad, first-to-4-games sets. Confirmed the redesign in dialogue first: wins stays the primary ranking everywhere, the tiebreak changes from point differential to total games won (points_for). Rationale for total games over differential: with short sets, a 4-3 loss and a 4-0 loss shouldn't tiebreak the same way a differential system would treat them — total games rewards playing close matches instead of rewarding blowouts.
+
+- `finalize_tournament()` simplified a lot along with this — the old strength-of-schedule-weighted-differential formula (`0.75 + opponent_win_rate × 0.75` multiplier) is gone entirely. Final seed is now `wins desc, then (points_for + bonus_points) desc` — same ordering as the live standings, no opponent-strength weighting. `adjusted_score` keeps its name and job (still "the number used to seed"), just computed more simply
+- `create_challenge()`'s "only challenge someone ranked above you" check updated to the same new ordering, for consistency — challenges are still unused in the UI as of v0.0.3.6, but the dormant RPC stays correct in case that changes later
+- Live standings sort (client-side, in the tournaments store) updated to match: wins, then points_for
+- `PastSeasonsPanel.vue`'s "Adjusted" column renamed to "Points," since it's no longer a weighted differential
+- Validated with a deliberately adversarial test case against a local Postgres instance: two players with identical wins (2) and identical points_for (8), but wildly different differential (+7 vs -2) — confirmed they now tie exactly (`adjusted_score` both 8) where the old formula would have ranked them apart
+- Not changed: no score-format validation was added (e.g. enforcing that a submitted score is a legal first-to-4 no-ad result) — scores are still just two numbers that can't tie. Flagging in case that's wanted next, but it wasn't asked for this pass and seemed like scope worth confirming separately
+- `supabase-migration-v0.0.3.11.sql` added — run after v0.0.3.10
 ---
 
 ## Quick start
