@@ -56,15 +56,12 @@
             >
               <td class="mono muted">{{ i + 1 }}</td>
               <td>
-                <RouterLink :to="`/player/${p.profile_id}`" style="display:flex;align-items:center;gap:8px">
-                  <PlayerAvatar :name="p.name" :size="28" />
-                  <div>
-                    <div style="display:flex;align-items:center;gap:5px">
-                      {{ p.name }}
-                      <span v-if="rankCrown(i + 1)" class="crown crown-sm" :class="`crown-${rankCrown(i + 1)?.tier}`" aria-hidden="true">{{ rankCrown(i + 1)?.emoji }}</span>
-                    </div>
-                    <div v-if="p.unit" class="muted" style="font-size:0.72rem">Unit {{ p.unit }}</div>
+                <RouterLink :to="`/player/${p.profile_id}`" style="text-decoration:none">
+                  <div style="display:flex;align-items:center;gap:5px">
+                    {{ p.name }}
+                    <span v-if="rankCrown(i + 1)" class="crown crown-sm" :class="`crown-${rankCrown(i + 1)?.tier}`" aria-hidden="true">{{ rankCrown(i + 1)?.emoji }}</span>
                   </div>
+                  <div v-if="p.unit" class="muted" style="font-size:0.72rem">Unit {{ p.unit }}</div>
                 </RouterLink>
               </td>
               <td v-if="showTier"><TierBadge :rating="p.rating" /></td>
@@ -97,7 +94,6 @@
       >
         <div class="lb-rank mono muted">{{ i + 1 }}</div>
         <RouterLink :to="`/player/${p.profile_id}`" class="lb-player">
-          <PlayerAvatar :name="p.name" :size="36" />
           <div class="lb-main">
             <div class="lb-name-row">
               <span class="lb-name">{{ p.name }}</span>

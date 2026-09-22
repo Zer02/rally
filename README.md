@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.1**
+> Current version: **v0.0.4.2**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -298,6 +298,11 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `LeaderboardView.vue` refactored onto it (Tier badge, Season column, Streak column, Challenge action — all unchanged visually)
 - `TournamentView.vue`'s round robin standings now use it too, with `rr_rating` as the "rating" column (previously fetched from the DB but never surfaced in the UI) and W–L / Pts for / Pts against / Diff as its columns
 - No schema change — `rr_rating` already existed on `tournament_participants` since v0.0.3.7, just wasn't in the frontend's `TournamentParticipant` type
+
+### v0.0.4.2 — Dropped the player-row avatar
+- `PlayerAvatar` removed from `StandingsTable.vue`'s desktop table rows and mobile cards — an initials-derived avatar next to every name risked spelling something unintended for the wrong name. Player name (with crown/unit line) now sits directly in that spot with no icon
+- Podium avatars (top 3) left as-is — those render a fixed medal/crown emoji via `PlayerAvatar`'s `override` prop, not name-derived initials, so the same risk doesn't apply there
+- No prop/API change — `StandingsTable` still imports `PlayerAvatar` for the podium only
 
 ---
 
