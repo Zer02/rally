@@ -94,6 +94,9 @@
           <button v-if="!startingWeek" class="btn btn-primary" @click="startingWeek = true">
             Start week {{ nextWeekNumber }}
           </button>
+          <button v-if="store.currentWeek && !generatingCourts" class="btn btn-ghost" @click="generatingCourts = true">
+            Generate court matches
+          </button>
           <button v-if="store.currentWeek && !addingMatch" class="btn btn-ghost" @click="addingMatch = true">
             Add a match
           </button>
@@ -104,6 +107,12 @@
           :next-week-number="nextWeekNumber"
           :on-start="handleStartWeek"
           @cancel="startingWeek = false"
+        />
+        <CourtGeneratorForm
+          v-if="generatingCourts"
+          :players="playersStore.players"
+          :on-generate="handleGenerateCourts"
+          @cancel="generatingCourts = false"
         />
         <AddMatchForm
           v-if="addingMatch"
@@ -163,6 +172,7 @@ import { onLeagueChange } from '@/composables/useLeagueWatch'
 import MatchScoreRow from '@/components/tournament/MatchScoreRow.vue'
 import AttendeePicker from '@/components/tournament/AttendeePicker.vue'
 import AddMatchForm from '@/components/tournament/AddMatchForm.vue'
+import CourtGeneratorForm from '@/components/tournament/CourtGeneratorForm.vue'
 import PastSeasonsPanel from '@/components/tournament/PastSeasonsPanel.vue'
 
 const store = useTournamentsStore()
@@ -176,6 +186,7 @@ const newName = ref('')
 const reportError = ref('')
 const startingWeek = ref(false)
 const addingMatch = ref(false)
+const generatingCourts = ref(false)
 const finalizing = ref(false)
 
 onMounted(() => {
@@ -187,6 +198,7 @@ onLeagueChange(() => {
   creating.value = false
   startingWeek.value = false
   addingMatch.value = false
+  generatingCourts.value = false
   store.fetchActive()
   store.fetchPastSeasons()
   playersStore.fetch()
@@ -195,10 +207,14 @@ onLeagueChange(() => {
 const nextWeekNumber = computed(() => (store.currentWeek?.week_number ?? 0) + 1)
 
 const myPendingMatches = computed(() =>
-  store.pendingMatches.filter(m => m.player_a_id === user.value?.id || m.player_b_id === user.value?.id)
+  store.pendingMatches.filter(m =>
+    [m.player_a_id, m.player_b_id, m.player_a2_id, m.player_b2_id].includes(user.value?.id ?? null)
+  )
 )
 const otherPendingMatches = computed(() =>
-  store.pendingMatches.filter(m => m.player_a_id !== user.value?.id && m.player_b_id !== user.value?.id)
+  store.pendingMatches.filter(m =>
+    ![m.player_a_id, m.player_b_id, m.player_a2_id, m.player_b2_id].includes(user.value?.id ?? null)
+  )
 )
 
 async function handleCreate() {
@@ -219,9 +235,13 @@ async function handleStartWeek(attendeeIds: string[], targetMatches: number) {
   startingWeek.value = false
 }
 
-async function handleAddMatch(playerAId: string, playerBId: string) {
-  await store.addMatch(playerAId, playerBId)
+async function handleAddMatch(playerAId: string, playerBId: string, playerA2Id?: string, playerB2Id?: string) {
+  await store.addMatch(playerAId, playerBId, playerA2Id, playerB2Id)
   addingMatch.value = false
+}
+
+async function handleGenerateCourts(attendeeIds: string[], courtCount: number) {
+  return store.generateCourtMatches(attendeeIds, courtCount)
 }
 
 async function handleRemove(matchId: string) {

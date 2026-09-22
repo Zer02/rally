@@ -1,12 +1,13 @@
 <template>
   <div class="match-score-row">
     <div class="match-score-names">
-      <span :class="{ 'me-highlight': match.player_a_id === myId }">
-        {{ match.player_a?.display_name || match.player_a?.username }}
+      <span v-if="match.format === 'doubles'" class="status status-pending" style="margin-right:0.5rem;font-size:0.7rem">Doubles</span>
+      <span :class="{ 'me-highlight': match.player_a_id === myId || match.player_a2_id === myId }">
+        {{ match.player_a?.display_name || match.player_a?.username }}<template v-if="match.player_a2"> &amp; {{ match.player_a2?.display_name || match.player_a2?.username }}</template>
       </span>
       <span class="muted" style="margin:0 0.4rem">vs</span>
-      <span :class="{ 'me-highlight': match.player_b_id === myId }">
-        {{ match.player_b?.display_name || match.player_b?.username }}
+      <span :class="{ 'me-highlight': match.player_b_id === myId || match.player_b2_id === myId }">
+        {{ match.player_b?.display_name || match.player_b?.username }}<template v-if="match.player_b2"> &amp; {{ match.player_b2?.display_name || match.player_b2?.username }}</template>
       </span>
     </div>
 

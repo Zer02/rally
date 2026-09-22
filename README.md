@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.3.11**
+> Current version: **v0.0.4.0**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -277,6 +277,19 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - Validated with a deliberately adversarial test case against a local Postgres instance: two players with identical wins (2) and identical points_for (8), but wildly different differential (+7 vs -2) — confirmed they now tie exactly (`adjusted_score` both 8) where the old formula would have ranked them apart
 - Not changed: no score-format validation was added (e.g. enforcing that a submitted score is a legal first-to-4 no-ad result) — scores are still just two numbers that can't tie. Flagging in case that's wanted next, but it wasn't asked for this pass and seemed like scope worth confirming separately
 - `supabase-migration-v0.0.3.11.sql` added — run after v0.0.3.10
+
+### v0.0.4.0 — Doubles support + smart court generator
+> New versioning convention as of this entry: past .9 rolls to the next minor (v0.0.3.9 → v0.0.4.0), not .10. Doubles never existed in the schema at all before this — `tournament_matches` only ever had two player slots. Confirmed three design points before touching anything: doubles results count toward the season (same wins/losses/rr_rating as singles), doubles teams balance strongest+weakest vs. the middle two, and the generator attaches to the current week rather than inventing its own structure.
+
+- **Schema:** `tournament_matches` gets `format` (`'singles'`/`'doubles'`), `player_a2_id`, `player_b2_id` — nullable, unused for singles
+- **New `generate_court_matches(p_tournament_id, p_attendee_ids, p_court_count)`:** given who's here and how many courts are free, computes the best (doubles, singles) split — maximizing players on court first, then courts used. Benches the fewest people possible, prioritizing whoever's played the fewest matches this season (so a brand-new attendee plays before someone benched for a second round). Groups the rest by current blended strength (points + rr_rating), forms doubles foursomes from the top of that order, balances each as strongest+weakest vs. the middle two, then singles pairs from what's left. Attaches to the current week without creating a new one, so it's meant to be re-run for "next round" as many times as a session needs — ratings and match counts shift after every completed match, so a re-run naturally produces a different mix with no artificial randomization
+- `report_tournament_match()` now branches on format: a doubles result applies identically to both players on a side (wins/losses/points_for/points_against), and `rr_rating` uses a standard simplified team-Elo — each side's rating is the average of its two players, the Elo delta computed once from those averages and applied identically to both. Singles is unaffected (mathematically the same formula, one-player "team")
+- `add_tournament_match()` extended with optional `p_player_a2_id`/`p_player_b2_id` — provide both for a manual doubles match, leave both off for singles (fully backward compatible)
+- **Client:** `CourtGeneratorForm.vue` (attendee checklist + court-count input + Generate, shows a result summary with who's sitting out), doubles toggle added to `AddMatchForm.vue`, `MatchScoreRow.vue` now shows both partners per side with a "Doubles" tag
+- Small consistency fix while in the area: `start_tournament_week()`'s internal pairing-closeness metric was still using point differential internally, even though v0.0.3.11 retired differential everywhere else. Swapped to points_for. Never a user-facing tiebreak — only affected who got paired with whom — but worth aligning once noticed
+- **Deliberately not done:** the generator doesn't check for season rematches the way `start_tournament_week()` does. This is a quick best-matches-right-now tool for a live session, not a fairness rotation — flagging the omission rather than silently leaving it out
+- Heavily validated against a local Postgres instance before shipping: reproduced the exact worked example (14 players, 5 courts → 2 doubles + 3 singles, 0 benched); confirmed doubles team balance with clearly-differentiated ratings (foursome of 1400/1300/1200/1100 split into 1400+1100 vs 1300+1200, exactly as specified); confirmed bench-priority fairness (the player who'd already played got benched over three untouched players); confirmed a completed doubles match updates wins/losses/points/rr_rating identically for both players on a side
+- `supabase-migration-v0.0.4.0.sql` added — run after v0.0.3.11
 ---
 
 ## Quick start

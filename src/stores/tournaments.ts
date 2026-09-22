@@ -18,7 +18,9 @@ const PARTICIPANT_SELECT = '*, profile:profiles(id, username, display_name, unit
 const MATCH_SELECT = `
   *,
   player_a:profiles!tournament_matches_player_a_id_fkey(id, username, display_name, avatar_url),
-  player_b:profiles!tournament_matches_player_b_id_fkey(id, username, display_name, avatar_url)
+  player_b:profiles!tournament_matches_player_b_id_fkey(id, username, display_name, avatar_url),
+  player_a2:profiles!tournament_matches_player_a2_id_fkey(id, username, display_name, avatar_url),
+  player_b2:profiles!tournament_matches_player_b2_id_fkey(id, username, display_name, avatar_url)
 `
 
 export const useTournamentsStore = defineStore('tournaments', () => {
@@ -292,18 +294,52 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   // whenever the smart pairing missed a matchup the admin wants, or a
   // rematch is wanted on purpose. Attaches to the most recently started
   // week; auto-enrolls either player if they're not already in the season.
-  async function addMatch(playerAId: string, playerBId: string) {
+  // Pass partner ids for a doubles match, or leave them off for singles.
+  async function addMatch(
+    playerAId: string, playerBId: string,
+    playerA2Id?: string, playerB2Id?: string
+  ) {
     if (!active.value) throw new Error('No active season')
 
     const { data, error: err } = await supabase.rpc('add_tournament_match', {
       p_tournament_id: active.value.id,
       p_player_a_id: playerAId,
       p_player_b_id: playerBId,
+      p_player_a2_id: playerA2Id ?? null,
+      p_player_b2_id: playerB2Id ?? null,
     })
     if (err) throw new Error(err.message)
 
     await Promise.all([fetchParticipants(), fetchMatches()])
     return data as string
+  }
+
+  // Admin-only. Given who showed up and how many courts are free, works
+  // out the best mix of singles/doubles to fill them (maximizing players
+  // playing, then courts used), groups people by current blended
+  // strength, and balances each doubles foursome as strongest+weakest vs
+  // the middle two. Attaches to the current week without creating a new
+  // one — safe to call repeatedly for "next round" within one session.
+  // Doesn't check for season rematches (unlike startWeek) — this is a
+  // quick best-matches-right-now snapshot, not a fairness rotation.
+  async function generateCourtMatches(attendeeIds: string[], courtCount: number) {
+    if (!active.value) throw new Error('No active season')
+
+    const { data, error: err } = await supabase.rpc('generate_court_matches', {
+      p_tournament_id: active.value.id,
+      p_attendee_ids: attendeeIds,
+      p_court_count: courtCount,
+    })
+    if (err) throw new Error(err.message)
+
+    await Promise.all([fetchParticipants(), fetchMatches()])
+    return data as {
+      week_id: string
+      doubles_count: number
+      singles_count: number
+      match_ids: string[]
+      benched_profile_ids: string[]
+    }
   }
 
   // Admin-only. Deletes a match that's lingering and won't be played —
@@ -349,6 +385,6 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
     fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
-    callToCourt, uncallMatch, addMatch, cancelMatch,
+    callToCourt, uncallMatch, addMatch, cancelMatch, generateCourtMatches,
   }
 })

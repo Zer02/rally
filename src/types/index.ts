@@ -109,12 +109,15 @@ export interface TournamentMatch {
   id:            string
   tournament_id: string
   phase:         'round_robin' | 'bracket' | 'challenge'
+  format:        'singles' | 'doubles'
   round:         number | null
   slot:          number | null
   week_id:       string | null
   challenger_id: string | null
   player_a_id:   string | null
   player_b_id:   string | null
+  player_a2_id:  string | null
+  player_b2_id:  string | null
   score_a:       number | null
   score_b:       number | null
   winner_id:     string | null
@@ -126,6 +129,8 @@ export interface TournamentMatch {
   completed_at:  string | null
   player_a?: Profile
   player_b?: Profile
+  player_a2?: Profile
+  player_b2?: Profile
 }
 
 export interface Database {
