@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.0**
+> Current version: **v0.0.4.1**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -290,6 +290,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Deliberately not done:** the generator doesn't check for season rematches the way `start_tournament_week()` does. This is a quick best-matches-right-now tool for a live session, not a fairness rotation — flagging the omission rather than silently leaving it out
 - Heavily validated against a local Postgres instance before shipping: reproduced the exact worked example (14 players, 5 courts → 2 doubles + 3 singles, 0 benched); confirmed doubles team balance with clearly-differentiated ratings (foursome of 1400/1300/1200/1100 split into 1400+1100 vs 1300+1200, exactly as specified); confirmed bench-priority fairness (the player who'd already played got benched over three untouched players); confirmed a completed doubles match updates wins/losses/points/rr_rating identically for both players on a side
 - `supabase-migration-v0.0.4.0.sql` added — run after v0.0.3.11
+
+### v0.0.4.1 — Shared standings look between the leaderboard and round robin
+> Styling-only change requested for the round robin page — make it match the main leaderboard's podium/table/card look rather than its own plain table. Decided collaboratively to extract a shared component (not copy the CSS) so the two stay in sync going forward, and to surface `rr_rating` as the round robin's rating column while in there, since it already existed in the schema but was never wired into the frontend.
+
+- **New `StandingsTable.vue`:** the main leaderboard's podium + desktop table + mobile card list, extracted into `src/components/leaderboard/` so any ranked list of players can reuse the same look instead of re-implementing the CSS. Takes a plain `rows`/`columns` shape — rating column, crowns, and the mobile/desktop split are built in; each view supplies whatever extra stat columns it needs and an optional per-row action slot
+- `LeaderboardView.vue` refactored onto it (Tier badge, Season column, Streak column, Challenge action — all unchanged visually)
+- `TournamentView.vue`'s round robin standings now use it too, with `rr_rating` as the "rating" column (previously fetched from the DB but never surfaced in the UI) and W–L / Pts for / Pts against / Diff as its columns
+- No schema change — `rr_rating` already existed on `tournament_participants` since v0.0.3.7, just wasn't in the frontend's `TournamentParticipant` type
+
 ---
 
 ## Quick start

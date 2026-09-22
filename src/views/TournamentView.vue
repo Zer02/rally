@@ -58,34 +58,13 @@
       </div>
 
       <!-- Standings -->
-      <div class="card" style="margin-bottom:1.5rem;overflow-x:auto">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Player</th>
-              <th>W–L</th>
-              <th>Pts for</th>
-              <th>Pts against</th>
-              <th>Diff</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(p, i) in store.standings" :key="p.id">
-              <td class="mono muted">{{ i + 1 }}</td>
-              <td>{{ p.profile?.display_name || p.profile?.username }}</td>
-              <td class="mono">{{ p.wins }}–{{ p.losses }}</td>
-              <td class="mono">{{ p.points_for }}</td>
-              <td class="mono">{{ p.points_against }}</td>
-              <td class="mono" :class="{ 'diff-pos': p.points_for - p.points_against > 0, 'diff-neg': p.points_for - p.points_against < 0 }">
-                {{ p.points_for - p.points_against > 0 ? '+' : '' }}{{ p.points_for - p.points_against }}
-              </td>
-            </tr>
-            <tr v-if="!store.standings.length">
-              <td colspan="6" class="muted" style="text-align:center">Nobody's enrolled yet — start a week to bring players in.</td>
-            </tr>
-          </tbody>
-        </table>
+      <div style="margin-bottom:1.5rem">
+        <StandingsTable
+          :rows="standingsRows"
+          :columns="standingsColumns"
+          rating-label="RR Rating"
+          empty-message="Nobody's enrolled yet — start a week to bring players in."
+        />
       </div>
 
       <!-- Admin: start a week -->
@@ -174,6 +153,7 @@ import AttendeePicker from '@/components/tournament/AttendeePicker.vue'
 import AddMatchForm from '@/components/tournament/AddMatchForm.vue'
 import CourtGeneratorForm from '@/components/tournament/CourtGeneratorForm.vue'
 import PastSeasonsPanel from '@/components/tournament/PastSeasonsPanel.vue'
+import StandingsTable, { type StandingRow, type StandingColumn } from '@/components/leaderboard/StandingsTable.vue'
 
 const store = useTournamentsStore()
 const playersStore = usePlayersStore()
@@ -205,6 +185,49 @@ onLeagueChange(() => {
 })
 
 const nextWeekNumber = computed(() => (store.currentWeek?.week_number ?? 0) + 1)
+
+// Same podium/table/card shell as the main leaderboard, with rr_rating
+// standing in for the ladder rating and the round robin's own W-L/points
+// columns instead of Season/Streak (round robin doesn't track a streak).
+// The W-L/points strings and the diff's sign are resolved here rather than
+// inside each column's value() so the row objects — not the static column
+// defs — are what changes reference when standings update, same reasoning
+// as the leaderboard's season column.
+const standingsRows = computed(() =>
+  store.standings.map(p => {
+    const diff = p.points_for - p.points_against
+    return {
+      id: p.id,
+      profile_id: p.profile_id,
+      name: p.profile?.display_name || p.profile?.username || 'Unknown',
+      unit: p.profile?.unit,
+      rating: p.rr_rating,
+      wl: `${p.wins}–${p.losses}`,
+      ptsFor: p.points_for,
+      ptsAgainst: p.points_against,
+      diffLabel: `${diff > 0 ? '+' : ''}${diff}`,
+      diffValue: diff,
+    } satisfies StandingRow & {
+      wl: string; ptsFor: number; ptsAgainst: number; diffLabel: string; diffValue: number
+    }
+  })
+)
+type StandingsRow = (typeof standingsRows.value)[number]
+
+const standingsColumns: StandingColumn[] = [
+  { key: 'wl', label: 'W–L', value: (row) => (row as StandingsRow).wl },
+  { key: 'ptsFor', label: 'Pts for', value: (row) => String((row as StandingsRow).ptsFor), mobile: false },
+  { key: 'ptsAgainst', label: 'Pts against', value: (row) => String((row as StandingsRow).ptsAgainst), mobile: false },
+  {
+    key: 'diff',
+    label: 'Diff',
+    value: (row) => (row as StandingsRow).diffLabel,
+    cellClass: (row) => ({
+      'diff-pos': (row as StandingsRow).diffValue > 0,
+      'diff-neg': (row as StandingsRow).diffValue < 0,
+    }),
+  },
+]
 
 const myPendingMatches = computed(() =>
   store.pendingMatches.filter(m =>
@@ -276,8 +299,6 @@ async function handleFinalize() {
 </script>
 
 <style scoped>
-.diff-pos { color: var(--net); }
-.diff-neg { color: var(--ace); }
 .tournament-match-row { padding: 0.9rem 1rem; margin-bottom: 0.6rem; }
 .tournament-completed-row {
   font-size: 0.85rem; padding: 0.5rem 0.25rem;

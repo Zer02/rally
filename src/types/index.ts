@@ -91,6 +91,7 @@ export interface TournamentParticipant {
   points_for:     number
   points_against: number
   bonus_points:   number
+  rr_rating:      number
   adjusted_score: number | null
   seed:           number | null
   profile?: Profile
