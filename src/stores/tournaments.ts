@@ -377,13 +377,46 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     )
   }
 
+  // Head-to-head singles history between two players, across every season
+  // in this league — used by PlayerView's Round Robin H2H card. Doubles
+  // matches are excluded: with 4 players on court, "head-to-head" doesn't
+  // have one unambiguous meaning (teammates one week, opponents the next),
+  // so only singles keeps the record honest.
+  async function fetchHeadToHead(profileIdA: string, profileIdB: string) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) return []
+
+    const { data, error: err } = await supabase
+      .from('tournament_matches')
+      .select(`
+        id, score_a, score_b, winner_id, completed_at, player_a_id, player_b_id,
+        tournament:tournaments!inner(id, league_id)
+      `)
+      .eq('format', 'singles')
+      .eq('status', 'completed')
+      .eq('tournament.league_id', leagueId)
+      .or(
+        `and(player_a_id.eq.${profileIdA},player_b_id.eq.${profileIdB}),` +
+        `and(player_a_id.eq.${profileIdB},player_b_id.eq.${profileIdA})`
+      )
+      .order('completed_at', { ascending: false })
+
+    if (err) throw new Error(err.message)
+
+    type Row = {
+      id: string; score_a: number | null; score_b: number | null; winner_id: string | null
+      completed_at: string | null; player_a_id: string; player_b_id: string
+    }
+    return (data ?? []) as unknown as Row[]
+  }
+
   return {
     active, participants, matches, weeks, pastSeasons, loading, error,
     standings, rankByProfileId, currentWeek, currentWeekMatches,
     pendingMatches, inProgressMatches, completedMatches, courtsInUse,
     myChallengeUsedThisWeek, canChallenge,
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
-    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory,
+    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchHeadToHead,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
     callToCourt, uncallMatch, addMatch, cancelMatch, generateCourtMatches,
   }

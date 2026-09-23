@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.2**
+> Current version: **v0.0.4.3**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -303,6 +303,12 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `PlayerAvatar` removed from `StandingsTable.vue`'s desktop table rows and mobile cards — an initials-derived avatar next to every name risked spelling something unintended for the wrong name. Player name (with crown/unit line) now sits directly in that spot with no icon
 - Podium avatars (top 3) left as-is — those render a fixed medal/crown emoji via `PlayerAvatar`'s `override` prop, not name-derived initials, so the same risk doesn't apply there
 - No prop/API change — `StandingsTable` still imports `PlayerAvatar` for the podium only
+
+### v0.0.4.3 — Round robin names link to real profiles
+- **`StandingsTable.vue`:** every player name (podium and rows, both leaderboard and round robin) now routes through a `profileLink()` helper — your own row goes to `/profile`, everyone else's goes to `/player/:id`, using the `meId` prop that was already there for the "my row" highlight. Previously every name linked to `/player/:id` including your own
+- **`TournamentView.vue`:** now passes `me-id` to `StandingsTable` — it was missing, so round robin standings weren't highlighting your own row or routing your name correctly either
+- **`PlayerView.vue`** (the `/player/:id` page): gained a Round Robin card — Titles / Best finish / Seasons played plus the season-by-season history table, same as what's on your own Profile page. Only shown if that player has actually played a round robin season
+- **Round Robin head-to-head:** new card on `PlayerView.vue`, next to the existing ladder head-to-head, showing your singles record against that player across every season. New `fetchHeadToHead()` in the tournaments store queries `tournament_matches` directly rather than going through standings. Deliberately singles-only — doubles has 4 players on court, so "head-to-head" doesn't have one unambiguous meaning (partner one week, opponent the next)
 
 ---
 

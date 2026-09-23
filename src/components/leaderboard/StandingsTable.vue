@@ -13,19 +13,19 @@
   <div>
     <!-- Top 3 podium -->
     <div v-if="rows.length >= 3" class="podium">
-      <RouterLink :to="`/player/${rows[1].profile_id}`" class="podium-spot second">
+      <RouterLink :to="profileLink(rows[1])" class="podium-spot second">
         <PlayerAvatar :name="rows[1].name" :size="48" override="🥈" />
         <div class="podium-rank">2</div>
         <div class="podium-name">{{ rows[1].name }}</div>
         <div class="podium-rating mono">{{ Math.round(rows[1].rating) }}</div>
       </RouterLink>
-      <RouterLink :to="`/player/${rows[0].profile_id}`" class="podium-spot first">
+      <RouterLink :to="profileLink(rows[0])" class="podium-spot first">
         <PlayerAvatar :name="rows[0].name" :size="56" override="👑" />
         <div class="podium-rank gold">1</div>
         <div class="podium-name">{{ rows[0].name }}</div>
         <div class="podium-rating mono">{{ Math.round(rows[0].rating) }}</div>
       </RouterLink>
-      <RouterLink :to="`/player/${rows[2].profile_id}`" class="podium-spot third">
+      <RouterLink :to="profileLink(rows[2])" class="podium-spot third">
         <PlayerAvatar :name="rows[2].name" :size="44" override="🥉" />
         <div class="podium-rank">3</div>
         <div class="podium-name">{{ rows[2].name }}</div>
@@ -56,7 +56,7 @@
             >
               <td class="mono muted">{{ i + 1 }}</td>
               <td>
-                <RouterLink :to="`/player/${p.profile_id}`" style="text-decoration:none">
+                <RouterLink :to="profileLink(p)" style="text-decoration:none">
                   <div style="display:flex;align-items:center;gap:5px">
                     {{ p.name }}
                     <span v-if="rankCrown(i + 1)" class="crown crown-sm" :class="`crown-${rankCrown(i + 1)?.tier}`" aria-hidden="true">{{ rankCrown(i + 1)?.emoji }}</span>
@@ -93,7 +93,7 @@
         :class="{ 'my-row': p.profile_id === meId }"
       >
         <div class="lb-rank mono muted">{{ i + 1 }}</div>
-        <RouterLink :to="`/player/${p.profile_id}`" class="lb-player">
+        <RouterLink :to="profileLink(p)" class="lb-player">
           <div class="lb-main">
             <div class="lb-name-row">
               <span class="lb-name">{{ p.name }}</span>
@@ -182,6 +182,13 @@ const CROWNS = {
 
 function rankCrown(rank: number) {
   return CROWNS[rank as keyof typeof CROWNS] ?? null
+}
+
+// Own row goes to the full "/profile" (season selector, rating history,
+// etc.) rather than the read-only "/player/:id" view everyone else's row
+// links to.
+function profileLink(row: StandingRow) {
+  return row.profile_id === props.meId ? '/profile' : `/player/${row.profile_id}`
 }
 </script>
 

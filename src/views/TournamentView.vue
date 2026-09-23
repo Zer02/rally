@@ -63,6 +63,7 @@
           :rows="standingsRows"
           :columns="standingsColumns"
           rating-label="RR Rating"
+          :me-id="user?.id"
           empty-message="Nobody's enrolled yet — start a week to bring players in."
         />
       </div>
