@@ -28,6 +28,23 @@
       </label>
     </div>
 
+    <!-- Someone showed up who isn't in the league yet — add by name only,
+         no email needed. New player is auto-checked into this week. -->
+    <div v-if="!addingNew" style="margin-top:0.6rem">
+      <button type="button" class="btn btn-ghost" style="font-size:0.8rem" @click="addingNew = true">
+        + Someone new showed up
+      </button>
+    </div>
+    <form v-else class="new-player-form" @submit.prevent="addNewPlayer">
+      <input v-model="newPlayerName" class="input" placeholder="Their name" style="font-size:0.85rem" required />
+      <button type="submit" class="btn btn-primary" style="font-size:0.8rem" :disabled="addingNewSubmitting || !newPlayerName.trim()">
+        <span v-if="addingNewSubmitting" class="spinner" style="width:12px;height:12px;border-width:2px" />
+        <span v-else>Add</span>
+      </button>
+      <button type="button" class="btn btn-ghost" style="font-size:0.8rem" @click="addingNew = false; newPlayerName = ''; addNewError = ''">Cancel</button>
+      <p v-if="addNewError" class="flash flash-error" style="margin-top:0.5rem;width:100%">{{ addNewError }}</p>
+    </form>
+
     <div style="display:flex;gap:0.5rem;margin-top:1rem">
       <button
         class="btn btn-primary"
@@ -46,6 +63,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Player } from '@/types'
+import { usePlayersStore } from '@/stores/players'
 
 const props = defineProps<{
   players: Player[]
@@ -55,10 +73,33 @@ const props = defineProps<{
 
 defineEmits<{ cancel: [] }>()
 
+const playersStore = usePlayersStore()
+
 const selected      = ref<string[]>([])
 const targetMatches = ref(5)
 const starting      = ref(false)
 const startError    = ref('')
+
+const addingNew           = ref(false)
+const newPlayerName       = ref('')
+const addingNewSubmitting = ref(false)
+const addNewError         = ref('')
+
+async function addNewPlayer() {
+  const name = newPlayerName.value.trim()
+  if (!name) return
+  addingNewSubmitting.value = true
+  addNewError.value = ''
+  try {
+    const created = await playersStore.createPlaceholderPlayer(name)
+    selected.value.push(created.profile_id)
+    newPlayerName.value = ''
+    addingNew.value = false
+  } catch (e: any) {
+    addNewError.value = e.message
+  }
+  addingNewSubmitting.value = false
+}
 
 async function start() {
   if (selected.value.length < 2 || !targetMatches.value) return
@@ -83,4 +124,6 @@ async function start() {
 }
 .attendee-row:has(input:checked) { border-color: var(--ball); background: rgba(232,200,74,0.08); }
 .attendee-row input { accent-color: var(--ball); }
+.new-player-form { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem; }
+.new-player-form .input { flex: 1; min-width: 140px; padding: 0.5rem 0.7rem; }
 </style>

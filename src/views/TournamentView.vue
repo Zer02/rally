@@ -102,6 +102,11 @@
         />
       </div>
 
+      <!-- Admin: placeholder players awaiting a real email -->
+      <div v-if="isAdmin" style="margin-bottom:1.5rem">
+        <PlaceholderPlayersPanel />
+      </div>
+
       <!-- Self-report: your pending matches -->
       <div v-if="myPendingMatches.length" style="margin-bottom:1.5rem">
         <h3 style="font-size:0.95rem;margin-bottom:0.6rem">Your matches</h3>
@@ -154,6 +159,7 @@ import AttendeePicker from '@/components/tournament/AttendeePicker.vue'
 import AddMatchForm from '@/components/tournament/AddMatchForm.vue'
 import CourtGeneratorForm from '@/components/tournament/CourtGeneratorForm.vue'
 import PastSeasonsPanel from '@/components/tournament/PastSeasonsPanel.vue'
+import PlaceholderPlayersPanel from '@/components/admin/PlaceholderPlayersPanel.vue'
 import StandingsTable, { type StandingRow, type StandingColumn } from '@/components/leaderboard/StandingsTable.vue'
 
 const store = useTournamentsStore()

@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.3**
+> Current version: **v0.0.4.4**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -303,6 +303,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `PlayerAvatar` removed from `StandingsTable.vue`'s desktop table rows and mobile cards — an initials-derived avatar next to every name risked spelling something unintended for the wrong name. Player name (with crown/unit line) now sits directly in that spot with no icon
 - Podium avatars (top 3) left as-is — those render a fixed medal/crown emoji via `PlayerAvatar`'s `override` prop, not name-derived initials, so the same risk doesn't apply there
 - No prop/API change — `StandingsTable` still imports `PlayerAvatar` for the podium only
+
+### v0.0.4.4 — Ref/admin can add a player by name only, no email
+> A ref adding weekly attendees shouldn't need everyone's email up front. A placeholder player is a real `auth.users` row under the hood — created via the Admin API in a new Edge Function, since that's the only way to make a user with no email or phone at all — so it's indistinguishable from a normal signup to every other RPC/RLS policy in the app. An admin can attach a real email later, which sends the person a "set your password" link.
+- **`supabase-migration-v0.0.4.4.sql`:** adds `profiles.is_placeholder boolean`, default false. Validated by replaying the full migration history (`supabase-schema.sql` through v0.0.4.0, in commit order) against a local Postgres instance, then applying this one on top
+- **First Edge Functions in this project** — `supabase/functions/create-placeholder-player/` and `supabase/functions/claim-placeholder-player/`, plus a shared CORS helper and a deploy `README.md`. `create-placeholder-player` checks the caller via the existing `is_league_admin()` RPC, creates the auth user under a generated non-deliverable placeholder email (works around an open Supabase Auth bug where `createUser()` with neither email nor phone 500s), flags `is_placeholder`, enrolls them in `players` for that league. `claim-placeholder-player` requires *global* admin (not just league admin — deliberately stricter than strictly necessary, called out as adjustable in a comment), sets + confirms a real email, clears the flag
+- **Real gap closed along the way:** the app had no handling at all for Supabase's password-recovery redirect — a "set your password" email would have dead-ended at a plain sign-in screen. Added `PASSWORD_RECOVERY` event handling to `useAuth.ts` (`isPasswordRecovery`, `updatePassword()`) and a "set your password" form to `LoginView.vue`
+- **Frontend wiring:** `Profile` type got `is_placeholder`; `players.ts` store got `createPlaceholderPlayer()` / `claimPlaceholderPlayer()` (the latter fires `resetPasswordForEmail` once the Edge Function confirms the email is on file); `AttendeePicker.vue` got a "+ Someone new showed up" inline mini-form that adds and auto-checks the new player in one step; new `PlaceholderPlayersPanel.vue` admin component lists placeholders in the current league with a "Send invite" email field; both wired into `TournamentView.vue`
+
+---
 
 ### v0.0.4.3 — Round robin names link to real profiles
 - **`StandingsTable.vue`:** every player name (podium and rows, both leaderboard and round robin) now routes through a `profileLink()` helper — your own row goes to `/profile`, everyone else's goes to `/player/:id`, using the `meId` prop that was already there for the "my row" highlight. Previously every name linked to `/player/:id` including your own

@@ -14,13 +14,13 @@ import { useLeagueStore } from './leagues'
 import { useAuth } from '@/composables/useAuth'
 import type { Tournament, TournamentParticipant, TournamentMatch, TournamentWeek } from '@/types'
 
-const PARTICIPANT_SELECT = '*, profile:profiles(id, username, display_name, unit, avatar_url)'
+const PARTICIPANT_SELECT = '*, profile:profiles(id, username, display_name, unit, avatar_url, is_placeholder)'
 const MATCH_SELECT = `
   *,
-  player_a:profiles!tournament_matches_player_a_id_fkey(id, username, display_name, avatar_url),
-  player_b:profiles!tournament_matches_player_b_id_fkey(id, username, display_name, avatar_url),
-  player_a2:profiles!tournament_matches_player_a2_id_fkey(id, username, display_name, avatar_url),
-  player_b2:profiles!tournament_matches_player_b2_id_fkey(id, username, display_name, avatar_url)
+  player_a:profiles!tournament_matches_player_a_id_fkey(id, username, display_name, avatar_url, is_placeholder),
+  player_b:profiles!tournament_matches_player_b_id_fkey(id, username, display_name, avatar_url, is_placeholder),
+  player_a2:profiles!tournament_matches_player_a2_id_fkey(id, username, display_name, avatar_url, is_placeholder),
+  player_b2:profiles!tournament_matches_player_b2_id_fkey(id, username, display_name, avatar_url, is_placeholder)
 `
 
 export const useTournamentsStore = defineStore('tournaments', () => {

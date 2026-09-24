@@ -5,7 +5,7 @@
         <RouterLink to="/" class="nav-logo" style="display:block;margin-bottom:2rem;font-family:var(--font-display);color:var(--ball);font-size:1.3rem">RALLY 🏓</RouterLink>
 
         <div class="card auth-card">
-          <div class="auth-tabs">
+          <div v-if="!isPasswordRecovery" class="auth-tabs">
             <button class="auth-tab" :class="{ active: tab === 'login' }"  @click="tab = 'login'">Sign in</button>
             <button class="auth-tab" :class="{ active: tab === 'signup' }" @click="tab = 'signup'">Join the league</button>
           </div>
@@ -13,8 +13,23 @@
           <div class="auth-body">
             <div v-if="flash" class="flash" :class="`flash-${flashType}`">{{ flash }}</div>
 
+            <!-- Password recovery: landed here from a "set your password" email
+                 (signup confirmation, or an admin claiming a placeholder player) -->
+            <form v-if="isPasswordRecovery" @submit.prevent="handleSetPassword">
+              <p class="muted" style="font-size:0.85rem;margin-bottom:0.9rem">
+                Set a password for your account.
+              </p>
+              <label class="field-label">New password</label>
+              <input v-model="newPassword" type="password" class="input" placeholder="At least 8 characters" minlength="8" required />
+
+              <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1.25rem;justify-content:center" :disabled="loading">
+                <span v-if="loading" class="spinner" />
+                <span v-else>Set password</span>
+              </button>
+            </form>
+
             <!-- Login -->
-            <form v-if="tab === 'login'" @submit.prevent="handleLogin">
+            <form v-else-if="tab === 'login'" @submit.prevent="handleLogin">
               <label class="field-label">Email</label>
               <input v-model="email" type="email" class="input" placeholder="you@email.com" required />
 
@@ -58,7 +73,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
-const { signIn, signUp } = useAuth()
+const { signIn, signUp, updatePassword, isPasswordRecovery } = useAuth()
 const router = useRouter()
 const route  = useRoute()
 
@@ -67,6 +82,7 @@ const email       = ref('')
 const password    = ref('')
 const displayName = ref('')
 const unit        = ref('')
+const newPassword = ref('')
 const loading     = ref(false)
 const flash       = ref('')
 const flashType   = ref<'error'|'success'>('error')
@@ -90,6 +106,15 @@ async function handleSignup() {
   loading.value = false
   if (err) { setFlash(err.message); return }
   setFlash('Account created! Check your email to confirm, then sign in.', 'success')
+}
+
+async function handleSetPassword() {
+  loading.value = true; flash.value = ''
+  const err = await updatePassword(newPassword.value)
+  loading.value = false
+  if (err) { setFlash(err.message); return }
+  newPassword.value = ''
+  router.push('/leaderboard')
 }
 </script>
 
