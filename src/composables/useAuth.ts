@@ -63,10 +63,23 @@ export function useAuth() {
   // signup confirmation link and by a claimed placeholder player's
   // "set your password" link) — sets the new password and clears the
   // recovery flag so the UI falls back to normal signed-in behavior.
+  //
+  // This is also the ONE place profiles.is_placeholder gets cleared
+  // (v0.0.4.5) — not when an admin sends the invite, but only once the
+  // person has actually finished setting a password. A self-update
+  // (auth.uid() = id) is allowed by the same "Users update own profile"
+  // RLS policy every other profile edit already goes through. Harmless
+  // no-op for a normal (non-placeholder) account completing signup.
   async function updatePassword(newPassword: string) {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (!error) isPasswordRecovery.value = false
-    return error
+    if (error) return error
+
+    isPasswordRecovery.value = false
+    if (user.value && (profile.value as any)?.is_placeholder) {
+      await supabase.from('profiles').update({ is_placeholder: false }).eq('id', user.value.id)
+      await loadProfile(user.value.id)
+    }
+    return null
   }
 
   return {

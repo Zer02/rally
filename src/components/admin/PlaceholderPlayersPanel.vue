@@ -7,7 +7,12 @@
     </p>
 
     <div v-for="p in placeholders" :key="p.profile_id" class="placeholder-row">
-      <span class="placeholder-name">{{ p.display_name }}</span>
+      <div class="placeholder-name-col">
+        <span class="placeholder-name">{{ p.display_name }}</span>
+        <span v-if="p.invited_email" class="muted placeholder-invited-note">
+          Invited to {{ p.invited_email }} · {{ timeAgo(p.invited_at) }}
+        </span>
+      </div>
 
       <template v-if="claimingId === p.profile_id">
         <input
@@ -24,12 +29,17 @@
           @click="submitClaim(p.profile_id)"
         >
           <span v-if="claimSubmitting" class="spinner" style="width:12px;height:12px;border-width:2px" />
-          <span v-else>Send invite</span>
+          <span v-else>{{ p.invited_email ? 'Resend invite' : 'Send invite' }}</span>
         </button>
         <button class="btn btn-ghost" style="font-size:0.8rem" @click="claimingId = null; claimEmail = ''">Cancel</button>
       </template>
-      <button v-else class="btn btn-ghost" style="font-size:0.8rem" @click="claimingId = p.profile_id; claimError = ''">
-        Send invite
+      <button
+        v-else
+        class="btn btn-ghost"
+        style="font-size:0.8rem"
+        @click="claimingId = p.profile_id; claimEmail = p.invited_email || ''; claimError = ''"
+      >
+        {{ p.invited_email ? 'Resend / fix email' : 'Send invite' }}
       </button>
     </div>
 
@@ -56,8 +66,22 @@ const placeholders = computed(() =>
     .map(p => ({
       profile_id: p.profile_id,
       display_name: p.profile?.display_name || p.profile?.username || 'Unknown',
+      invited_email: p.profile?.invited_email || null,
+      invited_at: p.profile?.invited_at || null,
     }))
 )
+
+function timeAgo(isoDate: string | null): string {
+  if (!isoDate) return ''
+  const seconds = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 async function submitClaim(profileId: string) {
   const email = claimEmail.value.trim()
@@ -67,7 +91,7 @@ async function submitClaim(profileId: string) {
   claimSuccess.value = ''
   try {
     await playersStore.claimPlaceholderPlayer(profileId, email)
-    claimSuccess.value = 'Invite sent — they\'ll get a link to set a password.'
+    claimSuccess.value = `Invite sent to ${email} — they'll get a link to set a password.`
     claimingId.value = null
     claimEmail.value = ''
   } catch (e: any) {
@@ -83,6 +107,8 @@ async function submitClaim(profileId: string) {
   padding: 0.5rem 0; border-top: 1px solid var(--line);
 }
 .placeholder-row:first-of-type { border-top: none; }
-.placeholder-name { font-size: 0.85rem; font-weight: 500; min-width: 100px; flex: 1; }
+.placeholder-name-col { display: flex; flex-direction: column; gap: 0.15rem; min-width: 100px; flex: 1; }
+.placeholder-name { font-size: 0.85rem; font-weight: 500; }
+.placeholder-invited-note { font-size: 0.72rem; }
 .placeholder-row .input { flex: 1; min-width: 160px; padding: 0.4rem 0.6rem; }
 </style>

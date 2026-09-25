@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.4**
+> Current version: **v0.0.4.5**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -303,6 +303,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `PlayerAvatar` removed from `StandingsTable.vue`'s desktop table rows and mobile cards — an initials-derived avatar next to every name risked spelling something unintended for the wrong name. Player name (with crown/unit line) now sits directly in that spot with no icon
 - Podium avatars (top 3) left as-is — those render a fixed medal/crown emoji via `PlayerAvatar`'s `override` prop, not name-derived initials, so the same risk doesn't apply there
 - No prop/API change — `StandingsTable` still imports `PlayerAvatar` for the podium only
+
+### v0.0.4.5 — Placeholder players stay invitable until they actually claim their account
+> A real gap in v0.0.4.4: `claim-placeholder-player` cleared `profiles.is_placeholder` the moment an admin **sent** an invite, not when the player actually **finished** setting a password. A typo'd email or an invite the person never got around to looked identical to a fully-activated account — the option to fix or resend it just vanished.
+- **`supabase-migration-v0.0.4.5.sql`:** adds `profiles.invited_email` and `profiles.invited_at`, so an admin can see what was already sent. Validated by replaying the full migration history (through v0.0.4.4) against a local Postgres instance, then applying this one on top
+- **`claim-placeholder-player`** no longer clears `is_placeholder` — it just records `invited_email`/`invited_at` and can be called again any number of times with a corrected or repeated email. No separate resend endpoint; calling it again *is* the resend
+- **`is_placeholder` now only clears in one place:** `useAuth.ts`'s `updatePassword()`, right after the person actually sets a password — the real "became a live account" moment. A harmless no-op for a normal signup completing the same flow
+- **`PlaceholderPlayersPanel.vue`:** shows "Invited to `<email>` · `<time>` ago" under a player's name once they've been invited, and the button becomes "Resend / fix email" (pre-filled with the last email sent) instead of disappearing
+
+---
 
 ### v0.0.4.4 — Ref/admin can add a player by name only, no email
 > A ref adding weekly attendees shouldn't need everyone's email up front. A placeholder player is a real `auth.users` row under the hood — created via the Admin API in a new Edge Function, since that's the only way to make a user with no email or phone at all — so it's indistinguishable from a normal signup to every other RPC/RLS policy in the app. An admin can attach a real email later, which sends the person a "set your password" link.

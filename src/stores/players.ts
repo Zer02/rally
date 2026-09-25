@@ -41,7 +41,7 @@ export const usePlayersStore = defineStore('players', () => {
     loading.value = true
     const { data, error: err } = await supabase
       .from('players')
-      .select('*, profile:profiles(id, username, display_name, unit, avatar_url, is_admin, is_placeholder)')
+      .select('*, profile:profiles(id, username, display_name, unit, avatar_url, is_admin, is_placeholder, invited_email, invited_at)')
       .eq('league_id', leagueId)
       .order('rating', { ascending: false })
 
@@ -112,11 +112,13 @@ export const usePlayersStore = defineStore('players', () => {
     return data as { profile_id: string; display_name: string; is_placeholder: true }
   }
 
-  // Global-admin-only. Attaches a real email to a placeholder player so
-  // they can be sent a "set your password" link. Fires resetPasswordForEmail
-  // right after the Edge Function confirms the email is now on file —
-  // splitting it this way (rather than the function sending it) keeps the
-  // Edge Function itself free of any email-sending config.
+  // Global-admin-only. Sends (or resends, or corrects) a "set your
+  // password" invite to a placeholder player's real email. Safe to call
+  // more than once — is_placeholder is NOT cleared here (v0.0.4.5), only
+  // when the person actually finishes setting a password, so this stays
+  // callable for as long as they haven't. Fires resetPasswordForEmail
+  // right after the Edge Function records the invite — splitting it this
+  // way keeps the Edge Function itself free of any email-sending config.
   async function claimPlaceholderPlayer(profileId: string, email: string) {
     const { data, error: err } = await supabase.functions.invoke('claim-placeholder-player', {
       body: { profile_id: profileId, email },
@@ -128,7 +130,7 @@ export const usePlayersStore = defineStore('players', () => {
     if (resetErr) throw new Error(resetErr.message)
 
     await fetch()
-    return data as { profile_id: string; email: string; is_placeholder: false }
+    return data as { profile_id: string; email: string; invited_at: string }
   }
 
   return {
