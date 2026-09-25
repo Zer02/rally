@@ -57,6 +57,19 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  // v0.0.4.6: whatever Supabase's dashboard-configured Site URL points
+  // a recovery link at, force the set-password screen. Without this, a
+  // misconfigured (or just different) Site URL lands the person on
+  // whatever page that is, fully authenticated, with the flag set but
+  // nothing on that page reacting to it — LoginView is the only place
+  // that knows to show the set-password form. Runs before the
+  // requiresAuth check below so it applies to every route, /login
+  // included (checked first to avoid a redirect loop there).
+  const { isPasswordRecovery } = useAuth()
+  if (isPasswordRecovery.value && to.name !== 'login') {
+    return { name: 'login' }
+  }
+
   if (!to.meta.requiresAuth) return true
 
   const { isAuthed, isAdmin, loading } = useAuth()

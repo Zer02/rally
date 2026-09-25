@@ -18,8 +18,30 @@
               <p v-if="me.profile?.unit" class="muted" style="font-size:0.85rem">Unit {{ me.profile.unit }}</p>
             </div>
           </div>
-          <TierBadge :rating="me.rating" />
+          <div style="display:flex;align-items:center;gap:0.75rem">
+            <button v-if="!editingProfile" class="btn btn-ghost" style="font-size:0.85rem" @click="startEditProfile">
+              Edit profile
+            </button>
+            <TierBadge :rating="me.rating" />
+          </div>
         </div>
+
+        <form v-if="editingProfile" class="card" style="padding:1.25rem;margin-bottom:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end" @submit.prevent="saveProfile">
+          <div class="field" style="flex:1;min-width:160px">
+            <label class="field-label">Display name</label>
+            <input v-model="editName" class="input" required />
+          </div>
+          <div class="field" style="flex:1;min-width:120px">
+            <label class="field-label">Unit</label>
+            <input v-model="editUnit" class="input" placeholder="e.g. 4B" />
+          </div>
+          <button type="submit" class="btn btn-primary" :disabled="editSaving || !editName.trim()">
+            <span v-if="editSaving" class="spinner" style="width:14px;height:14px;border-width:2px" />
+            <span v-else>Save</span>
+          </button>
+          <button type="button" class="btn btn-ghost" @click="editingProfile = false">Cancel</button>
+          <p v-if="editError" class="flash flash-error" style="width:100%;margin-top:0.5rem">{{ editError }}</p>
+        </form>
 
         <div class="field" style="max-width:200px;margin-bottom:1.25rem">
           <label class="field-label">Season</label>
@@ -144,10 +166,16 @@ const matchesStore    = useMatchesStore()
 const seasonsStore    = useSeasonsStore()
 const tournamentsStore = useTournamentsStore()
 const leagueStore     = useLeagueStore()
-const { user } = useAuth()
+const { user, updateProfile } = useAuth()
 
 const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
 const selectedSeasonId = ref('current')
+
+const editingProfile = ref(false)
+const editName        = ref('')
+const editUnit         = ref('')
+const editSaving       = ref(false)
+const editError        = ref('')
 
 interface RRHistoryRow { wins: number; losses: number; seed: number | null; adjusted_score: number | null; tournament: Tournament }
 const rrHistory        = ref<RRHistoryRow[]>([])
@@ -199,6 +227,23 @@ onUnmounted(() => {
 const me     = computed(() => playersStore.byId(user.value?.id ?? ''))
 const myName = computed(() => me.value?.profile?.display_name || me.value?.profile?.username || 'You')
 const myRank = computed(() => playersStore.sorted.findIndex(p => p.profile_id === user.value?.id) + 1)
+
+function startEditProfile() {
+  editName.value = me.value?.profile?.display_name || ''
+  editUnit.value = me.value?.profile?.unit || ''
+  editError.value = ''
+  editingProfile.value = true
+}
+
+async function saveProfile() {
+  editSaving.value = true
+  editError.value = ''
+  const err = await updateProfile({ display_name: editName.value.trim(), unit: editUnit.value.trim() || null })
+  editSaving.value = false
+  if (err) { editError.value = err.message; return }
+  editingProfile.value = false
+  await playersStore.fetch() // refreshes the profile embedded in playersStore.players (a separate cache from useAuth's)
+}
 
 const mySeasonRecord = computed(() => {
   if (!me.value) return '0–0'

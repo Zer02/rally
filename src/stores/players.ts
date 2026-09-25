@@ -126,15 +126,42 @@ export const usePlayersStore = defineStore('players', () => {
     if (err) throw new Error(await describeFunctionError(err))
     if (data?.error) throw new Error(data.error)
 
-    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email)
+    // v0.0.4.6 fix: without an explicit redirectTo, Supabase sends the
+    // person to the project's dashboard-configured Site URL, which may
+    // not point at /login — the session still gets created, but nothing
+    // outside LoginView.vue knows to show the set-password form, so
+    // they'd just land logged in with no way to finish. Requires
+    // https://<your-domain>/login (and your local dev origin) to be
+    // added to Supabase Dashboard → Authentication → URL Configuration
+    // → Redirect URLs, or Supabase silently ignores this and falls back
+    // to the Site URL anyway.
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    })
     if (resetErr) throw new Error(resetErr.message)
 
     await fetch()
     return data as { profile_id: string; email: string; invited_at: string }
   }
 
+  // Global-admin-only. Permanently deletes a placeholder player — for
+  // one added by mistake, or whose invite the admin would rather
+  // abandon than keep correcting. The Edge Function refuses to touch
+  // anyone no longer flagged is_placeholder, and Postgres itself blocks
+  // deleting one with real match history (see the function's own
+  // comments) — this just surfaces whatever it decides.
+  async function deletePlaceholderPlayer(profileId: string) {
+    const { data, error: err } = await supabase.functions.invoke('delete-placeholder-player', {
+      body: { profile_id: profileId },
+    })
+    if (err) throw new Error(await describeFunctionError(err))
+    if (data?.error) throw new Error(data.error)
+
+    await fetch()
+  }
+
   return {
     players, loading, error, sorted, fetch, byId, subscribe, unsubscribe, resetSeason,
-    createPlaceholderPlayer, claimPlaceholderPlayer,
+    createPlaceholderPlayer, claimPlaceholderPlayer, deletePlaceholderPlayer,
   }
 })

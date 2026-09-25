@@ -82,8 +82,20 @@ export function useAuth() {
     return null
   }
 
+  // Updates the signed-in user's own display name / unit, then refreshes
+  // the cached profile so every component reading it (nav, this page,
+  // etc.) picks up the change without a manual reload. Same
+  // "Users update own profile" RLS policy as updatePassword() above.
+  async function updateProfile(fields: { display_name?: string; unit?: string | null }) {
+    if (!user.value) return new Error('Not signed in')
+    const { error } = await supabase.from('profiles').update(fields).eq('id', user.value.id)
+    if (error) return error
+    await loadProfile(user.value.id)
+    return null
+  }
+
   return {
     user, profile, loading, isAuthed, isAdmin, isPasswordRecovery,
-    signUp, signIn, signOut, updatePassword,
+    signUp, signIn, signOut, updatePassword, updateProfile,
   }
 }

@@ -33,18 +33,36 @@
         </button>
         <button class="btn btn-ghost" style="font-size:0.8rem" @click="claimingId = null; claimEmail = ''">Cancel</button>
       </template>
-      <button
-        v-else
-        class="btn btn-ghost"
-        style="font-size:0.8rem"
-        @click="claimingId = p.profile_id; claimEmail = p.invited_email || ''; claimError = ''"
-      >
-        {{ p.invited_email ? 'Resend / fix email' : 'Send invite' }}
-      </button>
+      <template v-else-if="removingId === p.profile_id">
+        <span class="muted" style="font-size:0.8rem">Remove {{ p.display_name }} for good?</span>
+        <button
+          class="btn btn-danger"
+          style="font-size:0.8rem"
+          :disabled="removeSubmitting"
+          @click="submitRemove(p.profile_id)"
+        >
+          <span v-if="removeSubmitting" class="spinner" style="width:12px;height:12px;border-width:2px" />
+          <span v-else>Yes, remove</span>
+        </button>
+        <button class="btn btn-ghost" style="font-size:0.8rem" @click="removingId = null">Cancel</button>
+      </template>
+      <template v-else>
+        <button
+          class="btn btn-ghost"
+          style="font-size:0.8rem"
+          @click="claimingId = p.profile_id; claimEmail = p.invited_email || ''; claimError = ''"
+        >
+          {{ p.invited_email ? 'Resend / fix email' : 'Send invite' }}
+        </button>
+        <button class="btn btn-ghost" style="font-size:0.8rem" @click="removingId = p.profile_id; removeError = ''">
+          Remove
+        </button>
+      </template>
     </div>
 
     <p v-if="claimError" class="flash flash-error" style="margin-top:0.75rem">{{ claimError }}</p>
     <p v-if="claimSuccess" class="flash flash-success" style="margin-top:0.75rem">{{ claimSuccess }}</p>
+    <p v-if="removeError" class="flash flash-error" style="margin-top:0.75rem">{{ removeError }}</p>
   </div>
 </template>
 
@@ -59,6 +77,10 @@ const claimEmail     = ref('')
 const claimSubmitting = ref(false)
 const claimError     = ref('')
 const claimSuccess   = ref('')
+
+const removingId       = ref<string | null>(null)
+const removeSubmitting = ref(false)
+const removeError      = ref('')
 
 const placeholders = computed(() =>
   playersStore.players
@@ -98,6 +120,18 @@ async function submitClaim(profileId: string) {
     claimError.value = e.message
   }
   claimSubmitting.value = false
+}
+
+async function submitRemove(profileId: string) {
+  removeSubmitting.value = true
+  removeError.value = ''
+  try {
+    await playersStore.deletePlaceholderPlayer(profileId)
+    removingId.value = null
+  } catch (e: any) {
+    removeError.value = e.message
+  }
+  removeSubmitting.value = false
 }
 </script>
 
