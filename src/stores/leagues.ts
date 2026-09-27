@@ -27,6 +27,20 @@ export const useLeagueStore = defineStore('leagues', () => {
     myLeagues.value.find(l => l.id === currentLeagueId.value) ?? myLeagues.value[0] ?? null
   )
 
+  // Whether the signed-in user administers the CURRENT league specifically
+  // — not the same as useAuth's isAdmin, which only reflects the global
+  // super-admin flag. Refreshed via the is_league_admin() RPC (the same
+  // check the v0.0.4.9 leagues UPDATE policy itself uses) whenever the
+  // current league changes, rather than reimplementing its OR-of-two-
+  // conditions logic here and risking it drifting out of sync.
+  const isCurrentLeagueAdmin = ref(false)
+
+  async function refreshCurrentLeagueAdmin() {
+    if (!currentLeagueId.value) { isCurrentLeagueAdmin.value = false; return }
+    const { data } = await supabase.rpc('is_league_admin', { p_league_id: currentLeagueId.value })
+    isCurrentLeagueAdmin.value = !!data
+  }
+
   // Every league minus the ones already joined — the "join a league" list.
   const joinableLeagues = computed(() =>
     allLeagues.value.filter(l => !myLeagues.value.some(m => m.id === l.id))
@@ -35,6 +49,7 @@ export const useLeagueStore = defineStore('leagues', () => {
   function setCurrentLeague(id: string) {
     currentLeagueId.value = id
     localStorage.setItem(STORAGE_KEY, id)
+    refreshCurrentLeagueAdmin()
   }
 
   async function fetchMyLeagues() {
@@ -59,6 +74,12 @@ export const useLeagueStore = defineStore('leagues', () => {
       // fall back to whichever league comes first.
       if (!currentLeagueId.value || !myLeagues.value.some(l => l.id === currentLeagueId.value)) {
         if (myLeagues.value[0]) setCurrentLeague(myLeagues.value[0].id)
+      } else {
+        // Saved selection is still valid, so setCurrentLeague (which
+        // would otherwise refresh this) never runs on this path — do it
+        // directly instead, or a returning session's admin status would
+        // never get populated until they manually switched leagues.
+        refreshCurrentLeagueAdmin()
       }
     }
     loading.value = false
@@ -98,9 +119,20 @@ export const useLeagueStore = defineStore('leagues', () => {
     return data as string
   }
 
+  // League-admin-only via the v0.0.4.9 RLS policy. A failed RLS check on
+  // UPDATE doesn't error by default — it just silently matches 0 rows —
+  // so this chains .select() specifically to detect that case and turn
+  // it into an actual error instead of a save that looked like it worked.
+  async function updateLeague(id: string, fields: { name?: string; icon?: string }) {
+    const { data, error: err } = await supabase.from('leagues').update(fields).eq('id', id).select()
+    if (err) throw new Error(err.message)
+    if (!data || data.length === 0) throw new Error("You don't have permission to edit this league")
+    await Promise.all([fetchMyLeagues(), fetchAllLeagues()])
+  }
+
   return {
-    myLeagues, allLeagues, joinableLeagues, currentLeagueId, currentLeague,
+    myLeagues, allLeagues, joinableLeagues, currentLeagueId, currentLeague, isCurrentLeagueAdmin,
     loading, error,
-    setCurrentLeague, fetchMyLeagues, fetchAllLeagues, joinLeague, createLeague,
+    setCurrentLeague, fetchMyLeagues, fetchAllLeagues, joinLeague, createLeague, updateLeague,
   }
 })

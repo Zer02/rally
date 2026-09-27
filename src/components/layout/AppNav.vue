@@ -30,6 +30,25 @@
                 </button>
               </div>
 
+              <div v-if="leagueStore.isCurrentLeagueAdmin" class="league-menu-section">
+                <button v-if="!editingLeague" class="league-menu-item" @click="startEditLeague">
+                  <span class="league-menu-icon">✎</span>Edit "{{ leagueStore.currentLeague?.name }}"
+                </button>
+                <form v-else class="league-create-form" @submit.prevent="handleUpdateLeague">
+                  <div style="display:flex;gap:0.4rem">
+                    <input v-model="editIcon" class="input league-create-icon" maxlength="4" placeholder="🎾" />
+                    <input v-model="editName" class="input" placeholder="League name" required />
+                  </div>
+                  <div style="display:flex;gap:0.4rem;margin-top:0.15rem">
+                    <button class="btn btn-primary btn-sm" type="submit" :disabled="editSubmitting" style="flex:1;justify-content:center">
+                      <span v-if="editSubmitting" class="spinner" style="width:12px;height:12px;border-width:2px" />
+                      <span v-else>Save</span>
+                    </button>
+                    <button class="btn btn-ghost btn-sm" type="button" @click="editingLeague = false">Cancel</button>
+                  </div>
+                </form>
+              </div>
+
               <div v-if="leagueStore.joinableLeagues.length" class="league-menu-section">
                 <p class="league-menu-label">Join a league</p>
                 <button
@@ -157,6 +176,11 @@ const newName = ref('')
 const newSport = ref('')
 const newIcon = ref('')
 
+const editingLeague  = ref(false)
+const editName       = ref('')
+const editIcon       = ref('')
+const editSubmitting = ref(false)
+
 onMounted(() => {
   leagueStore.fetchAllLeagues()
   if (isAuthed.value) leagueStore.fetchMyLeagues()
@@ -222,6 +246,32 @@ async function handleSignOut() {
   await signOut()
   menuOpen.value = false
   router.push('/')
+}
+
+function startEditLeague() {
+  editName.value = leagueStore.currentLeague?.name || ''
+  // Prefill with what's actually stored, including the literal legacy
+  // '🏆' default — editing should show ground truth, not the same
+  // display-only swap AppNav uses when just rendering the badge.
+  editIcon.value = leagueStore.currentLeague?.icon || ''
+  menuError.value = ''
+  editingLeague.value = true
+}
+
+async function handleUpdateLeague() {
+  if (!leagueStore.currentLeagueId) return
+  editSubmitting.value = true
+  menuError.value = ''
+  try {
+    await leagueStore.updateLeague(leagueStore.currentLeagueId, {
+      name: editName.value.trim(),
+      icon: editIcon.value.trim() || '🏆',
+    })
+    editingLeague.value = false
+  } catch (e: any) {
+    menuError.value = e.message
+  }
+  editSubmitting.value = false
 }
 </script>
 

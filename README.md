@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.8**
+> Current version: **v0.0.4.9**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -351,6 +351,14 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`leagues.icon` is `not null default '🏆'` at the database level** (see `supabase-migration-v0.0.3.0.sql`) — an untouched league genuinely has that literal emoji stored, so this couldn't be a pure "fall back when empty" fix. `AppNav.vue` now treats the literal string `'🏆'` the same as no icon at all (a `hasCustomIcon()` helper, commented with the one edge case it can't tell apart: someone who deliberately chose 🏆 as their own custom icon), so every existing league picks up the racket immediately on rebuild — no migration, no data changes needed. Applied everywhere an icon renders: the top-left switcher button and both lists in the league-switcher dropdown
 - **`public/favicon.svg`** — same design, colors hardcoded (favicons render outside the app's own CSS, so `var(--ball)` doesn't apply) on a small dark rounded-square badge for contrast against a light browser chrome. Wired up via a `<link rel="icon">` in `index.html` that was simply never there before. Checked it renders as a recognizable racket down to true 16×16/32×32 favicon sizes, not just at preview scale
 - The create-league form's icon input still takes a real emoji (unlike the SVG, that field can't render vector art) — its placeholder hint changed from 🏆 to 🎾 to match the new tennis-first branding
+
+---
+
+### v0.0.4.9 — League admins can edit their league's name and icon after creation
+> Came up wanting to actually set a league's icon to 🎾 rather than just seeing it as a placeholder hint — and there was genuinely no way to, for any field, on any existing league. `leagues` has had RLS enabled with only a SELECT policy since v0.0.3.0; a name/icon typo at creation time was permanent.
+- **`supabase-migration-v0.0.4.9.sql`:** adds an UPDATE policy on `leagues`, gated through the existing `is_league_admin()` function — the same check `create-placeholder-player` and every other per-league admin action already goes through, not a new one invented for this. Written idempotent (`drop policy if exists` first) like every other migration here, and validated by replaying the full history against a local Postgres instance
+- **`leagues.ts`:** new `isCurrentLeagueAdmin`, refreshed via the `is_league_admin` RPC whenever the current league changes — this is genuinely different from `useAuth`'s `isAdmin`, which only reflects the global super-admin flag, not per-league admin status. New `updateLeague()` chains `.select()` on the update specifically to catch the case where RLS silently blocks a non-admin's write (which doesn't error by default, just matches 0 rows) and turn it into a real error instead of a save that looked like it worked
+- **`AppNav.vue`:** league admins now see an "Edit '`<league name>`'" option in the switcher dropdown, prefilled with the league's actual stored name/icon — including the literal legacy `🏆` if that's genuinely what's stored, not the racket swap used for just *displaying* the badge. Clearing the icon field on save falls back to `🏆`, same as leaving it blank on creation always has
 
 ---
 
