@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.7**
+> Current version: **v0.0.4.8**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -342,6 +342,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 ### v0.0.4.7 — Add a late arrival mid-week, not just when starting one
 > No new schema or Edge Function needed — `add_tournament_match` and `generate_court_matches` already auto-enroll anyone new into the season (`insert into tournament_participants ... on conflict do nothing`) and already draw from the full league roster, not just this week's. The actual gap was purely on the frontend: "+ Someone new showed up" only existed inside `AttendeePicker.vue`, which only renders while *starting* a week — once one's already running, `AddMatchForm.vue` and `CourtGeneratorForm.vue` had no way to create a brand-new person at all.
 - Extracted that mini-form into a new shared `NewPlayerInline.vue` (same `create-placeholder-player` Edge Function underneath, nothing new there either) and dropped it into all three: `AttendeePicker.vue` (refactored onto the shared component, no behavior change), `CourtGeneratorForm.vue` (new player auto-checked into the current round, same as an existing attendee), and `AddMatchForm.vue` (new player drops into the first empty slot — Player A first, then B, then the doubles partner slots if that's checked — one less step than creating them and then hunting for them in a dropdown)
+
+---
+
+### v0.0.4.8 — Tennis racket branding + an actual favicon
+> No single "tennis racket" emoji exists in Unicode (🎾 is a ball, not a racket), so this draws one as an SVG instead of trying to fake it with emoji. Two separate asks bundled together: replace the 🏆 trophy shown as the default league icon, and stop Chrome showing its default globe in the browser tab (the app never had a favicon at all — no `<link rel="icon">`, no `public/` directory).
+- **New `RacketIcon.vue`** — a small rotated-racket SVG (oval frame, a cross of strings, a handle), colored with the app's existing `--ball` gold accent so it matches the brand rather than introducing a new color
+- **`leagues.icon` is `not null default '🏆'` at the database level** (see `supabase-migration-v0.0.3.0.sql`) — an untouched league genuinely has that literal emoji stored, so this couldn't be a pure "fall back when empty" fix. `AppNav.vue` now treats the literal string `'🏆'` the same as no icon at all (a `hasCustomIcon()` helper, commented with the one edge case it can't tell apart: someone who deliberately chose 🏆 as their own custom icon), so every existing league picks up the racket immediately on rebuild — no migration, no data changes needed. Applied everywhere an icon renders: the top-left switcher button and both lists in the league-switcher dropdown
+- **`public/favicon.svg`** — same design, colors hardcoded (favicons render outside the app's own CSS, so `var(--ball)` doesn't apply) on a small dark rounded-square badge for contrast against a light browser chrome. Wired up via a `<link rel="icon">` in `index.html` that was simply never there before. Checked it renders as a recognizable racket down to true 16×16/32×32 favicon sizes, not just at preview scale
+- The create-league form's icon input still takes a real emoji (unlike the SVG, that field can't render vector art) — its placeholder hint changed from 🏆 to 🎾 to match the new tennis-first branding
 
 ---
 

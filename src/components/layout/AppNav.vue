@@ -8,7 +8,10 @@
             :aria-expanded="leagueMenuOpen"
             aria-label="Switch league"
             @click="leagueMenuOpen = !leagueMenuOpen"
-          >{{ leagueStore.currentLeague?.icon ?? '🏆' }}</button>
+          >
+            <span v-if="hasCustomIcon(leagueStore.currentLeague?.icon)">{{ leagueStore.currentLeague!.icon }}</span>
+            <RacketIcon v-else :size="20" />
+          </button>
 
           <Transition name="nav-drop">
             <div v-if="leagueMenuOpen" class="league-menu">
@@ -20,7 +23,10 @@
                   :class="{ active: l.id === leagueStore.currentLeagueId }"
                   @click="selectLeague(l.id)"
                 >
-                  <span class="league-menu-icon">{{ l.icon }}</span>{{ l.name }}
+                  <span class="league-menu-icon">
+                    <span v-if="hasCustomIcon(l.icon)">{{ l.icon }}</span>
+                    <RacketIcon v-else :size="15" />
+                  </span>{{ l.name }}
                 </button>
               </div>
 
@@ -32,7 +38,10 @@
                   :disabled="joining === l.id"
                   @click="handleJoin(l.id)"
                 >
-                  <span class="league-menu-icon">{{ l.icon }}</span>{{ l.name }}
+                  <span class="league-menu-icon">
+                    <span v-if="hasCustomIcon(l.icon)">{{ l.icon }}</span>
+                    <RacketIcon v-else :size="15" />
+                  </span>{{ l.name }}
                   <span v-if="joining === l.id" class="spinner" style="width:12px;height:12px;border-width:2px;margin-left:auto" />
                 </button>
               </div>
@@ -44,7 +53,7 @@
                 </button>
                 <form v-else class="league-create-form" @submit.prevent="handleCreate">
                   <div style="display:flex;gap:0.4rem">
-                    <input v-model="newIcon" class="input league-create-icon" maxlength="4" placeholder="🏆" />
+                    <input v-model="newIcon" class="input league-create-icon" maxlength="4" placeholder="🎾" />
                     <input v-model="newName" class="input" placeholder="League name" required />
                   </div>
                   <input v-model="newSport" class="input" placeholder="sport slug, e.g. tennis" required />
@@ -118,6 +127,19 @@ import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useLeagueStore } from '@/stores/leagues'
 import { useRouter } from 'vue-router'
+import RacketIcon from '@/components/icons/RacketIcon.vue'
+
+// leagues.icon is `not null default '🏆'` at the DB level (see
+// supabase-migration-v0.0.3.0.sql), so an untouched league genuinely
+// has that literal string stored — this isn't a missing value the
+// frontend invented a fallback for. v0.0.4.8 treats that old default
+// the same as "no icon set" so existing leagues pick up the new
+// default branding with no migration needed; a league where someone
+// deliberately typed 🏆 as their custom icon is the one (unlikely)
+// case this can't distinguish from the old default.
+function hasCustomIcon(icon: string | null | undefined): boolean {
+  return !!icon && icon !== '🏆'
+}
 
 const { isAuthed, isAdmin, signOut } = useAuth()
 const leagueStore = useLeagueStore()
