@@ -20,6 +20,10 @@
       </label>
     </div>
 
+    <!-- Late arrival, not in the league yet — add by name, auto-checked
+         into this round like everyone else. -->
+    <NewPlayerInline @created="id => selected.push(id)" />
+
     <div style="display:flex;gap:0.5rem;margin-top:1rem">
       <button
         class="btn btn-primary"
@@ -52,6 +56,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { Player } from '@/types'
+import NewPlayerInline from './NewPlayerInline.vue'
 
 interface GenerateResult {
   week_id: string

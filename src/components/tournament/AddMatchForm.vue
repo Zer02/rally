@@ -12,6 +12,10 @@
       Doubles
     </label>
 
+    <!-- Late arrival, not in the league yet — add by name, drops straight
+         into the first open slot below. -->
+    <NewPlayerInline @created="onNewPlayerCreated" />
+
     <div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:0.75rem">
       <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end">
         <div class="field" style="min-width:160px">
@@ -73,6 +77,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Player } from '@/types'
+import NewPlayerInline from './NewPlayerInline.vue'
 
 const props = defineProps<{
   players: Player[]
@@ -92,6 +97,16 @@ const addError  = ref('')
 watch(isDoubles, (on) => {
   if (!on) { playerA2.value = ''; playerB2.value = '' }
 })
+
+// Drops a newly-created player into the first empty slot, in the same
+// order the form's fields read top to bottom — one less step than
+// creating them, then also having to go find them in a dropdown.
+function onNewPlayerCreated(id: string) {
+  if (!playerA.value) playerA.value = id
+  else if (!playerB.value) playerB.value = id
+  else if (isDoubles.value && !playerA2.value) playerA2.value = id
+  else if (isDoubles.value && !playerB2.value) playerB2.value = id
+}
 
 const selectedIds = computed(() => {
   const ids = [playerA.value, playerB.value]

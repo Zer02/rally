@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.6**
+> Current version: **v0.0.4.7**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -310,12 +310,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`PlayerView.vue`** (the `/player/:id` page): gained a Round Robin card — Titles / Best finish / Seasons played plus the season-by-season history table, same as what's on your own Profile page. Only shown if that player has actually played a round robin season
 - **Round Robin head-to-head:** new card on `PlayerView.vue`, next to the existing ladder head-to-head, showing your singles record against that player across every season. New `fetchHeadToHead()` in the tournaments store queries `tournament_matches` directly rather than going through standings. Deliberately singles-only — doubles has 4 players on court, so "head-to-head" doesn't have one unambiguous meaning (partner one week, opponent the next)
 
+---
+
 ### v0.0.4.4 — Ref/admin can add a player by name only, no email
 > A ref adding weekly attendees shouldn't need everyone's email up front. A placeholder player is a real `auth.users` row under the hood — created via the Admin API in a new Edge Function, since that's the only way to make a user with no email or phone at all — so it's indistinguishable from a normal signup to every other RPC/RLS policy in the app. An admin can attach a real email later, which sends the person a "set your password" link.
 - **`supabase-migration-v0.0.4.4.sql`:** adds `profiles.is_placeholder boolean`, default false. Validated by replaying the full migration history (`supabase-schema.sql` through v0.0.4.0, in commit order) against a local Postgres instance, then applying this one on top
 - **First Edge Functions in this project** — `supabase/functions/create-placeholder-player/` and `supabase/functions/claim-placeholder-player/`, plus a shared CORS helper and a deploy `README.md`. `create-placeholder-player` checks the caller via the existing `is_league_admin()` RPC, creates the auth user under a generated non-deliverable placeholder email (works around an open Supabase Auth bug where `createUser()` with neither email nor phone 500s), flags `is_placeholder`, enrolls them in `players` for that league. `claim-placeholder-player` requires *global* admin (not just league admin — deliberately stricter than strictly necessary, called out as adjustable in a comment), sets + confirms a real email, clears the flag
 - **Real gap closed along the way:** the app had no handling at all for Supabase's password-recovery redirect — a "set your password" email would have dead-ended at a plain sign-in screen. Added `PASSWORD_RECOVERY` event handling to `useAuth.ts` (`isPasswordRecovery`, `updatePassword()`) and a "set your password" form to `LoginView.vue`
 - **Frontend wiring:** `Profile` type got `is_placeholder`; `players.ts` store got `createPlaceholderPlayer()` / `claimPlaceholderPlayer()` (the latter fires `resetPasswordForEmail` once the Edge Function confirms the email is on file); `AttendeePicker.vue` got a "+ Someone new showed up" inline mini-form that adds and auto-checks the new player in one step; new `PlaceholderPlayersPanel.vue` admin component lists placeholders in the current league with a "Send invite" email field; both wired into `TournamentView.vue`
+
+---
 
 ### v0.0.4.5 — Placeholder players stay invitable until they actually claim their account
 > A real gap in v0.0.4.4: `claim-placeholder-player` cleared `profiles.is_placeholder` the moment an admin **sent** an invite, not when the player actually **finished** setting a password. A typo'd email or an invite the person never got around to looked identical to a fully-activated account — the option to fix or resend it just vanished.
@@ -324,12 +328,22 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`is_placeholder` now only clears in one place:** `useAuth.ts`'s `updatePassword()`, right after the person actually sets a password — the real "became a live account" moment. A harmless no-op for a normal signup completing the same flow
 - **`PlaceholderPlayersPanel.vue`:** shows "Invited to `<email>` · `<time>` ago" under a player's name once they've been invited, and the button becomes "Resend / fix email" (pre-filled with the last email sent) instead of disappearing
 
+---
+
 ### v0.0.4.6 — Recovery links actually land on the set-password screen; profile editing; remove a placeholder
 > Three real gaps found in practice testing v0.0.4.5: the claim invite's link authenticated the person but never showed them anything to actually do; there was no way for anyone (not just a claimed placeholder) to edit their own display name or unit; and an admin had no way to back out of a placeholder they'd added by mistake, or give up on an invite rather than keep correcting it.
 - **⚠️ Manual dashboard step required:** `claim-placeholder-player`'s invite email now explicitly asks Supabase to redirect to `/login`. Supabase silently ignores this and falls back to whatever the **Site URL** is configured to unless `https://<your-domain>/login` (and your local dev origin, e.g. `http://localhost:5173/login`) is added under **Authentication → URL Configuration → Redirect URLs** in the dashboard. This is why the link "just logged you in" instead of showing the set-password form — the session *was* created correctly, but it landed somewhere with no set-password UI on it
 - **Belt-and-suspenders fix, no dashboard step needed for this part:** even with the redirect URL correctly allow-listed, added a router guard (`router/index.ts`) plus a watcher (`App.vue`) that force a redirect to `/login` the instant a recovery session is detected, regardless of which page it actually lands on — covers both a misconfigured Site URL and the inherent race where Supabase's URL-token detection is async and can finish after the first page's navigation already resolved
 - **Profile editing:** `ProfileView.vue` got an "Edit profile" button — display name and unit are now editable by the signed-in user themselves, not just settable by an admin at placeholder-creation time. New `useAuth.ts`'s `updateProfile()` backs it, using the same self-update RLS policy `updatePassword()` already relied on
 - **New `delete-placeholder-player` Edge Function** — global-admin-only, permanently removes a placeholder. Refuses to touch anyone no longer flagged `is_placeholder`, and relies on Postgres's own foreign-key constraint (not a reimplemented check) to reject deleting anyone with real 1v1 match history — `players`/`tournament_participants` cascade cleanly, `matches` doesn't, so the database itself is what protects real history. `PlaceholderPlayersPanel.vue` got a "Remove" action with an inline confirm step
+
+---
+
+### v0.0.4.7 — Add a late arrival mid-week, not just when starting one
+> No new schema or Edge Function needed — `add_tournament_match` and `generate_court_matches` already auto-enroll anyone new into the season (`insert into tournament_participants ... on conflict do nothing`) and already draw from the full league roster, not just this week's. The actual gap was purely on the frontend: "+ Someone new showed up" only existed inside `AttendeePicker.vue`, which only renders while *starting* a week — once one's already running, `AddMatchForm.vue` and `CourtGeneratorForm.vue` had no way to create a brand-new person at all.
+- Extracted that mini-form into a new shared `NewPlayerInline.vue` (same `create-placeholder-player` Edge Function underneath, nothing new there either) and dropped it into all three: `AttendeePicker.vue` (refactored onto the shared component, no behavior change), `CourtGeneratorForm.vue` (new player auto-checked into the current round, same as an existing attendee), and `AddMatchForm.vue` (new player drops into the first empty slot — Player A first, then B, then the doubles partner slots if that's checked — one less step than creating them and then hunting for them in a dropdown)
+
+---
 
 ## Quick start
 
