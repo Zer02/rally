@@ -26,6 +26,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: "/progress",
+    name: "progress",
+    component: () => import("@/views/ProgressView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
     path: "/player/:id",
     name: "player",
     component: () => import("@/views/PlayerView.vue"),

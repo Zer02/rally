@@ -101,6 +101,7 @@
 
         <template v-if="isAuthed">
           <RouterLink to="/challenge" class="nav-link">Challenge</RouterLink>
+          <RouterLink to="/progress"  class="nav-link">Progress</RouterLink>
           <RouterLink to="/profile"   class="nav-link">Profile</RouterLink>
           <RouterLink v-if="isAdmin" to="/referee" class="nav-link">Referee</RouterLink>
           <button class="btn btn-ghost btn-sm" @click="handleSignOut">Sign out</button>
@@ -129,6 +130,7 @@
 
         <template v-if="isAuthed">
           <RouterLink to="/challenge" class="nav-drop-link" @click="menuOpen = false">Challenge</RouterLink>
+          <RouterLink to="/progress"  class="nav-drop-link" @click="menuOpen = false">Progress</RouterLink>
           <RouterLink to="/profile"   class="nav-drop-link" @click="menuOpen = false">Profile</RouterLink>
           <RouterLink v-if="isAdmin" to="/referee" class="nav-drop-link" @click="menuOpen = false">Referee</RouterLink>
           <button class="btn btn-ghost btn-sm nav-drop-signout" @click="handleSignOut">Sign out</button>

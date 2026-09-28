@@ -22,6 +22,7 @@
             <button v-if="!editingProfile" class="btn btn-ghost" style="font-size:0.85rem" @click="startEditProfile">
               Edit profile
             </button>
+            <RouterLink to="/progress" style="text-decoration:none"><LevelBadge :xp="me.xp ?? 0" /></RouterLink>
             <TierBadge :rating="me.rating" />
           </div>
         </div>
@@ -157,6 +158,7 @@ import { useLeagueStore } from '@/stores/leagues'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
 import { supabase } from '@/lib/supabase'
 import TierBadge from '@/components/ui/TierBadge.vue'
+import LevelBadge from '@/components/ui/LevelBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import RatingChart from '@/components/ui/RatingChart.vue'
 import type { Match, Tournament } from '@/types'

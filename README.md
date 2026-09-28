@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.4.9**
+> Current version: **v0.0.5.0**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -359,6 +359,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`supabase-migration-v0.0.4.9.sql`:** adds an UPDATE policy on `leagues`, gated through the existing `is_league_admin()` function — the same check `create-placeholder-player` and every other per-league admin action already goes through, not a new one invented for this. Written idempotent (`drop policy if exists` first) like every other migration here, and validated by replaying the full history against a local Postgres instance
 - **`leagues.ts`:** new `isCurrentLeagueAdmin`, refreshed via the `is_league_admin` RPC whenever the current league changes — this is genuinely different from `useAuth`'s `isAdmin`, which only reflects the global super-admin flag, not per-league admin status. New `updateLeague()` chains `.select()` on the update specifically to catch the case where RLS silently blocks a non-admin's write (which doesn't error by default, just matches 0 rows) and turn it into a real error instead of a save that looked like it worked
 - **`AppNav.vue`:** league admins now see an "Edit '`<league name>`'" option in the switcher dropdown, prefilled with the league's actual stored name/icon — including the literal legacy `🏆` if that's genuinely what's stored, not the racket swap used for just *displaying* the badge. Clearing the icon field on save falls back to `🏆`, same as leaving it blank on creation always has
+
+---
+
+### v0.0.5.0 — Battle pass: XP, levels, and quests that reward showing up
+> The goal is a number that tracks every player's progression and keeps them wanting to play — including a player on a losing streak. So the quest catalog is weighted heavily toward participation and variety (play a match, play someone new, show up across several weeks) rather than results, and nothing takes XP away. Decisions confirmed up front: XP/level is **per league** (same as rating), and v1 ships a **fixed built-in quest catalog** rather than an admin quest editor.
+- **`supabase-migration-v0.0.5.0.sql`:** adds `players.xp`, a seeded `quest_templates` table (8 quests), and `player_quest_progress` (one row per player per quest per period). Only `sync_quest_progress(league_id)` writes progress or XP — it's `SECURITY DEFINER`, recomputes every player's progress from real match history (both ladder `matches` and round-robin `tournament_matches`, doubles included), and awards XP the first time a quest crosses its target. Idempotent: `completed_at` guards against double-awarding, and progress is recomputed rather than incremented. Validated by replaying the full migration history against a local Postgres instance, then functionally tested with fixture matches — first match awards Show Up + Fresh Face, a re-sync awards nothing extra, a second match the same week completes Double Header once, and the second match against the *same* opponent correctly does not re-trigger Fresh Face
+- **Starter quests:** *Weekly* — Show Up (play 1, 25 XP), Double Header (play 2, 40 XP), Fresh Face (play someone you've never played, 50 XP). *Monthly* — Regular (play in 3 different weeks, 100 XP), Social Butterfly (3 different opponents, 75 XP), Mix It Up (1 doubles match, 60 XP). *Seasonal* (tied to the active round robin season, hidden when none is running) — Season Veteran (5 round robin weeks, 150 XP), Bounce Back (play again after a loss, 50 XP). Weekly periods start Monday and monthly on the 1st, both in the database's timezone (UTC on Supabase)
+- **Levels are a client-side constant, not a table** — `src/lib/xp.ts`, same pattern as `TIERS` in `rating.ts`. Ten levels from Newcomer (0 XP) through Table Legend (2,250 XP), each level costing 50 XP more than the last. Named "levels" throughout, and the badge is `LevelBadge.vue`, so it never gets confused with the existing rating *tier* (Rookie → Champion)
+- **New `/progress` page** (`ProgressView.vue`, in the nav): current level and XP bar with "X XP to <next title>", quests grouped into this week / this month / this season with progress bars and a check when done, and a "Recently earned" history. Opening it runs the sync first, so XP is up to date the moment you look. `ProfileView.vue` shows the level badge next to the rating tier
+- **Known simplifications:** *Bounce Back* only looks at ladder matches, not round robin (kept bounded rather than generalizing every criteria type across both systems). `players.xp` isn't column-locked against a player editing their own row directly — same trust model `rating` already has, not a new class of risk. Sync currently runs when the Progress page opens, not on every match report, so a fresh result shows up next time someone opens it
 
 ---
 
