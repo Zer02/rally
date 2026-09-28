@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.0**
+> Current version: **v0.0.5.1**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -371,6 +371,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Known simplifications:** *Bounce Back* only looks at ladder matches, not round robin (kept bounded rather than generalizing every criteria type across both systems). `players.xp` isn't column-locked against a player editing their own row directly — same trust model `rating` already has, not a new class of risk. Sync currently runs when the Progress page opens, not on every match report, so a fresh result shows up next time someone opens it
 
 ---
+
+### v0.0.5.1 — Battle pass rebalance: play XP, retuned quests, a one-year pass
+
+> The v0.0.5.0 numbers were never balance-tested: XP flatlined after ~2 matches a week, the pass finished in about 4 months, and "Fresh Face" could be exhausted forever in a small league. XP is now two streams, tuned so a quest-focused player and a high-volume player earn about the same. XP remains a separate measurement from rating — it never changes ratings and winning earns nothing extra.
+
+- **`supabase-migration-v0.0.5.1.sql`:** adds `player_weekly_play_xp` and rewrites `sync_quest_progress()` to award **Play XP** — 15 XP per completed match for the first 5 matches each week, 2 XP per match after that. It is recomputed from match history for every week (so weeks nobody opened `/progress` are back-filled), awards only the difference each sync, and takes XP back if a match is cancelled. Quest XP is not clawed back.
+- **Quest retune (keys unchanged):** Show Up 15, Hat Trick 30 (was Double Header, now 3 matches), Fresh Face 40, Regular 80, Social Butterfly 40, Mix It Up 30, Season Veteran 100, Bounce Back 30. Fresh Face is now "play someone you haven't played in the last 30 days" (`play_lapsed_opponent`), so it never runs out.
+- **Balance model (simulated year, 20-person league):** a 4-matches/week player completing every quest and a 15-matches/week player ignoring quests both land at ~9,000-9,500 XP; a 25-matches/week grinder ends ~10% higher; a casual 2-matches/week player earns roughly a third.
+- **Levels:** `src/lib/xp.ts` curve reworked so Level 10 is 9,000 XP, about a year for a regular player. To change the pace, scale the level thresholds.
+- **`ProgressView.vue` / `progress` store:** shows this week's matches and Play XP under the level bar.
+- **Migration behaviour:** re-values already-completed quests to the new rewards, resets `players.xp` to quest XP, and clears the play-XP table so the first sync credits every past week. Safe to re-run. Validated against a local Postgres stub of the tables involved, applying v0.0.5.0 then v0.0.5.1 (twice), and functionally: 8 matches in a week gives 81 Play XP, a re-sync awards nothing extra, cancelling 3 matches takes back 6 XP, and Fresh Face triggers for an opponent last played 45 days ago but not for one played 10 days ago.
+- **Known limitation:** weekly/monthly *quest* progress is still only evaluated for the current period, so a quest earned in a week nobody opened `/progress` is not back-filled.
 
 ## Quick start
 

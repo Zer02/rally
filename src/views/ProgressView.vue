@@ -1,4 +1,4 @@
-<!-- src/views/ProgressView.vue — v0.0.5.0 -->
+<!-- src/views/ProgressView.vue — v0.0.5.1 -->
 <template>
   <main class="page">
     <div class="container">
@@ -37,6 +37,12 @@
               {{ lp.xpForLevel - lp.xpIntoLevel }} XP to <strong>{{ lp.next.title }}</strong>
             </template>
             <template v-else>You've reached the top level. Legend.</template>
+          </p>
+
+          <p class="play-xp muted">
+            This week: {{ progress.playXpWeek.matches }} {{ progress.playXpWeek.matches === 1 ? 'match' : 'matches' }}
+            played · <strong class="mono">+{{ progress.playXpWeek.xp }} XP</strong>
+            <span v-if="progress.playXpWeek.matches > 5">(after 5 matches each one earns a little less)</span>
           </p>
         </div>
 
@@ -134,6 +140,7 @@ watch(() => leagueStore.currentLeagueId, load)
 .level-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ball); margin-bottom: 0.25rem; }
 .level-title { font-family: var(--font-display); font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.1; }
 .level-xp { color: var(--txt-secondary); font-size: 1rem; }
+.play-xp { font-size: 0.85rem; margin-top: 0.5rem; }
 .xp-track { height: 12px; border-radius: 999px; background: var(--table-light); border: 1px solid var(--line); overflow: hidden; }
 .xp-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--ball), #f3dc7a); transition: width 0.6s ease; }
 .level-next { margin-top: 0.7rem; font-size: 0.85rem; }

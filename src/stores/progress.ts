@@ -1,4 +1,4 @@
-// src/stores/progress.ts — v0.0.5.0
+// src/stores/progress.ts — v0.0.5.1
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -23,6 +23,7 @@ export interface EarnedQuest {
 export const useProgressStore = defineStore('progress', () => {
   const quests  = ref<QuestView[]>([])
   const recent  = ref<EarnedQuest[]>([])
+  const playXpWeek = ref<{ matches: number; xp: number }>({ matches: 0, xp: 0 })
   const loading = ref(false)
   const error   = ref<string | null>(null)
 
@@ -46,14 +47,25 @@ export const useProgressStore = defineStore('progress', () => {
     const { error: syncErr } = await supabase.rpc('sync_quest_progress', { p_league_id: leagueId })
     if (syncErr) error.value = syncErr.message // still show whatever's already recorded
 
-    const [tplRes, progRes, seasonRes] = await Promise.all([
+    const weekStart = new Date()
+    weekStart.setUTCHours(0, 0, 0, 0)
+    weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7)) // Monday, matches date_trunc('week')
+
+    const [tplRes, progRes, seasonRes, playRes] = await Promise.all([
       supabase.from('quest_templates').select('*').eq('active', true),
       supabase.from('player_quest_progress').select('*')
         .eq('league_id', leagueId).eq('profile_id', user.value.id),
       supabase.from('tournaments').select('created_at')
         .eq('league_id', leagueId).neq('status', 'completed')
         .order('created_at', { ascending: false }).limit(1),
+      supabase.from('player_weekly_play_xp').select('matches_counted, xp_awarded')
+        .eq('league_id', leagueId).eq('profile_id', user.value.id)
+        .eq('week_start', weekStart.toISOString()).maybeSingle(),
     ])
+    playXpWeek.value = {
+      matches: playRes.data?.matches_counted ?? 0,
+      xp:      playRes.data?.xp_awarded ?? 0,
+    }
 
     if (tplRes.error || progRes.error) {
       error.value = (tplRes.error ?? progRes.error)!.message
@@ -119,5 +131,5 @@ export const useProgressStore = defineStore('progress', () => {
     loading.value = false
   }
 
-  return { quests, recent, loading, error, byCadence, fetch }
+  return { quests, recent, playXpWeek, loading, error, byCadence, fetch }
 })
