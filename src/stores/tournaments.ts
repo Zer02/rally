@@ -362,7 +362,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     const { data, error: err } = await supabase
       .from('tournament_participants')
       .select(`
-        wins, losses, seed, adjusted_score,
+        wins, losses, seed, adjusted_score, points_for, points_against, rr_rating,
         tournament:tournaments!inner(id, name, completed_at, league_id, status)
       `)
       .eq('profile_id', profileId)
@@ -371,10 +371,38 @@ export const useTournamentsStore = defineStore('tournaments', () => {
 
     if (err) throw new Error(err.message)
 
-    type Row = { wins: number; losses: number; seed: number | null; adjusted_score: number | null; tournament: Tournament }
+    type Row = {
+      wins: number; losses: number; seed: number | null; adjusted_score: number | null
+      points_for: number; points_against: number; rr_rating: number; tournament: Tournament
+    }
     return ((data ?? []) as unknown as Row[]).sort(
       (a, b) => new Date(b.tournament.completed_at ?? 0).getTime() - new Date(a.tournament.completed_at ?? 0).getTime()
     )
+  }
+
+  // Every completed round robin match a player was in (singles and
+  // doubles), newest first — for the Profile page's match history.
+  // tournamentId null = every season in this league.
+  async function fetchProfileMatches(profileId: string, tournamentId: string | null = null) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) return []
+
+    let q = supabase
+      .from('tournament_matches')
+      .select(`${MATCH_SELECT}, tournament:tournaments!inner(id, name, league_id)`)
+      .eq('status', 'completed')
+      .eq('tournament.league_id', leagueId)
+      .or(
+        `player_a_id.eq.${profileId},player_b_id.eq.${profileId},` +
+        `player_a2_id.eq.${profileId},player_b2_id.eq.${profileId}`
+      )
+      .order('completed_at', { ascending: false })
+      .limit(200)
+    if (tournamentId) q = q.eq('tournament_id', tournamentId)
+
+    const { data, error: err } = await q
+    if (err) throw new Error(err.message)
+    return (data ?? []) as unknown as (TournamentMatch & { tournament: { id: string; name: string } })[]
   }
 
   // Head-to-head singles history between two players, across every season
@@ -416,7 +444,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     pendingMatches, inProgressMatches, completedMatches, courtsInUse,
     myChallengeUsedThisWeek, canChallenge,
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
-    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchHeadToHead,
+    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchProfileMatches, fetchHeadToHead,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
     callToCourt, uncallMatch, addMatch, cancelMatch, generateCourtMatches,
   }

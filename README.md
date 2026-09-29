@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.1**
+> Current version: **v0.0.5.2**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -383,6 +383,17 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`ProgressView.vue` / `progress` store:** shows this week's matches and Play XP under the level bar.
 - **Migration behaviour:** re-values already-completed quests to the new rewards, resets `players.xp` to quest XP, and clears the play-XP table so the first sync credits every past week. Safe to re-run. Validated against a local Postgres stub of the tables involved, applying v0.0.5.0 then v0.0.5.1 (twice), and functionally: 8 matches in a week gives 81 Play XP, a re-sync awards nothing extra, cancelling 3 matches takes back 6 XP, and Fresh Face triggers for an opponent last played 45 days ago but not for one played 10 days ago.
 - **Known limitation:** weekly/monthly *quest* progress is still only evaluated for the current period, so a quest earned in a week nobody opened `/progress` is not back-filled.
+
+### v0.0.5.2 — Round robin becomes the default leaderboard and profile
+
+> With the round robin now the main way the league plays, the Standings and Profile pages open on round robin data instead of the ladder. Each has dropdowns to change what you're looking at, and the ladder versions are one dropdown away, unchanged. No migration and no backend changes.
+
+- **Leaderboard (`LeaderboardView.vue`):** a **Board** dropdown switches between *Round robin* (default) and *Ladder*. The ladder view moved unchanged into `components/leaderboard/LadderBoard.vue`.
+- **`RoundRobinBoard.vue` (new):** a **Season** dropdown (running season, any finished season, or All-time) and a **Rank by** dropdown. Season views rank by Standings (wins, then games won; finished seasons use their official final placing), RR rating, Win %, or Games won. All-time ranks career stats by Titles, Seasons played, or Best finish. It defaults to the latest finished season when no season is running. Differential stays out of the rankings, as before.
+- **Profile (`ProfileView.vue`):** the same **Board** dropdown. The ladder profile (rating chart, ladder matches, season W-L) is unchanged, and the old Round Robin card is folded into the new view.
+- **`RoundRobinProfile.vue` (new):** a **Season** dropdown (running, any finished season the player was in, or All-time) and a **Show** dropdown (Overview or Match history). Overview shows RR rating, rank or final placing, W-L, win % and games won, or career totals with season history on All-time. Match history lists every completed singles and doubles match with partner, opponents, score and date. Doubles results are decided from the score, because `winner_id` only names one player on a doubles match.
+- **`stores/tournaments.ts`:** new `fetchProfileMatches(profileId, tournamentId?)`, and `fetchProfileRoundRobinHistory` also returns `points_for`, `points_against` and `rr_rating` (additive; PlayerView is unaffected).
+- **Not included:** there is no round robin rating graph, because `rr_rating` only stores its current value and no history exists to plot.
 
 ## Quick start
 
