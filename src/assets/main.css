@@ -34,6 +34,9 @@
 html { font-size: 16px; }
 
 body {
+  /* Last-resort guard: a stray wide element should never give the whole page a
+     horizontal scrollbar. Real overflow causes are fixed where they occur. */
+  overflow-x: hidden;
   background: var(--table);
   color: var(--txt-primary);
   font-family: var(--font-body);

@@ -1,7 +1,7 @@
 <template>
-  <nav class="nav">
-    <div class="nav-inner container">
-      <div class="nav-brand">
+  <nav class="nav" :class="{ collapsed }">
+    <div ref="innerRef" class="nav-inner container">
+      <div ref="brandRef" class="nav-brand">
         <div class="league-switcher" ref="switcherRef">
           <button
             class="league-icon-btn"
@@ -94,7 +94,7 @@
         <RouterLink to="/" class="nav-logo" @click="menuOpen = false">RALLY</RouterLink>
       </div>
 
-      <div class="nav-links">
+      <div ref="linksRef" class="nav-links">
         <RouterLink to="/leaderboard" class="nav-link">Leaderboard</RouterLink>
         <RouterLink to="/matches"     class="nav-link">Matches</RouterLink>
         <RouterLink to="/tournament"  class="nav-link">Round Robin</RouterLink>
@@ -123,7 +123,7 @@
     </div>
 
     <Transition name="nav-drop">
-      <div v-if="menuOpen" class="nav-drop">
+      <div v-if="menuOpen && collapsed" class="nav-drop">
         <RouterLink to="/leaderboard" class="nav-drop-link" @click="menuOpen = false">Leaderboard</RouterLink>
         <RouterLink to="/matches"     class="nav-drop-link" @click="menuOpen = false">Matches</RouterLink>
         <RouterLink to="/tournament"  class="nav-drop-link" @click="menuOpen = false">Round Robin</RouterLink>
@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useLeagueStore } from '@/stores/leagues'
 import { useRouter } from 'vue-router'
@@ -167,6 +167,28 @@ const leagueStore = useLeagueStore()
 const router = useRouter()
 
 const menuOpen = ref(false)
+
+// v0.0.5.4: the top bar collapses into the burger menu as soon as the links
+// stop fitting, instead of at a fixed 600px. The number of links changes
+// (signed out, signed in, admin), and the real font is wider than the
+// fallback, so a fixed breakpoint always ended up wrong for somebody —
+// the links overflowed and the whole page grew a horizontal scrollbar.
+// The links row is always rendered (invisible when collapsed, see .nav.collapsed)
+// so its natural width can be measured either way.
+const innerRef = ref<HTMLElement | null>(null)
+const brandRef = ref<HTMLElement | null>(null)
+const linksRef = ref<HTMLElement | null>(null)
+const collapsed = ref(false)
+let resizeObs: ResizeObserver | null = null
+
+function measureNav() {
+  const inner = innerRef.value, brand = brandRef.value, links = linksRef.value
+  if (!inner || !brand || !links) return
+  const cs = getComputedStyle(inner)
+  const avail = inner.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+  // 32px of breathing room between the brand and the first link
+  collapsed.value = brand.offsetWidth + links.offsetWidth + 32 > avail
+}
 const leagueMenuOpen = ref(false)
 const switcherRef = ref<HTMLElement | null>(null)
 
@@ -187,11 +209,23 @@ onMounted(() => {
   leagueStore.fetchAllLeagues()
   if (isAuthed.value) leagueStore.fetchMyLeagues()
   document.addEventListener('click', handleOutsideClick)
+
+  measureNav()
+  resizeObs = new ResizeObserver(measureNav)
+  if (innerRef.value) resizeObs.observe(innerRef.value)
+  // Web fonts change the link widths once they load.
+  document.fonts?.ready.then(measureNav)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleOutsideClick)
+  resizeObs?.disconnect()
 })
+
+// The set of links changes with auth state / admin role.
+watch([isAuthed, isAdmin], () => nextTick(measureNav))
+// Never leave the dropdown open once the full bar fits again.
+watch(collapsed, (c) => { if (!c) menuOpen.value = false })
 
 // Leagues aren't known until auth resolves (fetchMyLeagues needs the
 // user id), so re-fetch once sign-in completes rather than only on mount.
@@ -337,7 +371,7 @@ async function handleUpdateLeague() {
 .league-create-icon { width: 3.5rem; flex-shrink: 0; text-align: center; padding-left: 0.4rem; padding-right: 0.4rem; }
 .league-menu-error { font-size: 0.75rem; color: var(--loss, #e0716a); padding: 0.4rem; }
 
-.nav-links { display: flex; align-items: center; gap: 1.25rem; }
+.nav-links { display: flex; align-items: center; gap: 1.25rem; flex-shrink: 0; }
 .nav-link {
   font-size: 0.875rem; font-weight: 500;
   color: var(--txt-secondary);
@@ -363,7 +397,7 @@ async function handleUpdateLeague() {
 .nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
 .nav-drop {
-  display: none;
+  display: flex;
   flex-direction: column;
   border-top: 1px solid var(--line);
   background: var(--table-mid);
@@ -382,11 +416,17 @@ async function handleUpdateLeague() {
 .nav-drop-enter-active, .nav-drop-leave-active { transition: opacity 0.15s, transform 0.15s; }
 .nav-drop-enter-from, .nav-drop-leave-to { opacity: 0; transform: translateY(-6px); }
 
+/* Collapsed = the links don't fit (measured in script). The links row stays
+   in the DOM, invisible and out of flow, so it can still be measured. */
+.nav.collapsed .nav-links {
+  position: absolute; top: 0; right: 0;   /* grows leftwards, so it can't add page width */
+  visibility: hidden; pointer-events: none;
+  width: max-content;
+}
+.nav.collapsed .nav-burger { display: flex; }
+
 @media (max-width: 600px) {
   .nav-inner { height: auto; padding: 0.6rem 1rem; }
   .nav-logo { font-size: 1.05rem; }
-  .nav-links { display: none; }
-  .nav-burger { display: flex; }
-  .nav-drop { display: flex; }
 }
 </style>

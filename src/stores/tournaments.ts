@@ -428,6 +428,37 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     }[])
   }
 
+  // The league's most recent completed round robin / bracket / challenge
+  // matches, newest first, for the Matches page. Rating changes come from
+  // rr_rating_history (v0.0.5.3); if that table isn't there yet the matches
+  // still load, just without the deltas.
+  async function fetchLeagueMatches(limit = 60) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) return { matches: [] as (TournamentMatch & { tournament: { id: string; name: string } })[], deltas: {} as Record<string, number> }
+
+    const { data, error: err } = await supabase
+      .from('tournament_matches')
+      .select(`${MATCH_SELECT}, tournament:tournaments!inner(id, name, league_id)`)
+      .eq('status', 'completed')
+      .eq('tournament.league_id', leagueId)
+      .order('completed_at', { ascending: false })
+      .limit(limit)
+    if (err) throw new Error(err.message)
+
+    const matches = (data ?? []) as unknown as (TournamentMatch & { tournament: { id: string; name: string } })[]
+    const deltas: Record<string, number> = {}
+    if (matches.length) {
+      const { data: hist, error: hErr } = await supabase
+        .from('rr_rating_history')
+        .select('match_id, profile_id, delta')
+        .in('match_id', matches.map(m => m.id))
+      if (!hErr) for (const h of (hist ?? []) as { match_id: string; profile_id: string; delta: number }[]) {
+        deltas[`${h.match_id}:${h.profile_id}`] = h.delta
+      }
+    }
+    return { matches, deltas }
+  }
+
   // Head-to-head singles history between two players, across every season
   // in this league — used by PlayerView's Round Robin H2H card. Doubles
   // matches are excluded: with 4 players on court, "head-to-head" doesn't
@@ -467,7 +498,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     pendingMatches, inProgressMatches, completedMatches, courtsInUse,
     myChallengeUsedThisWeek, canChallenge,
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
-    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchProfileMatches, fetchProfileRatingHistory, fetchHeadToHead,
+    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchProfileMatches, fetchProfileRatingHistory, fetchLeagueMatches, fetchHeadToHead,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
     callToCourt, uncallMatch, addMatch, cancelMatch, generateCourtMatches,
   }

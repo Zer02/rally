@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.3**
+> Current version: **v0.0.5.4**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -406,6 +406,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Validated** on a local Postgres stub of the tournament tables: replayed history matched stored ratings exactly (0 mismatches) across singles, doubles and a challenge match; challenge matches write no history; doubles write 4 rows; new matches reported through the updated function write the right rows; re-running the migration reproduces identical numbers; deltas sum to zero per match.
 - **Layout fix (`src/assets/main.css`):** the Round Robin page (`TournamentView`) puts `.page` and `.container` on the same element, and `.page`'s `padding` shorthand (defined after `.container`) zeroed the container's side padding. Its title, cards and tables sat flush against the screen edge. `.page` now sets only top and bottom padding, so the container's side padding applies. Other pages are unaffected because they nest `.container` inside `.page`.
 - **Not included:** the graph is on your own Profile page only. The read-only Player page for other players is unchanged.
+
+### v0.0.5.4 — Responsive nav and a scoreboard-style Matches page
+
+> Two things reported from real use: the top bar didn't collapse into the burger menu until 600px, so on tablets and narrow desktop windows the links ran off the screen and the page grew a horizontal scrollbar; and the Matches page didn't make it clear who won. No migration.
+
+- **`AppNav.vue`:** the bar now collapses into the burger menu as soon as the links stop fitting, measured with a `ResizeObserver` instead of a fixed breakpoint. The number of links changes (signed out, signed in, admin) and the real font is wider than the fallback, so any fixed width ended up wrong for somebody. It re-measures when the web font loads and when you sign in or out.
+- **`main.css`:** `body` gets `overflow-x: hidden` as a last-resort guard against a stray wide element giving the whole page a horizontal scrollbar. Sweeping every page at 390px and 768px wide found no page-level horizontal overflow; wide tables still scroll inside their own card, as before.
+- **`ScoreCard.vue` (new):** a match drawn as a scoreboard. One row per side; the winner's row is tinted green with a check badge and bold name, the loser's is dimmed. Shows per-game scores (the game each side won is bold), the games-won total, and each player's rating change. If you played, the card gets a green or red edge and a "You won" / "You lost" label. Handles doubles (two names, overlapping avatars).
+- **`MatchCard.vue`:** rebuilt on `ScoreCard` for ladder matches. The meaningless "completed" pill is gone; pending/accepted/disputed matches keep their status pill and Accept / Decline / Submit result buttons. The rating deltas were already stored on every ladder match but never displayed.
+- **`MatchesView.vue`:** a **Board** dropdown (*Round robin*, the default, or *Ladder*) and a **Show** dropdown (*All matches* or *My matches*). The Matches page previously listed only ladder matches; round robin results (singles, doubles, bracket, challenge) now appear too, using the same cards, with the season name and rating change per player. Ladder-only sections (needs your attention, waiting for opponent, disputed results) stay on the Ladder board, and the Round robin board shows a banner when a ladder match needs your attention so a challenge can't go unseen.
+- **`stores/tournaments.ts`:** new `fetchLeagueMatches()`. Rating changes come from `rr_rating_history`; if v0.0.5.3's migration hasn't been run yet, matches still load, just without deltas.
+- **Validated** in a headless browser with mocked data: nav collapse across widths from 1200px down to 390px (the row now collapses between 860px and 820px in the test environment; the exact point depends on the font), all pages at 390px and 768px, and both Matches boards at phone and desktop widths.
 
 ## Quick start
 
