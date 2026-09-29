@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.4**
+> Current version: **v0.0.5.5**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -418,6 +418,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`MatchesView.vue`:** a **Board** dropdown (*Round robin*, the default, or *Ladder*) and a **Show** dropdown (*All matches* or *My matches*). The Matches page previously listed only ladder matches; round robin results (singles, doubles, bracket, challenge) now appear too, using the same cards, with the season name and rating change per player. Ladder-only sections (needs your attention, waiting for opponent, disputed results) stay on the Ladder board, and the Round robin board shows a banner when a ladder match needs your attention so a challenge can't go unseen.
 - **`stores/tournaments.ts`:** new `fetchLeagueMatches()`. Rating changes come from `rr_rating_history`; if v0.0.5.3's migration hasn't been run yet, matches still load, just without deltas.
 - **Validated** in a headless browser with mocked data: nav collapse across widths from 1200px down to 390px (the row now collapses between 860px and 820px in the test environment; the exact point depends on the font), all pages at 390px and 768px, and both Matches boards at phone and desktop widths.
+
+### v0.0.5.5 — New favicon
+
+> The browser-tab icon is now the tennis ball and racket artwork instead of the v0.0.4.8 racket SVG.
+
+- **`public/`:** the icon was cropped from the supplied image (tightened around the circle so it stays readable at 16-32px) and exported as `favicon.ico` (16/32/48), `favicon-32.png`, `favicon-192.png`, `favicon-512.png`, and `apple-touch-icon.png` (180px, full square because iOS rounds it itself). The tab and PWA versions have rounded corners; the light background plate is part of the artwork, so it shows as a light rounded square on dark browser themes.
+- **`index.html`:** the single `favicon.svg` link is replaced by the ICO, 32px PNG, 192px PNG and Apple touch icon links. `public/favicon.svg` is deleted.
+- **Unchanged:** the nav-bar logo and default league icon are still the `RacketIcon.vue` SVG, and the page title still has the 🏓 emoji.
+- **Note:** browsers cache favicons hard. If the old one still shows after deploying, hard-refresh (Ctrl+Shift+R) or open the site in a private window.
 
 ## Quick start
 
