@@ -50,7 +50,10 @@ h3 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transfor
 
 /* ── Layout ── */
 .container { max-width: 900px; margin: 0 auto; padding: 0 1.25rem; }
-.page      { padding: 2rem 0 6rem; min-height: 100vh; }
+/* Vertical padding only: TournamentView puts .page and .container on the
+   same element, and a padding shorthand here (which comes after .container)
+   zeroed .container's side padding, leaving its content flush to the edge. */
+.page      { padding-top: 2rem; padding-bottom: 6rem; min-height: 100vh; }
 
 /* ── Cards ── */
 .card { background: var(--table-mid); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow); }
@@ -175,7 +178,7 @@ select.input { cursor: pointer; }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 @media (max-width: 600px) {
-  .page { padding: 1rem 0 5rem; }
+  .page { padding-top: 1rem; padding-bottom: 5rem; }
   .stat-value { font-size: 1.1rem; }
 
   /* auto-fit was leaving 2 orphaned empty grid cells (rendered as a solid

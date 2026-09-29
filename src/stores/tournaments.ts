@@ -405,6 +405,29 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     return (data ?? []) as unknown as (TournamentMatch & { tournament: { id: string; name: string } })[]
   }
 
+  // A player's round robin rating after every completed match (see
+  // rr_rating_history, v0.0.5.3), oldest first. tournamentId null = every
+  // season in this league. `delta` is the change that match made, so the
+  // rating before the first match is rating - delta.
+  async function fetchProfileRatingHistory(profileId: string, tournamentId: string | null = null) {
+    const leagueId = useLeagueStore().currentLeagueId
+    if (!leagueId) return []
+
+    let q = supabase
+      .from('rr_rating_history')
+      .select('tournament_id, match_id, rating, delta, recorded_at, tournament:tournaments!inner(id, league_id)')
+      .eq('profile_id', profileId)
+      .eq('tournament.league_id', leagueId)
+      .order('recorded_at', { ascending: true })
+    if (tournamentId) q = q.eq('tournament_id', tournamentId)
+
+    const { data, error: err } = await q
+    if (err) throw new Error(err.message)
+    return ((data ?? []) as unknown as {
+      tournament_id: string; match_id: string; rating: number; delta: number; recorded_at: string
+    }[])
+  }
+
   // Head-to-head singles history between two players, across every season
   // in this league — used by PlayerView's Round Robin H2H card. Doubles
   // matches are excluded: with 4 players on court, "head-to-head" doesn't
@@ -444,7 +467,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     pendingMatches, inProgressMatches, completedMatches, courtsInUse,
     myChallengeUsedThisWeek, canChallenge,
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
-    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchProfileMatches, fetchHeadToHead,
+    fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchProfileMatches, fetchProfileRatingHistory, fetchHeadToHead,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
     callToCourt, uncallMatch, addMatch, cancelMatch, generateCourtMatches,
   }

@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.2**
+> Current version: **v0.0.5.3**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -391,9 +391,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Leaderboard (`LeaderboardView.vue`):** a **Board** dropdown switches between *Round robin* (default) and *Ladder*. The ladder view moved unchanged into `components/leaderboard/LadderBoard.vue`.
 - **`RoundRobinBoard.vue` (new):** a **Season** dropdown (running season, any finished season, or All-time) and a **Rank by** dropdown. Season views rank by Standings (wins, then games won; finished seasons use their official final placing), RR rating, Win %, or Games won. All-time ranks career stats by Titles, Seasons played, or Best finish. It defaults to the latest finished season when no season is running. Differential stays out of the rankings, as before.
 - **Profile (`ProfileView.vue`):** the same **Board** dropdown. The ladder profile (rating chart, ladder matches, season W-L) is unchanged, and the old Round Robin card is folded into the new view.
-- **`RoundRobinProfile.vue` (new):** a **Season** dropdown (running, any finished season the player was in, or All-time) and a **Show** dropdown (Overview or Match history). Overview shows RR rating, rank or final placing, W-L, win % and games won, or career totals with season history on All-time. Match history lists every completed singles and doubles match with partner, opponents, score and date. Doubles results are decided from the score, because `winner_id` only names one player on a doubles match.
+- **`RoundRobinProfile.vue` (new):** one **Season** dropdown (running season, any finished season the player was in, or All-time), and everything shows at once like the ladder profile: stat cards (RR rating, rank or final placing, W-L, win %, games won, games lost; career totals with season history on All-time) and a match history of every completed singles and doubles match with partner, opponents, score and date. Doubles results are decided from the score, because `winner_id` only names one player on a doubles match.
 - **`stores/tournaments.ts`:** new `fetchProfileMatches(profileId, tournamentId?)`, and `fetchProfileRoundRobinHistory` also returns `points_for`, `points_against` and `rr_rating` (additive; PlayerView is unaffected).
 - **Not included:** there is no round robin rating graph, because `rr_rating` only stores its current value and no history exists to plot.
+
+### v0.0.5.3 — Round robin rating graph on the profile
+
+> The Profile page's graph only ever charted the ladder rating, because `rr_rating` stored just its current value. Round robin ratings now keep a per-match history, so the round robin profile has its own graph.
+
+- **`supabase-migration-v0.0.5.3.sql`:** adds `rr_rating_history` (one row per player per completed round robin match: rating after the match and the change; public read like `elo_history`, written only by the SECURITY DEFINER function). `report_tournament_match()` is re-declared from its v0.0.4.0 body with one addition, the history insert; scoring, records and the rating maths are untouched.
+- **Backfill:** existing completed matches are replayed in `completed_at` order per season with the same team-average Elo (K = 32, start 1000, challenge matches excluded), so the graph has history from day one. Each replayed final rating is checked against the stored `rr_rating` and any mismatch is printed as a NOTICE (`... 0 mismatching player(s)` is what you want to see). Safe to re-run: the table is cleared and rebuilt from the matches.
+- **`RoundRobinProfile.vue`:** an **RR rating history** graph now sits between the stat cards and the match list for the selected season, starting from the rating before the first match. **All-time** plots each season's ending rating instead, because every season restarts everyone at 1000 and one continuous line would mislead. Match history gains a **Δ** column showing the rating change per match.
+- **`stores/tournaments.ts`:** new `fetchProfileRatingHistory(profileId, tournamentId?)`.
+- **Validated** on a local Postgres stub of the tournament tables: replayed history matched stored ratings exactly (0 mismatches) across singles, doubles and a challenge match; challenge matches write no history; doubles write 4 rows; new matches reported through the updated function write the right rows; re-running the migration reproduces identical numbers; deltas sum to zero per match.
+- **Layout fix (`src/assets/main.css`):** the Round Robin page (`TournamentView`) puts `.page` and `.container` on the same element, and `.page`'s `padding` shorthand (defined after `.container`) zeroed the container's side padding. Its title, cards and tables sat flush against the screen edge. `.page` now sets only top and bottom padding, so the container's side padding applies. Other pages are unaffected because they nest `.container` inside `.page`.
+- **Not included:** the graph is on your own Profile page only. The read-only Player page for other players is unchanged.
 
 ## Quick start
 
