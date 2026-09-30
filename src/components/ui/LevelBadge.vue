@@ -1,4 +1,4 @@
-<!-- src/components/ui/LevelBadge.vue — v0.0.5.0
+<!-- src/components/ui/LevelBadge.vue — v0.0.5.6
      Battle-pass level pill. Deliberately NOT called "tier": TierBadge
      already means the rating tier (Rookie → Champion) in this app. -->
 <template>
@@ -11,9 +11,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { getLevel } from '@/lib/xp'
+import { useSport } from '@/composables/useSport'
 
 const props = defineProps<{ xp: number; compact?: boolean }>()
-const lvl = computed(() => getLevel(props.xp))
+const { sport } = useSport()
+const lvl = computed(() => getLevel(props.xp, sport.value))
 </script>
 
 <style scoped>

@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.5**
+> Current version: **v0.0.5.6**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -393,7 +393,7 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Profile (`ProfileView.vue`):** the same **Board** dropdown. The ladder profile (rating chart, ladder matches, season W-L) is unchanged, and the old Round Robin card is folded into the new view.
 - **`RoundRobinProfile.vue` (new):** one **Season** dropdown (running season, any finished season the player was in, or All-time), and everything shows at once like the ladder profile: stat cards (RR rating, rank or final placing, W-L, win %, games won, games lost; career totals with season history on All-time) and a match history of every completed singles and doubles match with partner, opponents, score and date. Doubles results are decided from the score, because `winner_id` only names one player on a doubles match.
 - **`stores/tournaments.ts`:** new `fetchProfileMatches(profileId, tournamentId?)`, and `fetchProfileRoundRobinHistory` also returns `points_for`, `points_against` and `rr_rating` (additive; PlayerView is unaffected).
-- **Not included:** there is no round robin rating graph, because `rr_rating` only stores its current value and no history exists to plot.
+- **Not included:** a round robin rating graph, because `rr_rating` only stored its current value at this point. Added in v0.0.5.3.
 
 ### v0.0.5.3 — Round robin rating graph on the profile
 
@@ -427,6 +427,20 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`index.html`:** the single `favicon.svg` link is replaced by the ICO, 32px PNG, 192px PNG and Apple touch icon links. `public/favicon.svg` is deleted.
 - **Unchanged:** the nav-bar logo and default league icon are still the `RacketIcon.vue` SVG, and the page title still has the 🏓 emoji.
 - **Note:** browsers cache favicons hard. If the old one still shows after deploying, hard-refresh (Ctrl+Shift+R) or open the site in a private window.
+
+### v0.0.5.6 — Wording and icons follow the league's sport
+
+> The home page said "Building Ping Pong" and "Own the table" whatever league was selected, because that text was hard-coded and `leagues.sport` was never read. Sport-specific wording now comes from the current league, so it changes when you switch leagues. No migration.
+
+- **`src/lib/sports.ts` (new):** one table of sports (Ping Pong, Tennis, Pickleball, Badminton, Squash, Padel), each with a label, emoji, playing surface ("table" / "court") and gear ("Paddle" / "Racket"). `leagues.sport` was free text, so lookups are forgiving: `ping-pong`, `Table Tennis` and `pingpong` all resolve to Ping Pong. An unrecognised sport keeps its own name as the label and gets neutral wording rather than another sport's. To add a sport, add one entry there.
+- **`src/composables/useSport.ts` (new):** the current league's sport as a reactive value. For a signed-out visitor it falls back to the public league list and the league remembered in the browser.
+- **Home page:** the eyebrow is "Building {sport}", the headline is "Own the {table|court}.", and the first feature card uses the sport's emoji. With no league known yet it reads "Building League" and "Own the court."
+- **Browser tab title and sign-in header:** the emoji follows the sport (🏓 or 🎾). `index.html`'s static title is now plain "RALLY" until a league is known. The favicon image is unchanged.
+- **Level titles (battle pass):** the sport-flavoured titles are built from the sport. Tennis gets Court Legend / Court Tactician / Court Regular / Racket Enthusiast; Ping Pong gets Table Legend / Table Tactician / Table Regular / Paddle Enthusiast. Level 9 was "Court Regular" for every sport and is now "Table Regular" for ping pong. `getLevel`, `getNextLevel` and `levelProgress` take an optional sport; `LevelBadge` and the Progress page pass it.
+- **League menu:** "Create a league" now has a sport dropdown instead of a free-text slug, so typos can't create an unrecognised sport. League admins get the same dropdown under "Edit", which is how to fix an existing league whose sport was typed in a way that isn't recognised. If a league's stored sport isn't in the list, it's kept as an option so saving doesn't change it.
+- **Fixed while in there:** `types/index.ts` gains `xp?: number` on `Player` (missing since v0.0.5.0, which made the type-checker complain about the Progress page).
+- **Validated** in a headless browser with mock data: with a "ping-pong" league and a "Tennis" league, switching between them in the league menu changed the home eyebrow, headline, feature emoji and tab title each time; no page errors on the home, login, progress, profile, leaderboard or matches pages; the create-league dropdown renders. The sport lookup and level titles were checked directly for six spellings plus an unknown sport and no sport.
+- **Not changed:** the league's own icon (still set by league admins), the racket logo in the nav, and generic copy like "neighbors" and "the building" on the home page.
 
 ## Quick start
 

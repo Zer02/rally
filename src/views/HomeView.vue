@@ -2,8 +2,8 @@
   <main class="page">
     <div class="container">
       <section class="hero">
-        <p class="eyebrow">Building Ping Pong</p>
-        <h1>Track every rally.<br /><em>Own the table.</em></h1>
+        <p class="eyebrow">Building {{ sport.label }}</p>
+        <h1>Track every rally.<br /><em>Own the {{ sport.surface }}.</em></h1>
         <p class="hero-sub">
           Live ratings for everyone in the building. Challenge neighbors, log scores,
           climb the leaderboard.
@@ -26,7 +26,7 @@
       <section class="features">
         <div class="feature-grid">
           <div class="feature card">
-            <span class="feature-icon">🏓</span>
+            <span class="feature-icon">{{ sport.emoji }}</span>
             <h4>Challenge flow</h4>
             <p>Send a challenge, your neighbor accepts, play the match, log the score. Both players see the rating update instantly.</p>
           </div>
@@ -48,7 +48,9 @@
 
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth'
+import { useSport } from '@/composables/useSport'
 const { isAuthed } = useAuth()
+const { sport } = useSport()
 </script>
 
 <style scoped>

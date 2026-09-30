@@ -2,7 +2,7 @@
   <main class="page">
     <div class="container">
       <div class="auth-wrap">
-        <RouterLink to="/" class="nav-logo" style="display:block;margin-bottom:2rem;font-family:var(--font-display);color:var(--ball);font-size:1.3rem">RALLY 🏓</RouterLink>
+        <RouterLink to="/" class="nav-logo" style="display:block;margin-bottom:2rem;font-family:var(--font-display);color:var(--ball);font-size:1.3rem">RALLY {{ sport.emoji }}</RouterLink>
 
         <div class="card auth-card">
           <div v-if="!isPasswordRecovery" class="auth-tabs">
@@ -72,8 +72,10 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { useSport } from '@/composables/useSport'
 
 const { signIn, signUp, updatePassword, isPasswordRecovery } = useAuth()
+const { sport } = useSport()
 const router = useRouter()
 const route  = useRoute()
 

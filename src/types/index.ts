@@ -24,6 +24,7 @@ export interface Player {
   rr_titles:         number
   rr_best_finish:    number | null
   rr_seasons_played: number
+  xp?: number              // battle-pass XP (v0.0.5.0); absent before the migration runs
   profile?: Profile
 }
 

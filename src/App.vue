@@ -8,6 +8,7 @@ import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNav from '@/components/layout/AppNav.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useSport } from '@/composables/useSport'
 
 // v0.0.4.6: Supabase's recovery-link URL detection is async, so on the
 // very first page load the router's beforeEach guard can run and finish
@@ -23,4 +24,8 @@ watch(isPasswordRecovery, (recovering) => {
     router.replace({ name: 'login' })
   }
 })
+
+// v0.0.5.6: the browser-tab title's emoji follows the current league's sport.
+const { sport } = useSport()
+watch(sport, (s) => { document.title = `RALLY ${s.emoji}` }, { immediate: true })
 </script>

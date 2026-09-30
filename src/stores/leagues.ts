@@ -1,4 +1,4 @@
-// src/stores/leagues.ts — v0.0.3.0
+// src/stores/leagues.ts — v0.0.5.6
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -123,7 +123,7 @@ export const useLeagueStore = defineStore('leagues', () => {
   // UPDATE doesn't error by default — it just silently matches 0 rows —
   // so this chains .select() specifically to detect that case and turn
   // it into an actual error instead of a save that looked like it worked.
-  async function updateLeague(id: string, fields: { name?: string; icon?: string }) {
+  async function updateLeague(id: string, fields: { name?: string; icon?: string; sport?: string }) {
     const { data, error: err } = await supabase.from('leagues').update(fields).eq('id', id).select()
     if (err) throw new Error(err.message)
     if (!data || data.length === 0) throw new Error("You don't have permission to edit this league")

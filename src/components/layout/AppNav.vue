@@ -39,6 +39,9 @@
                     <input v-model="editIcon" class="input league-create-icon" maxlength="4" placeholder="🎾" />
                     <input v-model="editName" class="input" placeholder="League name" required />
                   </div>
+                  <select v-model="editSport" class="input">
+                    <option v-for="sp in editSportOptions" :key="sp.key" :value="sp.key">{{ sp.emoji }} {{ sp.label }}</option>
+                  </select>
                   <div style="display:flex;gap:0.4rem;margin-top:0.15rem">
                     <button class="btn btn-primary btn-sm" type="submit" :disabled="editSubmitting" style="flex:1;justify-content:center">
                       <span v-if="editSubmitting" class="spinner" style="width:12px;height:12px;border-width:2px" />
@@ -75,7 +78,10 @@
                     <input v-model="newIcon" class="input league-create-icon" maxlength="4" placeholder="🎾" />
                     <input v-model="newName" class="input" placeholder="League name" required />
                   </div>
-                  <input v-model="newSport" class="input" placeholder="sport slug, e.g. tennis" required />
+                  <select v-model="newSport" class="input" required>
+                    <option value="" disabled>Sport…</option>
+                    <option v-for="sp in SPORTS" :key="sp.key" :value="sp.key">{{ sp.emoji }} {{ sp.label }}</option>
+                  </select>
                   <div style="display:flex;gap:0.4rem;margin-top:0.15rem">
                     <button class="btn btn-primary btn-sm" type="submit" :disabled="creatingSubmit" style="flex:1;justify-content:center">
                       <span v-if="creatingSubmit" class="spinner" style="width:12px;height:12px;border-width:2px" />
@@ -144,11 +150,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useLeagueStore } from '@/stores/leagues'
 import { useRouter } from 'vue-router'
 import RacketIcon from '@/components/icons/RacketIcon.vue'
+import { SPORTS, getSport } from '@/lib/sports'
 
 // leagues.icon is `not null default '🏆'` at the DB level (see
 // supabase-migration-v0.0.3.0.sql), so an untouched league genuinely
@@ -203,6 +210,14 @@ const newIcon = ref('')
 const editingLeague  = ref(false)
 const editName       = ref('')
 const editIcon       = ref('')
+const editSport      = ref('')
+// The known sports, plus the league's current one if it isn't in the list, so
+// opening the editor on an unrecognised sport doesn't silently change it on save.
+const editSportOptions = computed(() => {
+  const cur = leagueStore.currentLeague?.sport
+  const known = SPORTS.some(s => s.key === getSport(cur).key)
+  return cur && !known ? [{ ...getSport(cur), key: cur }, ...SPORTS] : SPORTS
+})
 const editSubmitting = ref(false)
 
 onMounted(() => {
@@ -290,6 +305,9 @@ function startEditLeague() {
   // '🏆' default — editing should show ground truth, not the same
   // display-only swap AppNav uses when just rendering the badge.
   editIcon.value = leagueStore.currentLeague?.icon || ''
+  // Stored slugs vary ("ping-pong", "Tennis"); show the canonical option when there is one.
+  const cur = leagueStore.currentLeague?.sport ?? ''
+  editSport.value = SPORTS.some(x => x.key === getSport(cur).key) ? getSport(cur).key : cur
   menuError.value = ''
   editingLeague.value = true
 }
@@ -302,6 +320,7 @@ async function handleUpdateLeague() {
     await leagueStore.updateLeague(leagueStore.currentLeagueId, {
       name: editName.value.trim(),
       icon: editIcon.value.trim() || '🏆',
+      sport: editSport.value,
     })
     editingLeague.value = false
   } catch (e: any) {
