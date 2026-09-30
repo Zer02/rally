@@ -2,7 +2,7 @@
   <main class="page">
     <div class="container">
       <section class="hero">
-        <p class="eyebrow">Building {{ sport.label }}</p>
+        <p class="eyebrow">{{ leagueName }}</p>
         <h1>Track every rally.<br /><em>Own the {{ sport.surface }}.</em></h1>
         <p class="hero-sub">
           Live ratings for everyone in the building. Challenge neighbors, log scores,
@@ -50,7 +50,7 @@
 import { useAuth } from '@/composables/useAuth'
 import { useSport } from '@/composables/useSport'
 const { isAuthed } = useAuth()
-const { sport } = useSport()
+const { sport, leagueName } = useSport()
 </script>
 
 <style scoped>

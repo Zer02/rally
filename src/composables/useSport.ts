@@ -1,4 +1,4 @@
-// src/composables/useSport.ts — v0.0.5.6
+// src/composables/useSport.ts — v0.0.5.7
 // The sport of whichever league is currently selected, as a reactive
 // SportInfo. Follows the league switcher: change league, and everything
 // reading `sport` (home page copy, page title, level titles) updates.
@@ -20,12 +20,16 @@ export function useSport() {
     leagues.fetchAllLeagues()
   }
 
-  const sport = computed(() => {
-    const l = leagues.currentLeague
+  const league = computed(() =>
+    leagues.currentLeague
       ?? leagues.allLeagues.find(x => x.id === leagues.currentLeagueId)
       ?? null
-    return getSport(l?.sport)
-  })
+  )
+  const sport = computed(() => getSport(league.value?.sport))
 
-  return { sport }
+  // What page eyebrows show: the league's own name, or the sport's label
+  // ("League" when even that is unknown) until a league is known.
+  const leagueName = computed(() => league.value?.name || sport.value.label)
+
+  return { sport, league, leagueName }
 }

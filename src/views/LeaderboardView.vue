@@ -4,7 +4,7 @@
     <div class="container">
       <div class="page-header" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem">
         <div>
-          <p class="eyebrow">Building League</p>
+          <p class="eyebrow">{{ leagueName }}</p>
           <h1>Standings</h1>
         </div>
         <div class="field" style="min-width:170px">
@@ -26,6 +26,9 @@
 import { ref } from 'vue'
 import RoundRobinBoard from '@/components/leaderboard/RoundRobinBoard.vue'
 import LadderBoard from '@/components/leaderboard/LadderBoard.vue'
+import { useSport } from '@/composables/useSport'
+
+const { leagueName } = useSport()
 
 // Round robin is the default board as of v0.0.5.2; the ladder standings
 // are unchanged, just one dropdown away.

@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.6**
+> Current version: **v0.0.5.7**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -441,6 +441,15 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Fixed while in there:** `types/index.ts` gains `xp?: number` on `Player` (missing since v0.0.5.0, which made the type-checker complain about the Progress page).
 - **Validated** in a headless browser with mock data: with a "ping-pong" league and a "Tennis" league, switching between them in the league menu changed the home eyebrow, headline, feature emoji and tab title each time; no page errors on the home, login, progress, profile, leaderboard or matches pages; the create-league dropdown renders. The sport lookup and level titles were checked directly for six spellings plus an unknown sport and no sport.
 - **Not changed:** the league's own icon (still set by league admins), the racket logo in the nav, and generic copy like "neighbors" and "the building" on the home page.
+
+### v0.0.5.7 — Page headings show the league's name
+
+> The small gold heading above "Standings" was hard-coded to "Building League", and the home page one read "Building {sport}". Both now show the name of the current league, so they change when you switch leagues. No migration.
+
+- **`HomeView.vue`, `LeaderboardView.vue`:** the eyebrow is the league's own name (for example "Court Club"). Until a league is known (signed out, first visit) it falls back to the sport's label, or "League" if there isn't one.
+- **`useSport.ts`:** also returns `league` and `leagueName`.
+- **Unchanged:** the other page eyebrows ("Activity", "Season", "Your profile"), and the sport-specific home page headline, emoji and tab title from v0.0.5.6.
+- **Validated** in a headless browser with two mock leagues: home and Standings both showed the selected league's name and followed it when switching.
 
 ## Quick start
 
