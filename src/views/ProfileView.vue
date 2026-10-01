@@ -1,12 +1,17 @@
-<!-- src/views/ProfileView.vue — v0.0.5.2 -->
+<!-- src/views/ProfileView.vue — v0.0.5.8 -->
 <template>
   <main class="page">
     <div class="container">
+      <ChangePasswordForm v-if="changingPassword" style="margin-top:1.5rem" @close="changingPassword = false" />
+
       <div v-if="!me" style="text-align:center;padding:3rem 0">
         <span v-if="playersStore.loading" class="spinner" style="width:28px;height:28px;border-width:3px" />
         <p v-else class="muted">
           You haven't joined this league yet — use the league icon in the nav to join it first.
         </p>
+        <button v-if="!playersStore.loading && !changingPassword" class="btn btn-ghost" style="font-size:0.85rem;margin-top:1rem" @click="changingPassword = true">
+          {{ profile?.is_placeholder ? 'Set password' : 'Change password' }}
+        </button>
       </div>
 
       <template v-else>
@@ -22,6 +27,9 @@
           <div style="display:flex;align-items:center;gap:0.75rem">
             <button v-if="!editingProfile" class="btn btn-ghost" style="font-size:0.85rem" @click="startEditProfile">
               Edit profile
+            </button>
+            <button v-if="!changingPassword" class="btn btn-ghost" style="font-size:0.85rem" @click="changingPassword = true">
+              {{ profile?.is_placeholder ? 'Set password' : 'Change password' }}
             </button>
             <RouterLink to="/progress" style="text-decoration:none"><LevelBadge :xp="me.xp ?? 0" /></RouterLink>
             <TierBadge :rating="me.rating" />
@@ -127,6 +135,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
@@ -140,13 +149,17 @@ import LevelBadge from '@/components/ui/LevelBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import RatingChart from '@/components/ui/RatingChart.vue'
 import RoundRobinProfile from '@/components/profile/RoundRobinProfile.vue'
+import ChangePasswordForm from '@/components/auth/ChangePasswordForm.vue'
 import type { Match } from '@/types'
 
 const playersStore    = usePlayersStore()
 const matchesStore    = useMatchesStore()
 const seasonsStore    = useSeasonsStore()
 const leagueStore     = useLeagueStore()
-const { user, updateProfile } = useAuth()
+const { user, profile, updateProfile } = useAuth()
+const route = useRoute()
+// Opened straight from the "set a password" bar (?password=1) or the button.
+const changingPassword = ref(route.query.password === '1')
 
 const ratingHistory = ref<{ rating: number; recorded_at: string }[]>([])
 const selectedSeasonId = ref('current')

@@ -71,8 +71,14 @@ router.beforeEach(async (to) => {
   // that knows to show the set-password form. Runs before the
   // requiresAuth check below so it applies to every route, /login
   // included (checked first to avoid a redirect loop there).
-  const { isPasswordRecovery } = useAuth()
+  const { isPasswordRecovery, linkError } = useAuth()
   if (isPasswordRecovery.value && to.name !== 'login') {
+    return { name: 'login' }
+  }
+  // v0.0.5.8: an expired or already-used emailed link puts an error in the URL
+  // of whatever page Supabase redirected to. Send them where it can be shown
+  // and a new link can be requested.
+  if (linkError.value && to.name !== 'login') {
     return { name: 'login' }
   }
 

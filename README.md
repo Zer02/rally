@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.7**
+> Current version: **v0.0.5.8**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -450,6 +450,23 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **`useSport.ts`:** also returns `league` and `leagueName`.
 - **Unchanged:** the other page eyebrows ("Activity", "Season", "Your profile"), and the sport-specific home page headline, emoji and tab title from v0.0.5.6.
 - **Validated** in a headless browser with two mock leagues: home and Standings both showed the selected league's name and followed it when switching.
+
+### v0.0.5.8 — Password UX: forgot password, change password, clearer set-password screen
+
+> Setting and resetting passwords had gaps. There was no "Forgot password?" anywhere (a reset link could only be triggered by an admin inviting a placeholder player), no way to change your password while signed in, no confirm field on the set-password screen, and Supabase's raw error text was shown as-is. No migration.
+
+- **Forgot password (`LoginView.vue`):** a "Forgot password?" link sits next to the password field, and a failed sign-in offers "Reset your password". The reset form carries over the email you already typed, sends the link (redirecting back to `/login`), and says the same thing whether or not the address has an account. Resends are limited by a 60-second cooldown.
+- **Set-password screen (link from an email):** new password plus a confirm field with a live checklist ("At least 8 characters", "Passwords match"), Show/Hide toggles, and a Save button that stays disabled until it's valid. The heading changes for invited players ("Welcome! Set your password") versus a reset ("Choose a new password"). On success there's a "Password saved" screen with a Continue button instead of a silent redirect. "Not you? Sign out" lets someone leave without setting anything.
+- **Change password (`ChangePasswordForm.vue`, on Profile):** a "Change password" button (also reachable when you haven't joined a league). It asks for your current password first (checked by signing in with it) so a phone left unlocked can't quietly change it, then the new one with confirm. For an invited player who has no password yet, the current-password field is hidden and the button reads "Set password".
+- **Reminder bar (`PasswordNudge.vue`):** an invited player who followed the email link, got signed in, and left before choosing a password used to be stuck: fine until the session ended, then locked out. They now see a slim bar under the nav ("You haven't set a password yet") that opens the Set password form, and it disappears once one is saved.
+- **Reload during a reset:** the "you still need to set a password" state is now remembered for the browser tab. Before, a reload mid-flow dropped the person into the app signed in with no form to finish, because Supabase only announces the recovery once.
+- **Expired or already-used links:** Supabase reports these in the URL of whatever page it redirected to, and nothing read it, so the person landed on a normal page with no explanation. They're now sent to the sign-in page with "That link has expired or was already used", with the reset form open and the email box focused.
+- **Plain-language errors (`lib/authMessages.ts`):** "Invalid login credentials" becomes "That email and password don't match.", plus friendlier messages for unconfirmed email (with a "Resend the confirmation email" link), existing account, too-short or too-weak password, same-as-old password, rate limits, and network failures. Anything unrecognised is shown unchanged.
+- **Password managers and phones:** fields have proper `autocomplete` values (`current-password` when signing in, `new-password` when creating or changing), so managers offer to fill or suggest a strong one; auto-capitalise and spellcheck are off on password fields. Join-the-league also gets Show/Hide.
+- **Types:** `Profile` gains `is_placeholder?: boolean`.
+- **Supabase dashboard:** nothing new to configure. Forgot password uses the same redirect as the invite email, so `https://<your-domain>/login` and your local dev address must already be under Authentication → URL Configuration → Redirect URLs (from v0.0.4.6). If the reset emails look generic, the "Reset Password" template is under Authentication → Email Templates.
+- **Validated** in a headless browser against mocked Supabase auth endpoints (69 checks across eight scenarios, no page errors): wrong password, forgot flow and its request (email, redirect URL, cooldown), expired link, recovery link for an existing user and for an invited player including the profile flag, reload and navigating away mid-recovery, the reminder bar to set-password path, and change password with a wrong and a correct current password.
+- **Not included:** an admin button to send a reset email to an existing user. Player emails aren't stored where the app can read them, and anyone can now request their own link from the sign-in page.
 
 ## Quick start
 

@@ -1,8 +1,9 @@
-// src/composables/useAuth.ts — v0.0.3
+// src/composables/useAuth.ts — v0.0.5.8
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/types'
+import { readAuthLinkError } from '@/lib/authMessages'
 
 const user    = ref<User | null>(null)
 const profile = ref<Profile | null>(null)
@@ -12,7 +13,23 @@ const loading = ref(true)
 // "set your password" flow claim-placeholder-player kicks off use the
 // same PASSWORD_RECOVERY auth event — LoginView watches this to swap in
 // the set-password form instead of the normal login form).
-const isPasswordRecovery = ref(false)
+//
+// v0.0.5.8: remembered per browser tab. A recovery link signs the person in
+// before they've chosen a password; if the page is reloaded (or the phone
+// reloads the tab) mid-flow, the auth event never fires again and they'd
+// land in the app signed in with no password set and no way back to the form.
+const RECOVERY_KEY = 'rally.passwordRecovery'
+const isPasswordRecovery = ref(sessionStorage.getItem(RECOVERY_KEY) === '1')
+function setRecovery(on: boolean) {
+  isPasswordRecovery.value = on
+  if (on) sessionStorage.setItem(RECOVERY_KEY, '1')
+  else sessionStorage.removeItem(RECOVERY_KEY)
+}
+
+// v0.0.5.8: set when the person arrives from an emailed link that's expired or
+// already used. Read once here, at startup, from wherever they landed; the
+// router sends them to /login and LoginView shows it, then clears it.
+const linkError = ref<string | null>(readAuthLinkError())
 
 async function loadProfile(userId: string) {
   const { data } = await supabase
@@ -26,6 +43,7 @@ async function loadProfile(userId: string) {
 supabase.auth.getSession().then(async ({ data }) => {
   user.value = data.session?.user ?? null
   if (user.value) await loadProfile(user.value.id)
+  else setRecovery(false)   // a remembered recovery flag is meaningless without a session
   loading.value = false
 })
 
@@ -33,7 +51,8 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   user.value = session?.user ?? null
   if (user.value) await loadProfile(user.value.id)
   else profile.value = null
-  if (event === 'PASSWORD_RECOVERY') isPasswordRecovery.value = true
+  if (event === 'PASSWORD_RECOVERY') setRecovery(true)
+  if (event === 'SIGNED_OUT') setRecovery(false)
 })
 
 export function useAuth() {
@@ -57,6 +76,43 @@ export function useAuth() {
   async function signOut() {
     await supabase.auth.signOut()
     profile.value = null
+    setRecovery(false)
+  }
+
+  // Emails a password-reset link. Supabase answers the same way whether or
+  // not the address has an account (so the form can't be used to find out who
+  // has one); the caller shows the same "if there's an account" message either
+  // way. `redirectTo` must be allow-listed in the Supabase dashboard, the
+  // same requirement as the invite email.
+  async function requestPasswordReset(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/login`,
+    })
+    return error
+  }
+
+  // Sends the signup confirmation email again (for "Email not confirmed").
+  async function resendConfirmation(email: string) {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/login` },
+    })
+    return error
+  }
+
+  // Changes the password of the signed-in user. With `current` set, it's
+  // checked first by signing in with it, so a phone left unlocked can't be
+  // used to quietly change the password. Pass null when there is no current
+  // password to check (an invited player who hasn't set one yet).
+  async function changePassword(current: string | null, next: string) {
+    if (current !== null) {
+      const email = user.value?.email
+      if (!email) return new Error('Not signed in')
+      const { error } = await supabase.auth.signInWithPassword({ email, password: current })
+      if (error) return new Error('Your current password is incorrect.')
+    }
+    return updatePassword(next)
   }
 
   // Completes a password-recovery flow (used both by the original
@@ -74,7 +130,7 @@ export function useAuth() {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) return error
 
-    isPasswordRecovery.value = false
+    setRecovery(false)
     if (user.value && (profile.value as any)?.is_placeholder) {
       await supabase.from('profiles').update({ is_placeholder: false }).eq('id', user.value.id)
       await loadProfile(user.value.id)
@@ -95,7 +151,8 @@ export function useAuth() {
   }
 
   return {
-    user, profile, loading, isAuthed, isAdmin, isPasswordRecovery,
+    user, profile, loading, isAuthed, isAdmin, isPasswordRecovery, linkError,
     signUp, signIn, signOut, updatePassword, updateProfile,
+    requestPasswordReset, resendConfirmation, changePassword,
   }
 }

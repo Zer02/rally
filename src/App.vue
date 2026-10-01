@@ -1,5 +1,6 @@
 <template>
   <AppNav />
+  <PasswordNudge />
   <RouterView />
 </template>
 
@@ -7,6 +8,7 @@
 import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNav from '@/components/layout/AppNav.vue'
+import PasswordNudge from '@/components/layout/PasswordNudge.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useSport } from '@/composables/useSport'
 
