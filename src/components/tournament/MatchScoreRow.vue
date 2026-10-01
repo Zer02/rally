@@ -21,7 +21,7 @@
         @click="submit"
       >
         <span v-if="submitting" class="spinner" style="width:12px;height:12px;border-width:2px" />
-        <span v-else>{{ adminMode ? 'Override' : 'Report' }}</span>
+        <span v-else>{{ adminMode ? 'Submit' : 'Report' }}</span>
       </button>
       <button
         v-if="onRemove"

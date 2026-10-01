@@ -117,7 +117,7 @@
       </div>
 
       <div v-if="isAdmin && otherPendingMatches.length" style="margin-bottom:1.5rem">
-        <h3 style="font-size:0.95rem;margin-bottom:0.6rem">Other pending matches (admin override)</h3>
+        <h3 style="font-size:0.95rem;margin-bottom:0.6rem">Other pending matches (enter as admin)</h3>
         <div v-for="m in otherPendingMatches" :key="m.id" class="card tournament-match-row">
           <MatchScoreRow :match="m" :my-id="user?.id" admin-mode :on-report="handleReport" :on-remove="handleRemove" />
         </div>

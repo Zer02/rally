@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.9**
+> Current version: **v0.0.6.0**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -482,6 +482,17 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Deploy (manual, from your terminal):** run the migration in the SQL Editor, then `supabase functions deploy admin-account-info`, `admin-send-reset` and `admin-change-email`. See `supabase/functions/README.md`. Reset links use the same `/login` redirect as the invite email, so nothing new to allow-list.
 - **Not included:** a "set their password for them" button (you'd know their password, and they couldn't trust it; a reset link to their own inbox is the safe route). Other devices stay signed in after an email change or reset, because Supabase only revokes sessions with the user's own token.
 - **Validated:** 59 Deno checks run the real Edge Function code against an in-memory fake Supabase (auth gates for all three, masking, no full email in any response or log row, every refusal path leaves state untouched, rate-limit and send-failure paths); a mutation check confirmed the admin and self guardrails fail the tests when removed. 48 headless-browser checks drive the real app against those same functions (status list and ordering, masked display, reset and cooldown, the two-step email change including Back, invite and remove-confirm, one open form at a time, no horizontal overflow at 375px, non-admins never see the panel). The migration was replayed twice on Postgres and checked: admins can read, non-admins see nothing, and insert/update/delete from the browser role are all refused.
+
+### v0.0.6.0 — Player accounts: tidier list, clearable change log; Submit instead of Override
+
+> Follow-ups from using the v0.0.5.9 panel on a real league: with a dozen players the list was mostly people who needed nothing, and the change log never went away.
+
+- **Active players start hidden:** the Player accounts list now opens showing only people who still need something (name only, invited, email not confirmed). A **Show active players (N)** button in the toolbar reveals everyone, and **Hide active players** puts them away again. Your own row counts as active, so it's hidden too. If everyone is active, the list says so instead of showing an empty box. Hiding closes any form open on a row that is about to disappear.
+- **Recent changes is collapsed by default** and shows a count in its header. It never expired: it always shows the latest 10 changes however old, which is why it was still there after a refresh.
+- **Clear:** hides the entries shown so far, in this browser only (stored in `localStorage`, compared against the server's own timestamp rather than the browser clock). New changes after a clear show up on their own, **Show cleared (N)** brings the hidden ones back, and a note under the list says the full record stays in the database. Deliberately not a delete: `account_admin_log` has no delete policy, so the audit trail can't be edited from the app.
+- **"Override" → "Submit":** on the Round Robin page, the admin's button for entering a score on someone else's pending match now says Submit (players' own matches still say Report). The heading above that list changed from "Other pending matches (admin override)" to "Other pending matches (enter as admin)". Wording only; it still calls the same function.
+- **Changed:** `PlayerAccountsPanel.vue`, `MatchScoreRow.vue`, `TournamentView.vue`. No migration and no Edge Function changes, so nothing to deploy beyond the frontend.
+- **Validated:** the 48 browser checks from v0.0.5.9 were updated for the new default view and extended to 72, covering the hidden/shown toggle and its count, an open form closing when its row is hidden, a player moving out of the list once they become active, Clear (database rows untouched, a later change appears alone, survives a page reload, cleared entries recoverable), the all-active message, and no overflow at 375px. The Submit label was checked by reading the component and a clean build, not in the browser, because the mock league has no running season to show a pending match.
 
 ## Quick start
 

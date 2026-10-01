@@ -28,12 +28,21 @@
           <span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:-2px" /> Loading accounts…
         </span>
         <span v-else-if="counts" class="muted" style="font-size:0.78rem">{{ counts }}</span>
-        <button class="btn btn-ghost btn-sm" type="button" :disabled="loading" @click="reload">Refresh</button>
+        <span class="acct-toolbar-btns">
+          <button
+            v-if="activeCount"
+            class="btn btn-ghost btn-sm"
+            type="button"
+            :aria-pressed="showActive"
+            @click="toggleActive"
+          >{{ showActive ? 'Hide active players' : `Show active players (${activeCount})` }}</button>
+          <button class="btn btn-ghost btn-sm" type="button" :disabled="loading" @click="reload">Refresh</button>
+        </span>
       </div>
 
       <p v-if="loadError" class="flash flash-error">{{ loadError }}</p>
 
-      <div v-for="r in rows" :key="r.profile_id" class="acct-row" :data-status="r.status">
+      <div v-for="r in visibleRows" :key="r.profile_id" class="acct-row" :data-status="r.status">
         <div class="acct-main">
           <div class="acct-name-line">
             <span class="acct-name">{{ r.name }}</span>
@@ -154,20 +163,49 @@
       </div>
 
       <p v-if="!loading && !rows.length" class="muted" style="font-size:0.85rem">No players in this league yet.</p>
+      <p v-else-if="!loading && loaded && !visibleRows.length" class="muted" style="font-size:0.85rem;margin-top:0.5rem">
+        Everyone here has an active account.
+      </p>
 
       <p v-if="error" class="flash flash-error" style="margin-top:0.75rem" role="alert">{{ error }}</p>
       <p v-if="notice" class="flash flash-success" style="margin-top:0.75rem" role="status">{{ notice }}</p>
 
       <div class="acct-log">
-        <div class="field-label" style="margin-bottom:0.4rem">Recent changes</div>
-        <p v-if="logError" class="muted" style="font-size:0.78rem">{{ logError }}</p>
-        <p v-else-if="!log.length" class="muted" style="font-size:0.8rem">Nothing yet. Resets and email changes show up here.</p>
-        <ul v-else class="acct-log-list">
-          <li v-for="e in log" :key="e.id">
-            <span>{{ logText(e) }}</span>
-            <span class="muted acct-log-when">{{ timeAgo(e.created_at) }}</span>
-          </li>
-        </ul>
+        <div class="acct-log-head">
+          <button
+            class="acct-log-toggle"
+            type="button"
+            :aria-expanded="logOpen"
+            aria-controls="player-accounts-log"
+            @click="logOpen = !logOpen"
+          >
+            <span class="field-label" style="margin-bottom:0">
+              Recent changes<template v-if="visibleLog.length"> · {{ visibleLog.length }}</template>
+            </span>
+            <span class="accounts-chevron" aria-hidden="true">{{ logOpen ? '▾' : '▸' }}</span>
+          </button>
+          <span v-if="logOpen" class="acct-toolbar-btns">
+            <button v-if="visibleLog.length && !showCleared" class="btn btn-ghost btn-sm" type="button" @click="clearLog">Clear</button>
+            <button v-if="hiddenLogCount" class="btn btn-ghost btn-sm" type="button" @click="showCleared = !showCleared">
+              {{ showCleared ? 'Hide cleared' : `Show cleared (${hiddenLogCount})` }}
+            </button>
+          </span>
+        </div>
+
+        <div v-if="logOpen" id="player-accounts-log" style="margin-top:0.5rem">
+          <p v-if="logError" class="muted" style="font-size:0.78rem">{{ logError }}</p>
+          <p v-else-if="!log.length" class="muted" style="font-size:0.8rem">Nothing yet. Resets and email changes show up here.</p>
+          <p v-else-if="!shownLog.length" class="muted" style="font-size:0.8rem">Nothing new since you cleared this.</p>
+          <ul v-else class="acct-log-list">
+            <li v-for="e in shownLog" :key="e.id">
+              <span>{{ logText(e) }}</span>
+              <span class="muted acct-log-when">{{ timeAgo(e.created_at) }}</span>
+            </li>
+          </ul>
+          <p v-if="log.length" class="muted" style="font-size:0.72rem;margin-top:0.6rem">
+            Shows the latest 10 changes, however old. Clear only hides them in this browser; the full record stays in the database.
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -187,6 +225,10 @@ const { user } = useAuth()
 const RESET_COOLDOWN_S = 60 // matches Supabase's per-address limit on recovery emails
 
 const open = ref(false)
+const showActive = ref(false) // active players are hidden by default; the list is for people who still need something
+const logOpen = ref(false)
+const showCleared = ref(false)
+const LOG_CLEARED_KEY = 'rally.accountLogClearedAt'
 const loaded = ref(false)
 const loading = ref(false)
 const loadError = ref('')
@@ -256,6 +298,46 @@ const rows = computed<Row[]>(() => {
     })
     .sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name))
 })
+
+// Active players are the long, settled part of the list, so they start
+// hidden. Until the first lookup finishes, non-placeholder players are
+// still 'unknown'; keep them out of view rather than flash them as
+// needing attention.
+const visibleRows = computed(() => {
+  if (showActive.value) return rows.value
+  return rows.value.filter(r =>
+    r.status !== 'active' && !(r.status === 'unknown' && loading.value && !loaded.value)
+  )
+})
+
+const activeCount = computed(() => rows.value.filter(r => r.status === 'active').length)
+
+function toggleActive() {
+  showActive.value = !showActive.value
+  closeAction() // an open form on a row that is about to disappear would be orphaned
+}
+
+// "Clear" hides log entries up to the newest one, in this browser only.
+// It compares against the server's own timestamp (not the browser clock),
+// and the rows themselves stay in the database: the audit log is
+// deliberately not editable.
+function readClearedAt(): string | null {
+  try { return localStorage.getItem(LOG_CLEARED_KEY) } catch { return null }
+}
+const clearedAt = ref<string | null>(readClearedAt())
+
+const isNewerThanClear = (e: AccountLogEntry) =>
+  !clearedAt.value || new Date(e.created_at).getTime() > new Date(clearedAt.value).getTime()
+const visibleLog = computed(() => log.value.filter(isNewerThanClear))
+const hiddenLogCount = computed(() => log.value.length - visibleLog.value.length)
+const shownLog = computed(() => (showCleared.value ? log.value : visibleLog.value))
+
+function clearLog() {
+  if (!log.value.length) return
+  clearedAt.value = log.value[0].created_at // newest first
+  showCleared.value = false
+  try { localStorage.setItem(LOG_CLEARED_KEY, clearedAt.value) } catch { /* private mode: clears for this visit only */ }
+}
 
 const waitingCount = computed(() =>
   playersStore.players.filter(p => (p.profile as any)?.is_placeholder).length
@@ -468,7 +550,13 @@ async function submitEmail(r: Row) {
 .accounts-chevron { color: var(--txt-muted); font-size: 0.9rem; }
 .accounts-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
-  margin-bottom: 0.5rem; min-height: 1.9rem;
+  flex-wrap: wrap; margin-bottom: 0.5rem; min-height: 1.9rem;
+}
+.acct-toolbar-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-left: auto; }
+.acct-log-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.acct-log-toggle {
+  display: flex; align-items: center; gap: 0.5rem; background: none; border: none; padding: 0;
+  color: inherit; font: inherit; cursor: pointer; text-align: left;
 }
 .acct-row {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
