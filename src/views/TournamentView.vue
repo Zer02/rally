@@ -9,6 +9,12 @@
       <PastSeasonsPanel :seasons="store.pastSeasons" :get-standings="store.fetchSeasonStandings" />
     </div>
 
+    <!-- Global admin: every player's account (invite, reset, change email).
+         Lives above the season states so it's reachable even with no season running. -->
+    <div v-if="isAdmin" style="margin-bottom:1.25rem">
+      <PlayerAccountsPanel />
+    </div>
+
     <div v-if="store.loading && !store.active" style="text-align:center;padding:3rem 0">
       <span class="spinner" style="width:28px;height:28px;border-width:3px" />
     </div>
@@ -102,11 +108,6 @@
         />
       </div>
 
-      <!-- Admin: placeholder players awaiting a real email -->
-      <div v-if="isAdmin" style="margin-bottom:1.5rem">
-        <PlaceholderPlayersPanel />
-      </div>
-
       <!-- Self-report: your pending matches -->
       <div v-if="myPendingMatches.length" style="margin-bottom:1.5rem">
         <h3 style="font-size:0.95rem;margin-bottom:0.6rem">Your matches</h3>
@@ -159,7 +160,7 @@ import AttendeePicker from '@/components/tournament/AttendeePicker.vue'
 import AddMatchForm from '@/components/tournament/AddMatchForm.vue'
 import CourtGeneratorForm from '@/components/tournament/CourtGeneratorForm.vue'
 import PastSeasonsPanel from '@/components/tournament/PastSeasonsPanel.vue'
-import PlaceholderPlayersPanel from '@/components/admin/PlaceholderPlayersPanel.vue'
+import PlayerAccountsPanel from '@/components/admin/PlayerAccountsPanel.vue'
 import StandingsTable, { type StandingRow, type StandingColumn } from '@/components/leaderboard/StandingsTable.vue'
 
 const store = useTournamentsStore()

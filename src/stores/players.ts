@@ -1,9 +1,9 @@
-// src/stores/players.ts — v0.0.3.1
+// src/stores/players.ts — v0.0.5.9
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useLeagueStore } from './leagues'
-import type { Player } from '@/types'
+import type { Player, AccountInfo, AccountLogEntry } from '@/types'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 
 // supabase.functions.invoke() throws a generic "Edge Function returned a
@@ -160,8 +160,67 @@ export const usePlayersStore = defineStore('players', () => {
     await fetch()
   }
 
+  // ── Player accounts panel (v0.0.5.9, global admin only) ──────────────
+  // All three go through Edge Functions because they need auth.users,
+  // which the browser can't read. None of them ever returns a full email.
+
+  // Where the reset email's link lands. Needs to be in Supabase's
+  // Redirect URLs (same entry as the invite email from v0.0.4.6).
+  function loginRedirect() {
+    return `${window.location.origin}/login`
+  }
+
+  async function fetchAccountInfo(leagueId: string) {
+    const { data, error: err } = await supabase.functions.invoke('admin-account-info', {
+      body: { league_id: leagueId },
+    })
+    if (err) throw new Error(await describeFunctionError(err))
+    if (data?.error) throw new Error(data.error)
+    return (data?.accounts ?? []) as AccountInfo[]
+  }
+
+  async function sendPasswordReset(profileId: string) {
+    const { data, error: err } = await supabase.functions.invoke('admin-send-reset', {
+      body: { profile_id: profileId, redirect_to: loginRedirect() },
+    })
+    if (err) throw new Error(await describeFunctionError(err))
+    if (data?.error) throw new Error(data.error)
+    return data as { profile_id: string; masked_email: string | null; sent: true }
+  }
+
+  async function changePlayerEmail(profileId: string, newEmail: string, confirmEmail: string) {
+    const { data, error: err } = await supabase.functions.invoke('admin-change-email', {
+      body: {
+        profile_id: profileId,
+        new_email: newEmail,
+        confirm_email: confirmEmail,
+        redirect_to: loginRedirect(),
+      },
+    })
+    if (err) throw new Error(await describeFunctionError(err))
+    if (data?.error) throw new Error(data.error)
+    return data as {
+      profile_id: string
+      masked_email: string | null
+      reset_sent: boolean
+      reset_error: string | null
+    }
+  }
+
+  // Readable only by global admins (RLS); written only by the functions.
+  async function fetchAccountLog(limit = 10) {
+    const { data, error: err } = await (supabase as any)
+      .from('account_admin_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (err) throw new Error(err.message)
+    return (data ?? []) as AccountLogEntry[]
+  }
+
   return {
     players, loading, error, sorted, fetch, byId, subscribe, unsubscribe, resetSeason,
     createPlaceholderPlayer, claimPlaceholderPlayer, deletePlaceholderPlayer,
+    fetchAccountInfo, sendPasswordReset, changePlayerEmail, fetchAccountLog,
   }
 })

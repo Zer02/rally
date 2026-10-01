@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.5.8**
+> Current version: **v0.0.5.9**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -467,6 +467,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Supabase dashboard:** nothing new to configure. Forgot password uses the same redirect as the invite email, so `https://<your-domain>/login` and your local dev address must already be under Authentication → URL Configuration → Redirect URLs (from v0.0.4.6). If the reset emails look generic, the "Reset Password" template is under Authentication → Email Templates.
 - **Validated** in a headless browser against mocked Supabase auth endpoints (69 checks across eight scenarios, no page errors): wrong password, forgot flow and its request (email, redirect URL, cooldown), expired link, recovery link for an existing user and for an invited player including the profile flag, reload and navigating away mid-recovery, the reminder bar to set-password path, and change password with a wrong and a correct current password.
 - **Not included:** an admin button to send a reset email to an existing user. Player emails aren't stored where the app can read them, and anyone can now request their own link from the sign-in page.
+
+### v0.0.5.9 — Player accounts: reset passwords and fix emails from the Round Robin page
+
+> What if a player forgets their password, never set one, or has the wrong email on file, or no email at all? Before this, an admin could only invite name-only players; for anyone with an account the only route was the player's own "Forgot password?", which needs a working email. The Round Robin page now has a **Player accounts** panel (global admin only) that covers every case.
+
+- **The list:** every player in the league with a status, attention-first. *Name only* (no email, can't sign in), *Invited, waiting* (invite sent, no password yet), *Email not confirmed*, or *Active*. Each row shows a **masked** email (`j***@g***.com`) and when they last signed in. Full emails are never sent to the browser: the server looks them up in `auth.users` and returns only the masked form.
+- **Send password reset** (active players): the server finds the address and sends the reset email itself, so the admin never sees the email or the link. A 60-second cooldown on the button matches Supabase's own limit, and hitting the limit shows a plain message.
+- **Change email** (active or unconfirmed players): for a typo'd or lost address. The new address is typed twice, then a confirm step spells out old (masked) and new. The new email is marked confirmed and a reset link goes to it, so only whoever owns that mailbox can get in. If the reset email fails to send after the change, the panel says so and Send password reset can retry.
+- **Guardrails, enforced server-side:** global admin only; Change email is refused for admin accounts, for yourself, and for name-only or invited players (those use Send invite / Resend / fix email); an address another account already uses is refused; the two typed addresses must match.
+- **Placeholder players:** the old Placeholder players box is folded into this panel. Send invite, Resend / fix email and Remove work as before and are now listed alongside everyone else. The panel also shows above the season section, so it's reachable with no season running.
+- **Audit log:** new `account_admin_log` table records who sent a reset or changed an email, for whom, and when; the last 10 entries show at the bottom of the panel. Emails in the log are masked too. Only the Edge Functions can write to it, and no one can edit or delete rows; names are stored as snapshots so entries stay readable if a player is later deleted.
+- **New:** `supabase-migration-v0.0.5.9.sql`; Edge Functions `admin-account-info`, `admin-send-reset`, `admin-change-email` and a shared `_shared/accounts.ts`; `PlayerAccountsPanel.vue` (replaces `PlaceholderPlayersPanel.vue`, which is removed); four new methods on the `players.ts` store; `AccountInfo` / `AccountLogEntry` types, and `Profile` now actually carries `is_placeholder`, `invited_email` and `invited_at`.
+- **Deploy (manual, from your terminal):** run the migration in the SQL Editor, then `supabase functions deploy admin-account-info`, `admin-send-reset` and `admin-change-email`. See `supabase/functions/README.md`. Reset links use the same `/login` redirect as the invite email, so nothing new to allow-list.
+- **Not included:** a "set their password for them" button (you'd know their password, and they couldn't trust it; a reset link to their own inbox is the safe route). Other devices stay signed in after an email change or reset, because Supabase only revokes sessions with the user's own token.
+- **Validated:** 59 Deno checks run the real Edge Function code against an in-memory fake Supabase (auth gates for all three, masking, no full email in any response or log row, every refusal path leaves state untouched, rate-limit and send-failure paths); a mutation check confirmed the admin and self guardrails fail the tests when removed. 48 headless-browser checks drive the real app against those same functions (status list and ordering, masked display, reset and cooldown, the two-step email change including Back, invite and remove-confirm, one open form at a time, no horizontal overflow at 375px, non-admins never see the panel). The migration was replayed twice on Postgres and checked: admins can read, non-admins see nothing, and insert/update/delete from the browser role are all refused.
 
 ## Quick start
 
