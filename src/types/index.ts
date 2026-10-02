@@ -1,4 +1,4 @@
-// src/types/index.ts — v0.0.3
+// src/types/index.ts — v0.0.5.9
 
 export interface Profile {
   id:           string
@@ -7,7 +7,39 @@ export interface Profile {
   unit:         string | null
   avatar_url:   string | null
   is_admin:     boolean
+  is_placeholder?: boolean
+  invited_email?:  string | null
+  invited_at?:     string | null
   created_at:   string
+}
+
+// v0.0.5.9 — Player accounts panel. The server decides the status and
+// hands back only a MASKED email (j***@g***.com); the full address never
+// reaches the browser.
+export type AccountStatus = 'name_only' | 'invited' | 'unconfirmed' | 'active' | 'unknown'
+
+export interface AccountInfo {
+  profile_id:      string
+  status:          AccountStatus
+  masked_email:    string | null
+  last_sign_in_at: string | null
+  is_admin:        boolean
+}
+
+export interface AccountLogEntry {
+  id:          string
+  created_at:  string
+  actor_id:    string | null
+  actor_name:  string | null
+  target_id:   string | null
+  target_name: string | null
+  action:      'send_reset' | 'change_email'
+  detail: {
+    email_masked?:     string | null
+    old_email_masked?: string | null
+    new_email_masked?: string | null
+    reset_sent?:       boolean
+  }
 }
 
 export interface Player {

@@ -1,4 +1,4 @@
-<!-- src/views/MatchesView.vue — v0.0.5.4 -->
+<!-- src/views/MatchesView.vue — v0.0.6.1 -->
 <template>
   <main class="page">
     <div class="container">
@@ -36,6 +36,9 @@
           {{ ladderAttention }} ladder {{ ladderAttention === 1 ? 'match needs' : 'matches need' }} your attention — view ladder →
         </button>
 
+        <p v-if="removeNotice" class="flash flash-success" style="margin-bottom:1rem" role="status">{{ removeNotice }}</p>
+        <p v-if="removeError" class="flash flash-error" style="margin-bottom:1rem" role="alert">{{ removeError }}</p>
+
         <div v-if="rrLoading" style="text-align:center;padding:3rem 0">
           <span class="spinner" style="width:28px;height:28px;border-width:3px" />
         </div>
@@ -55,7 +58,28 @@
                 :when="c.when"
                 :meta="c.meta"
                 :result="c.result"
-              />
+              >
+                <!-- Admin only, and only while the match's season is still running -->
+                <template v-if="c.removable" #footer>
+                  <div v-if="confirmingId !== c.id" class="rm-row">
+                    <button class="btn btn-ghost btn-sm" type="button" :disabled="removeBusy" @click="askRemove(c.id)">Remove</button>
+                  </div>
+                  <div v-else class="rm-confirm">
+                    <p class="rm-text">
+                      Remove <strong>{{ c.summary }}</strong>? Standings and ratings for this season are
+                      recalculated as if it was never played. To fix a wrong score, remove it, then add the
+                      match again on the Round Robin page.
+                    </p>
+                    <div class="rm-actions">
+                      <button class="btn btn-danger btn-sm" type="button" :disabled="removeBusy" @click="doRemove(c)">
+                        <span v-if="removeBusy" class="spinner" style="width:12px;height:12px;border-width:2px" />
+                        <span v-else>Yes, remove it</span>
+                      </button>
+                      <button class="btn btn-ghost btn-sm" type="button" :disabled="removeBusy" @click="confirmingId = null">Cancel</button>
+                    </div>
+                  </div>
+                </template>
+              </ScoreCard>
             </div>
           </section>
         </template>
@@ -202,11 +226,17 @@ const activeMatch = ref<Match | null>(null)
 const board = ref<'rr' | 'ladder'>('rr')
 const scope = ref<'all' | 'mine'>('all')
 
-type RRMatch = TournamentMatch & { tournament: { id: string; name: string } }
+type RRMatch = TournamentMatch & { tournament: { id: string; name: string; status?: string } }
 const rrMatches = ref<RRMatch[]>([])
 const rrDeltas  = ref<Record<string, number>>({})
 const rrLoading = ref(false)
 const rrError   = ref('')
+
+// Removing a played match (admin only). One confirmation open at a time.
+const confirmingId  = ref<string | null>(null)
+const removeBusy    = ref(false)
+const removeNotice  = ref('')
+const removeError   = ref('')
 
 async function loadRR() {
   rrLoading.value = true
@@ -273,14 +303,42 @@ const rrCards = computed(() => {
     const iAmA = !!me && aIds.includes(me), iAmB = !!me && bIds.includes(me)
     const result: 'win' | 'loss' | null =
       (iAmA && aWon) || (iAmB && bWon) ? 'win' : (iAmA || iAmB) && (aWon || bWon) ? 'loss' : null
+    const namesOf = (profs: (typeof m.player_a | undefined)[]) => profs.filter(Boolean).map(nm).join(' & ')
+    // Same rule the database enforces: a running season, and not a bracket match.
+    const removable = isAdmin.value && m.tournament?.status === 'round_robin' && m.phase !== 'bracket'
     const kind = m.phase === 'bracket' ? ' · Bracket' : m.phase === 'challenge' ? ' · Challenge' : m.format === 'doubles' ? ' · Doubles' : ''
     return {
-      id: m.id, sides, result, mine: iAmA || iAmB,
+      id: m.id, sides, result, mine: iAmA || iAmB, removable,
+      summary: `${namesOf([m.player_a, m.player_a2])} ${m.score_a}–${m.score_b} ${namesOf([m.player_b, m.player_b2])}`,
       when: whenLabel(m.completed_at), meta: `${m.tournament?.name ?? 'Round robin'}${kind}`,
     }
   })
   return scope.value === 'mine' ? cards.filter(c => c.mine) : cards
 })
+
+function askRemove(id: string) {
+  removeNotice.value = ''
+  removeError.value = ''
+  confirmingId.value = id
+}
+
+async function doRemove(c: { id: string; summary: string }) {
+  removeBusy.value = true
+  removeError.value = ''
+  removeNotice.value = ''
+  try {
+    const res = await tournaments.removePlayedMatch(c.id)
+    confirmingId.value = null
+    removeNotice.value = `Removed ${c.summary}. ` + (res.recalculated
+      ? `${res.recalculated} later ${res.recalculated === 1 ? 'match was' : 'matches were'} recalculated, and the season standings are updated.`
+      : 'Standings and ratings are updated.')
+    await loadRR()
+  } catch (e) {
+    removeError.value = (e as Error).message
+  } finally {
+    removeBusy.value = false
+  }
+}
 
 const myPending = computed(() =>
   matchesStore.pending.filter(m => {
@@ -358,5 +416,10 @@ async function resolve(matchId: string, useChallengerReport: boolean) {
 
 <style scoped>
 .match-filters { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.rm-row { display: flex; justify-content: flex-end; padding: 0.25rem 0.25rem 0; }
+.rm-confirm { margin-top: 0.5rem; padding: 0.7rem 0.75rem; border-radius: var(--radius-sm); background: rgba(224,82,82,0.07); border: 1px solid rgba(224,82,82,0.25); }
+.rm-text { font-size: 0.82rem; line-height: 1.5; margin: 0 0 0.6rem; color: var(--txt-secondary); word-break: break-word; }
+.rm-text strong { color: var(--txt-primary); font-weight: 600; }
+.rm-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .ladder-nudge { display: block; width: 100%; text-align: left; font: inherit; margin-bottom: 1.25rem; cursor: pointer; }
 </style>

@@ -1,4 +1,4 @@
-// src/stores/tournaments.ts — v0.0.3.3
+// src/stores/tournaments.ts — v0.0.6.1
 //
 // A "tournament" is now a season: created empty, played out over weekly
 // rounds. Each week is an explicit admin action (start_tournament_week)
@@ -22,6 +22,11 @@ const MATCH_SELECT = `
   player_a2:profiles!tournament_matches_player_a2_id_fkey(id, username, display_name, avatar_url, is_placeholder),
   player_b2:profiles!tournament_matches_player_b2_id_fkey(id, username, display_name, avatar_url, is_placeholder)
 `
+
+// A completed match plus the season it belongs to. `status` is the season's
+// ('round_robin' while it runs, 'completed' once finalized) — the Matches page
+// uses it to decide whether an admin may still remove the match.
+export type LeagueMatch = TournamentMatch & { tournament: { id: string; name: string; status?: string } }
 
 export const useTournamentsStore = defineStore('tournaments', () => {
   const active       = ref<Tournament | null>(null)
@@ -352,6 +357,17 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     await fetchMatches()
   }
 
+  // v0.0.6.1 — remove a match that WAS played (cancelMatch above only handles
+  // ones nobody has played). Admin only, running seasons only. The database
+  // undoes the match in the standings and replays the later matches' ratings
+  // without it; the result says what was removed and how many later matches
+  // were recalculated.
+  async function removePlayedMatch(matchId: string) {
+    const { data, error: err } = await supabase.rpc('remove_tournament_match', { p_match_id: matchId })
+    if (err) throw new Error(err.message)
+    return data as { summary: string; recalculated: number; phase: string }
+  }
+
   // A player's own past-season results (for the Profile page's Round
   // Robin section) — final seed/record for every completed season in
   // this league they were part of, newest first.
@@ -434,18 +450,18 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   // still load, just without the deltas.
   async function fetchLeagueMatches(limit = 60) {
     const leagueId = useLeagueStore().currentLeagueId
-    if (!leagueId) return { matches: [] as (TournamentMatch & { tournament: { id: string; name: string } })[], deltas: {} as Record<string, number> }
+    if (!leagueId) return { matches: [] as LeagueMatch[], deltas: {} as Record<string, number> }
 
     const { data, error: err } = await supabase
       .from('tournament_matches')
-      .select(`${MATCH_SELECT}, tournament:tournaments!inner(id, name, league_id)`)
+      .select(`${MATCH_SELECT}, tournament:tournaments!inner(id, name, league_id, status)`)
       .eq('status', 'completed')
       .eq('tournament.league_id', leagueId)
       .order('completed_at', { ascending: false })
       .limit(limit)
     if (err) throw new Error(err.message)
 
-    const matches = (data ?? []) as unknown as (TournamentMatch & { tournament: { id: string; name: string } })[]
+    const matches = (data ?? []) as unknown as LeagueMatch[]
     const deltas: Record<string, number> = {}
     if (matches.length) {
       const { data: hist, error: hErr } = await supabase
@@ -500,6 +516,6 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     fetchActive, fetchParticipants, fetchMatches, fetchWeeks,
     fetchPastSeasons, fetchSeasonStandings, fetchProfileRoundRobinHistory, fetchProfileMatches, fetchProfileRatingHistory, fetchLeagueMatches, fetchHeadToHead,
     createTournament, startWeek, createChallenge, reportMatch, finalizeTournament,
-    callToCourt, uncallMatch, addMatch, cancelMatch, generateCourtMatches,
+    callToCourt, uncallMatch, addMatch, cancelMatch, removePlayedMatch, generateCourtMatches,
   }
 })
