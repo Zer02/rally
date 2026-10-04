@@ -20,13 +20,14 @@
           </div>
           <table v-else-if="standingsBySeason[s.id]?.length" class="table">
             <thead>
-              <tr><th>Seed</th><th>Player</th><th>W–L</th><th>Points</th></tr>
+              <tr><th>Seed</th><th>Player</th><th>W–L</th><th>Points</th><th>Games + bonus</th></tr>
             </thead>
             <tbody>
               <tr v-for="p in standingsBySeason[s.id]" :key="p.id">
                 <td class="mono muted">{{ p.seed ?? '—' }}</td>
                 <td>{{ p.profile?.display_name || p.profile?.username }}</td>
                 <td class="mono">{{ p.wins }}–{{ p.losses }}</td>
+                <td class="mono">{{ p.rr_points ?? '—' }}</td>
                 <td class="mono">{{ p.adjusted_score?.toFixed(1) ?? '—' }}</td>
               </tr>
             </tbody>

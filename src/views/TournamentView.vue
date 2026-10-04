@@ -68,10 +68,11 @@
         <StandingsTable
           :rows="standingsRows"
           :columns="standingsColumns"
-          rating-label="RR Rating"
+          rating-label="Points"
           :me-id="user?.id"
           empty-message="Nobody's enrolled yet — start a week to bring players in."
         />
+        <PointsKey />
       </div>
 
       <!-- Admin: start a week -->
@@ -162,6 +163,7 @@ import CourtGeneratorForm from '@/components/tournament/CourtGeneratorForm.vue'
 import PastSeasonsPanel from '@/components/tournament/PastSeasonsPanel.vue'
 import PlayerAccountsPanel from '@/components/admin/PlayerAccountsPanel.vue'
 import StandingsTable, { type StandingRow, type StandingColumn } from '@/components/leaderboard/StandingsTable.vue'
+import PointsKey from '@/components/tournament/PointsKey.vue'
 
 const store = useTournamentsStore()
 const playersStore = usePlayersStore()
@@ -194,9 +196,10 @@ onLeagueChange(() => {
 
 const nextWeekNumber = computed(() => (store.currentWeek?.week_number ?? 0) + 1)
 
-// Same podium/table/card shell as the main leaderboard, with rr_rating
-// standing in for the ladder rating and the round robin's own W-L/points
-// columns instead of Season/Streak (round robin doesn't track a streak).
+// Same podium/table/card shell as the main leaderboard. v0.0.6.2: the big
+// number is match points (rr_points); the RR rating moves to a desktop-only
+// column. The round robin's own W-L/games columns replace Season/Streak
+// (round robin doesn't track a streak).
 // The W-L/points strings and the diff's sign are resolved here rather than
 // inside each column's value() so the row objects — not the static column
 // defs — are what changes reference when standings update, same reasoning
@@ -209,14 +212,15 @@ const standingsRows = computed(() =>
       profile_id: p.profile_id,
       name: p.profile?.display_name || p.profile?.username || 'Unknown',
       unit: p.profile?.unit,
-      rating: p.rr_rating,
+      rating: p.rr_points,
       wl: `${p.wins}–${p.losses}`,
+      rr: String(Math.round(p.rr_rating)),
       ptsFor: p.points_for,
       ptsAgainst: p.points_against,
       diffLabel: `${diff > 0 ? '+' : ''}${diff}`,
       diffValue: diff,
     } satisfies StandingRow & {
-      wl: string; ptsFor: number; ptsAgainst: number; diffLabel: string; diffValue: number
+      wl: string; rr: string; ptsFor: number; ptsAgainst: number; diffLabel: string; diffValue: number
     }
   })
 )
@@ -224,8 +228,9 @@ type StandingsRow = (typeof standingsRows.value)[number]
 
 const standingsColumns: StandingColumn[] = [
   { key: 'wl', label: 'W–L', value: (row) => (row as StandingsRow).wl },
-  { key: 'ptsFor', label: 'Pts for', value: (row) => String((row as StandingsRow).ptsFor), mobile: false },
-  { key: 'ptsAgainst', label: 'Pts against', value: (row) => String((row as StandingsRow).ptsAgainst), mobile: false },
+  { key: 'rr', label: 'RR Rating', value: (row) => (row as StandingsRow).rr, mobile: false },
+  { key: 'ptsFor', label: 'Games for', value: (row) => String((row as StandingsRow).ptsFor), mobile: false },
+  { key: 'ptsAgainst', label: 'Games against', value: (row) => String((row as StandingsRow).ptsAgainst), mobile: false },
   {
     key: 'diff',
     label: 'Diff',

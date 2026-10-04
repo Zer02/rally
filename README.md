@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.1**
+> Current version: **v0.0.6.2**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -508,6 +508,20 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **New:** `supabase-migration-v0.0.6.1.sql`. **Changed:** `src/views/MatchesView.vue`, `src/stores/tournaments.ts` (new `removePlayedMatch()`; the league match list also loads each season's status). No Edge Function changes.
 - **Deploy (manual):** run the migration in the SQL Editor after confirming v0.0.5.3 is applied (it stops with a clear message if not), then deploy the frontend.
 - **Validated:** all 27 migrations in git order were replayed into a real Postgres engine, then the new one (twice, to confirm it is safe to re-run). 60 random seasons of singles, doubles and challenge matches each had one match removed and were compared with a control season where that match was never played: every player's wins, losses, points, bonus points, rating and every `rr_rating_history` row matched exactly. The same held for 20 seasons with two removals in a row and 10 where a wrong score was removed and re-entered. Also checked: non-admins and signed-out callers are refused, unplayed matches, finished seasons and bracket matches are refused and change nothing, a double click gives a clean "not found", the log records the right names and score, and the browser role can neither write nor edit the log. Deliberately breaking the function four ways (skipping the replay, replaying from the wrong starting rating, dropping the finished-season check, not undoing points against) made the tests fail each time. 27 headless-browser checks drive the real Matches page: Remove appears only on running-season matches and only for admins, the confirm names the match, Cancel and server errors leave it in place, doubles and challenge matches work, and nothing overflows at 375px.
+
+### v0.0.6.2 — Round robin points
+
+> The leaderboard's bare number was a win count with no label. The round robin now has a real points system, shown everywhere standings appear and used to rank and seed.
+
+- A win earns 4 points; a loss earns the games you won, minimum 1, maximum 3 (0-4 and 1-4 earn 1, 2-4 earns 2, 3-4 earns 3). Doubles partners both earn their side's points. Challenge matches earn none; the challenge bonus stays a final tiebreak only.
+- Ranking is total points, then wins, then games won. Because a loss still earns points, playing more matches earns more points.
+- New `rr_points` column on `tournament_participants`, defined once in `rr_match_points()`, backfilled from every completed non-challenge match. A self-check in the migration fails if any stored total differs from a recount.
+- `report_tournament_match()`, `remove_tournament_match()`, `finalize_tournament()` and `create_challenge()` updated. Court pairing unchanged. Seasons finalized before 6.2 keep their official placings and only gain a points figure.
+- Leaderboard defaults to Rank by Points; Points appears as its own column when another ranking is chosen. Mobile cards and the podium now label the big number.
+- Round Robin page: the big number is points, RR Rating moves to a desktop-only column, "Pts for/against" became "Games for/against".
+- New collapsible "How points work" key under the round robin tables (not on the all-time view).
+- Past seasons panel: old "Points" column renamed "Games + bonus", plus a real Points column.
+- Migration refuses to run unless v0.0.5.3 and v0.0.6.1 are applied.
 
 ## Quick start
 

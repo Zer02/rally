@@ -3,7 +3,7 @@
   any ranked list of players (main ladder, round robin season, a finalized
   round robin's final standings) can reuse it instead of re-implementing
   the CSS. Callers pass already-sorted `rows` plus whatever extra stat
-  columns they want (Season W-L, Pts for/against/diff, etc.) — the rating
+  columns they want (Season W-L, Games for/against/diff, etc.) — the rating
   column, podium, crowns, and mobile/desktop split are all built in.
 
   v0.0.4.1 — extracted from LeaderboardView.vue so TournamentView.vue could
@@ -18,18 +18,21 @@
         <div class="podium-rank">2</div>
         <div class="podium-name">{{ rows[1].name }}</div>
         <div class="podium-rating mono">{{ Math.round(rows[1].rating) }}</div>
+        <div class="podium-unit">{{ ratingLabel }}</div>
       </RouterLink>
       <RouterLink :to="profileLink(rows[0])" class="podium-spot first">
         <PlayerAvatar :name="rows[0].name" :size="56" override="👑" />
         <div class="podium-rank gold">1</div>
         <div class="podium-name">{{ rows[0].name }}</div>
         <div class="podium-rating mono">{{ Math.round(rows[0].rating) }}</div>
+        <div class="podium-unit">{{ ratingLabel }}</div>
       </RouterLink>
       <RouterLink :to="profileLink(rows[2])" class="podium-spot third">
         <PlayerAvatar :name="rows[2].name" :size="44" override="🥉" />
         <div class="podium-rank">3</div>
         <div class="podium-name">{{ rows[2].name }}</div>
         <div class="podium-rating mono">{{ Math.round(rows[2].rating) }}</div>
+        <div class="podium-unit">{{ ratingLabel }}</div>
       </RouterLink>
     </div>
 
@@ -112,6 +115,7 @@
         </RouterLink>
         <div class="lb-right">
           <div class="lb-rating mono">{{ Math.round(p.rating) }}</div>
+          <div class="lb-rating-caption">{{ ratingLabel }}</div>
           <slot name="action" :row="p" />
         </div>
       </div>
@@ -140,7 +144,7 @@ export interface StandingColumn {
   value: (row: StandingRow) => string
   cellClass?: (row: StandingRow) => string | Record<string, boolean>
   // Shown in the mobile card's sub-line. Defaults to true — set false on
-  // columns that are desktop-table-only (e.g. Pts for/against, which
+  // columns that are desktop-table-only (e.g. Games for/against, which
   // would clutter the card view once Diff already summarizes them).
   mobile?: boolean
 }
@@ -200,6 +204,7 @@ function profileLink(row: StandingRow) {
 .podium-rank.gold { color: var(--ball); }
 .podium-name { font-size: 0.85rem; font-weight: 500; color: var(--txt-primary); }
 .podium-rating { font-size: 0.78rem; color: var(--txt-muted); }
+.podium-unit { font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--txt-muted); margin-top: -0.25rem; }
 .first .podium-name { font-size: 0.95rem; }
 .my-row td { background: rgba(232,200,74,0.04); }
 
@@ -232,6 +237,7 @@ function profileLink(row: StandingRow) {
 .lb-sub { font-size: 0.75rem; margin-top: 0.15rem; }
 .lb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; flex-shrink: 0; }
 .lb-rating { font-size: 1rem; font-weight: 500; color: var(--txt-primary); }
+.lb-rating-caption { font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--txt-muted); margin-top: -0.3rem; }
 
 @media (max-width: 600px) {
   .leaderboard-table { display: none; }

@@ -1,4 +1,4 @@
-// src/types/index.ts — v0.0.5.9
+// src/types/index.ts — v0.0.6.2
 
 export interface Profile {
   id:           string
@@ -124,6 +124,7 @@ export interface TournamentParticipant {
   points_for:     number
   points_against: number
   bonus_points:   number
+  rr_points:      number   // v0.0.6.2: match points (4 per win; a loss earns its games won, 1–3)
   rr_rating:      number
   adjusted_score: number | null
   seed:           number | null

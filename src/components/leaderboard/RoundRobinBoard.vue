@@ -1,6 +1,6 @@
 <!--
-  RoundRobinBoard — v0.0.5.2. The leaderboard's default view: round robin
-  standings with two dropdowns.
+  RoundRobinBoard — v0.0.5.2 (points added v0.0.6.2). The leaderboard's
+  default view: round robin standings with two dropdowns.
 
     Season  — the running season, any finalized past season, or "All-time"
               (career round robin stats from the players table).
@@ -44,6 +44,7 @@
         :me-id="user?.id"
         :empty-message="board.empty"
       />
+      <PointsKey v-if="!isAllTime" />
     </template>
   </div>
 </template>
@@ -55,6 +56,7 @@ import { usePlayersStore } from '@/stores/players'
 import { useAuth } from '@/composables/useAuth'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
 import StandingsTable, { type StandingRow, type StandingColumn } from '@/components/leaderboard/StandingsTable.vue'
+import PointsKey from '@/components/tournament/PointsKey.vue'
 import type { TournamentParticipant } from '@/types'
 
 const store        = useTournamentsStore()
@@ -63,7 +65,7 @@ const { user }     = useAuth()
 
 // 'current' | 'alltime' | a completed tournament's id
 const season = ref<string>('current')
-const metric = ref<string>('standings')
+const metric = ref<string>('points')
 
 const pastRows   = ref<TournamentParticipant[]>([])
 const pastLoading = ref(false)
@@ -78,7 +80,8 @@ const currentLabel = computed(() =>
 )
 
 const SEASON_METRICS = [
-  { value: 'standings', label: 'Standings' },
+  { value: 'points',    label: 'Points' },
+  { value: 'wins',      label: 'Wins' },
   { value: 'rr_rating', label: 'RR rating' },
   { value: 'win_pct',   label: 'Win %' },
   { value: 'games_won', label: 'Games won' },
@@ -90,7 +93,7 @@ const ALLTIME_METRICS = [
 ]
 const metricOptions = computed(() => {
   if (isAllTime.value) return ALLTIME_METRICS
-  if (isPast.value) return [{ value: 'standings', label: 'Final placing' }, ...SEASON_METRICS.slice(1)]
+  if (isPast.value) return [{ value: 'standings', label: 'Final placing' }, ...SEASON_METRICS]
   return SEASON_METRICS
 })
 
@@ -121,14 +124,14 @@ async function loadPast(id: string) {
 }
 
 watch(season, (id) => {
-  metric.value = id === 'alltime' ? 'titles' : 'standings'
+  metric.value = id === 'alltime' ? 'titles' : id === 'current' ? 'points' : 'standings'
   if (id !== 'current' && id !== 'alltime') loadPast(id)
 })
 
 onMounted(loadAll)
 onLeagueChange(async () => {
   season.value = 'current'
-  metric.value = 'standings'
+  metric.value = 'points'
   pastRows.value = []
   await loadAll()
 })
@@ -177,29 +180,36 @@ const board = computed<{ rows: Row[]; columns: StandingColumn[]; ratingLabel: st
   const source: TournamentParticipant[] = isPast.value ? pastRows.value : store.standings
   const m = metric.value
   const pctSort = (p: TournamentParticipant) => pct(p.wins, p.losses) ?? -1
+  // Points order: match points, then wins, then games won — the same
+  // order finalize_tournament() seeds by.
+  const byPoints = (a: TournamentParticipant, b: TournamentParticipant) =>
+    b.rr_points - a.rr_points || b.wins - a.wins || b.points_for - a.points_for
   const sorted = [...source].sort((a, b) => {
+    if (m === 'wins')      return b.wins - a.wins || byPoints(a, b)
     if (m === 'rr_rating') return b.rr_rating - a.rr_rating
     if (m === 'win_pct')   return pctSort(b) - pctSort(a) || b.wins - a.wins
     if (m === 'games_won') return b.points_for - a.points_for || b.wins - a.wins
-    // Standings: a finished season keeps its official final seed order
-    // (bracket results can reorder it); a running one is wins, then games won.
-    if (isPast.value) {
+    // Final placing: a finished season keeps its official final seed order
+    // (bracket results can reorder it, and seasons finished before points
+    // existed were seeded wins-first). 'points' is the plain points order.
+    if (m === 'standings') {
       const sa = a.seed ?? Infinity, sb = b.seed ?? Infinity
       if (sa !== sb) return sa - sb
     }
-    return b.wins - a.wins || b.points_for - a.points_for
+    return byPoints(a, b)
   })
 
   const primaryOf = (p: TournamentParticipant) =>
     m === 'rr_rating' ? p.rr_rating : m === 'win_pct' ? (pct(p.wins, p.losses) ?? 0)
-      : m === 'games_won' ? p.points_for : p.wins
-  const ratingLabel = { standings: 'Wins', rr_rating: 'RR Rating', win_pct: 'Win %', games_won: 'Games won' }[m] ?? 'Wins'
+      : m === 'games_won' ? p.points_for : m === 'wins' ? p.wins : p.rr_points
+  const ratingLabel = { standings: 'Points', points: 'Points', wins: 'Wins', rr_rating: 'RR Rating', win_pct: 'Win %', games_won: 'Games won' }[m] ?? 'Points'
 
   const rows: Row[] = sorted.map(p => ({
     id: p.id, profile_id: p.profile_id, name: nameOf(p.profile), unit: p.profile?.unit,
     rating: primaryOf(p),
     extra: {
       final: p.seed ? `#${p.seed}` : '—',
+      pts:   String(p.rr_points),
       wl:    `${p.wins}–${p.losses}`,
       pct:   pctLabel(p.wins, p.losses),
       gw:    String(p.points_for),
@@ -209,11 +219,12 @@ const board = computed<{ rows: Row[]; columns: StandingColumn[]; ratingLabel: st
 
   const columns = [
     ...(isPast.value ? [col('final', 'Final')] : []),
+    col('pts', 'Points'),
     col('wl', 'W–L'),
     col('pct', 'Win %'),
     col('gw', 'Games won', false),
     col('rr', 'RR Rating'),
-  ].filter(c => !(c.key === 'pct' && m === 'win_pct') && !(c.key === 'gw' && m === 'games_won') && !(c.key === 'rr' && m === 'rr_rating'))
+  ].filter(c => !(c.key === 'pts' && (m === 'points' || m === 'standings')) && !(c.key === 'pct' && m === 'win_pct') && !(c.key === 'gw' && m === 'games_won') && !(c.key === 'rr' && m === 'rr_rating'))
 
   const empty = isPast.value
     ? 'Nobody was enrolled in this season.'

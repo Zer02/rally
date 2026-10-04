@@ -37,18 +37,19 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   const loading       = ref(false)
   const error         = ref<string | null>(null)
 
-  // Live, unadjusted standings — sorted by wins, then total games won
-  // (points_for). Differential deliberately isn't part of this: with
-  // short first-to-4 no-ad sets, a 4-3 loss and a 4-0 loss should count
-  // the same for tiebreak purposes — total games won rewards playing
-  // close matches instead of rewarding blowouts. Same ordering
-  // create_challenge() uses server-side to decide who's ranked above
-  // whom, so it doubles as the "can I challenge them" reference order.
-  // bonus_points is shown alongside but doesn't affect this sort — it
-  // only shows up in the final adjusted_score once the season is
-  // finalized.
+  // Live, unadjusted standings — v0.0.6.2: sorted by match points
+  // (rr_points: 4 per win, a loss earns its games won, min 1 / max 3),
+  // then wins, then total games won (points_for). Differential
+  // deliberately isn't part of this: with short first-to-4 no-ad sets, a
+  // 4-3 loss and a 4-0 loss should count the same for tiebreak purposes.
+  // Same ordering finalize_tournament() seeds by and create_challenge()
+  // uses server-side, so it doubles as the "can I challenge them"
+  // reference order. bonus_points is shown alongside but doesn't affect
+  // this sort — it only shows up in the final adjusted_score once the
+  // season is finalized.
   const standings = computed(() =>
     [...participants.value].sort((a, b) => {
+      if (b.rr_points !== a.rr_points) return b.rr_points - a.rr_points
       if (b.wins !== a.wins) return b.wins - a.wins
       return b.points_for - a.points_for
     })
