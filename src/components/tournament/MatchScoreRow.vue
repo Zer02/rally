@@ -12,9 +12,9 @@
     </div>
 
     <div class="match-score-inputs">
-      <input v-model.number="scoreA" type="number" min="0" max="99" class="input score-input" placeholder="0" />
+      <input v-model.number="scoreA" type="number" min="0" max="4" step="1" inputmode="numeric" class="input score-input" placeholder="0" aria-label="Games won, first side" />
       <span class="muted">–</span>
-      <input v-model.number="scoreB" type="number" min="0" max="99" class="input score-input" placeholder="0" />
+      <input v-model.number="scoreB" type="number" min="0" max="4" step="1" inputmode="numeric" class="input score-input" placeholder="0" aria-label="Games won, second side" />
       <button
         class="btn btn-primary btn-sm"
         :disabled="!canSubmit || submitting"
@@ -34,12 +34,14 @@
         <span v-else>Remove</span>
       </button>
     </div>
+    <p v-if="scoreHint" class="score-hint" role="alert">{{ scoreHint }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { TournamentMatch } from '@/types'
+import { isLegalRrScore, rrScoreError } from '@/lib/score'
 
 const props = defineProps<{
   match: TournamentMatch
@@ -54,11 +56,16 @@ const scoreB = ref<number | null>(null)
 const submitting = ref(false)
 const removing = ref(false)
 
-const canSubmit = computed(() =>
-  scoreA.value !== null && scoreB.value !== null &&
-  scoreA.value >= 0 && scoreB.value >= 0 &&
-  scoreA.value !== scoreB.value
-)
+// First to 4 games: the winner has exactly 4, the loser 0–3 (lib/score.ts).
+const canSubmit = computed(() => isLegalRrScore(scoreA.value, scoreB.value))
+
+// Say what's wrong only once both boxes hold a number, so it doesn't nag
+// while someone is still typing the second score.
+const scoreHint = computed(() => {
+  const a = scoreA.value, b = scoreB.value
+  if (typeof a !== 'number' || typeof b !== 'number') return ''
+  return rrScoreError(a, b) ?? ''
+})
 
 async function submit() {
   if (!canSubmit.value) return
@@ -81,5 +88,6 @@ async function remove() {
 .match-score-names { font-size: 0.9rem; }
 .me-highlight { color: var(--txt-primary); font-weight: 600; }
 .match-score-inputs { display: flex; align-items: center; gap: 0.4rem; }
+.score-hint { flex-basis: 100%; margin: 0; font-size: 0.8rem; color: var(--ace); }
 .score-input { width: 52px; text-align: center; flex-shrink: 0; padding: 0.45rem 0.5rem; }
 </style>

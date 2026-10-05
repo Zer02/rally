@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { useLeagueStore } from './leagues'
 import { useAuth } from '@/composables/useAuth'
 import type { Tournament, TournamentParticipant, TournamentMatch, TournamentWeek } from '@/types'
+import { rrScoreError } from '@/lib/score'
 
 const PARTICIPANT_SELECT = '*, profile:profiles(id, username, display_name, unit, avatar_url, is_placeholder)'
 const MATCH_SELECT = `
@@ -251,6 +252,11 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   // RPC branches on the match's phase. Challenge wins add to bonus_points
   // only; round-robin wins update wins/losses/points_for/points_against.
   async function reportMatch(matchId: string, scoreA: number, scoreB: number) {
+    // v0.0.6.3: first to 4 games. The database enforces this too; checking
+    // here just fails fast with the same plain-English reason.
+    const problem = rrScoreError(scoreA, scoreB)
+    if (problem) throw new Error(problem)
+
     const { error: err } = await supabase.rpc('report_tournament_match', {
       p_match_id: matchId,
       p_score_a:  scoreA,

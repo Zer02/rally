@@ -40,8 +40,9 @@
           <span v-if="done && side.isWinner" class="sc-check" title="Winner" aria-label="Winner">✓</span>
           <span v-if="side.isMe" class="sc-you">you</span>
         </div>
-        <div v-if="side.unit || side.delta != null" class="sc-sub">
+        <div v-if="side.unit || side.points != null || side.delta != null" class="sc-sub">
           <span v-if="side.unit">{{ side.unit }}</span>
+          <span v-if="side.points != null" class="sc-pts" :title="`${side.points} round robin points from this match`">+{{ side.points }} {{ side.points === 1 ? 'pt' : 'pts' }}</span>
           <span
             v-if="side.delta != null"
             class="sc-delta"
@@ -72,6 +73,7 @@ export interface ScoreSide {
   names:    string[]            // one name (singles) or two (doubles)
   unit?:    string | null
   delta?:   number | null       // rating change from this match, if known
+  points?:  number | null       // round robin points earned (v0.0.6.3); null = none, e.g. challenges
   isWinner: boolean
   isMe:     boolean
   games?:   number[] | null     // per-game scores (ladder), if recorded
@@ -124,6 +126,8 @@ defineProps<{
 .sc-you { flex-shrink: 0; font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ball); border: 1px solid rgba(232,200,74,0.4); border-radius: 999px; padding: 0 0.35rem; }
 
 .sc-sub { display: flex; gap: 0.6rem; font-size: 0.72rem; color: var(--txt-muted); }
+.sc-pts { font-family: var(--font-mono); color: var(--txt-secondary); }
+.sc-winner .sc-pts { color: var(--txt-primary); }
 .sc-delta { font-family: var(--font-mono); }
 .sc-delta-pos { color: var(--net); }
 .sc-delta-neg { color: var(--ace); }

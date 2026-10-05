@@ -214,6 +214,7 @@ import ResultModal from '@/components/match/ResultModal.vue'
 import ScoreCard, { type ScoreSide } from '@/components/match/ScoreCard.vue'
 import { useTournamentsStore } from '@/stores/tournaments'
 import type { TournamentMatch } from '@/types'
+import { rrMatchPoints } from '@/lib/score'
 import type { Match } from '@/types'
 
 const matchesStore = useMatchesStore()
@@ -291,14 +292,18 @@ const rrCards = computed(() => {
       const d = ids.map(id => rrDeltas.value[`${m.id}:${id}`]).find(v => v != null)
       return d ?? null
     }
-    const side = (ids: string[], profs: (typeof m.player_a | undefined)[], won: boolean, score: number | null): ScoreSide => ({
+    // v0.0.6.3: the points this match added to each side's season total.
+    // Challenge matches earn none (same rule as report_tournament_match()).
+    const pointsFor = (mine: number | null, theirs: number | null) =>
+      m.phase === 'challenge' || mine == null || theirs == null ? null : rrMatchPoints(mine, theirs)
+    const side = (ids: string[], profs: (typeof m.player_a | undefined)[], won: boolean, score: number | null, other: number | null): ScoreSide => ({
       names: profs.filter(Boolean).map(nm),
       isWinner: won, isMe: !!me && ids.includes(me),
-      delta: deltaFor(ids), total: score,
+      delta: deltaFor(ids), total: score, points: pointsFor(score, other),
     })
     const sides: [ScoreSide, ScoreSide] = [
-      side(aIds, [m.player_a, m.player_a2], aWon, m.score_a),
-      side(bIds, [m.player_b, m.player_b2], bWon, m.score_b),
+      side(aIds, [m.player_a, m.player_a2], aWon, m.score_a, m.score_b),
+      side(bIds, [m.player_b, m.player_b2], bWon, m.score_b, m.score_a),
     ]
     const iAmA = !!me && aIds.includes(me), iAmB = !!me && bIds.includes(me)
     const result: 'win' | 'loss' | null =
