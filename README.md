@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.2**
+> Current version: **v0.0.6.3**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -522,6 +522,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - New collapsible "How points work" key under the round robin tables (not on the all-time view).
 - Past seasons panel: old "Points" column renamed "Games + bonus", plus a real Points column.
 - Migration refuses to run unless v0.0.5.3 and v0.0.6.1 are applied.
+
+### v0.0.6.3 — Score validation, and points on every match card
+
+> A round robin match is first to 4 games, no-ad, but the app only checked that a score wasn't a tie. Since v0.0.6.2 a loss earns points from the games won, so a typo like 7-2 also bent the standings. Scores are now checked against the real format, and each round robin match card shows the points it earned.
+
+- A legal result has one side on exactly 4 games and the other on 0 to 3 (4-0, 4-1, 4-2, 4-3 either way round). Anything else is refused: ties, 3-2, 5-2, 7-2, 4-4, negatives, decimals.
+- Database: new `rr_score_is_legal()` defines the rule once, and `report_tournament_match()` (v0.0.6.2 body, otherwise unchanged) rejects an illegal score with a message that says what a legal one is. It applies to every reported match, including challenge and bracket matches, since they share the function.
+- Score boxes on the Round Robin page take 0 to 4. The Submit/Report button stays off until the score is legal, and a short reason appears once both boxes are filled (not while the second one is still being typed). The store checks again before calling the database, so the reason is the same either way.
+- Matches page: each side of a round robin card now shows the points the match added ("+4 pts", "+1 pt"). Challenge matches show none. `PointsKey.vue` is unchanged.
+- New `src/lib/score.ts` holds the front-end copy of the rule and of `rr_match_points()`; the file says which migrations to change alongside it.
+- Existing results are not touched. The migration ends with an audit that lists, as NOTICEs in the SQL Editor output, any completed match whose stored score is not legal. They keep counting; an admin fixes one with Remove on the Matches page, then adds the match again.
+- Not changed: `add_tournament_match()` takes no score, so there was nothing to validate. Ladder matches use per-game scores and a different format and are not touched.
+- **New:** `supabase-migration-v0.0.6.3.sql`, `src/lib/score.ts`. **Changed:** `src/components/tournament/MatchScoreRow.vue`, `src/components/match/ScoreCard.vue`, `src/views/MatchesView.vue`, `src/stores/tournaments.ts`. No Edge Function changes.
+- **Deploy (manual):** run the migration in the SQL Editor after confirming v0.0.6.2 is applied (it stops with a clear message if not), then deploy the frontend. Safe to re-run.
+- **Validated:** the base schema and all 28 earlier migrations were replayed in version order into a real Postgres engine, then the new one (twice, to confirm it is safe to re-run; it also refuses to run without 6.2). On a staged season with singles, doubles and two old illegal results (7-2 and 1-5), the audit listed exactly those two. The new function accepted all six legal scores tried and rejected twelve illegal ones, plus a null. Five further matches, singles and doubles, were reported on a copy still at 6.2 and a copy at 6.3: every player's wins, losses, games, points and rating, and every `rr_rating_history` row, matched exactly. Removing an old illegal match still works and takes back the right points. The JavaScript rule agrees with the SQL functions on all 121 score pairs from -1 to 9. 76 headless-browser checks on the new components at 375px and 1280px covered blocked and allowed scores, the hint timing, the points labels, and no horizontal overflow. The production build passes. Not tested against your live Supabase data (so the audit result on your real matches is unknown until you run it), and the Matches page itself was not driven end to end: the new pieces were tested as components with mock data.
 
 ## Quick start
 
