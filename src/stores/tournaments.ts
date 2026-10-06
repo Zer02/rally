@@ -39,7 +39,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   const error         = ref<string | null>(null)
 
   // Live, unadjusted standings — v0.0.6.2: sorted by match points
-  // (rr_points: 4 per win, a loss earns its games won, min 1 / max 3),
+  // (rr_points: 4 per win, a loss earns its games won, 0 to 3),
   // then wins, then total games won (points_for). Differential
   // deliberately isn't part of this: with short first-to-4 no-ad sets, a
   // 4-3 loss and a 4-0 loss should count the same for tiebreak purposes.

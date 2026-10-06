@@ -1,11 +1,12 @@
-// src/lib/score.ts — v0.0.6.3
+// src/lib/score.ts — v0.0.6.4
 //
 // Round robin score rules, in one place for the front end. The format is
 // first to 4 games, no-ad, so a finished match is 4-0, 4-1, 4-2 or 4-3 either
 // way round. These mirror two functions in the database, which is the real
 // authority; if a rule changes, change both:
 //   rr_score_is_legal()  — supabase-migration-v0.0.6.3.sql
-//   rr_match_points()    — supabase-migration-v0.0.6.2.sql
+//   rr_match_points()    — supabase-migration-v0.0.6.4.sql (last redefined there)
+//   XP per point         — c_xp_per_point in sync_quest_progress(), supabase-migration-v0.0.6.4.sql
 
 export const GAMES_TO_WIN = 4
 
@@ -31,7 +32,15 @@ export function rrScoreError(a: unknown, b: unknown): string | null {
   return `A match is first to ${GAMES_TO_WIN} games, so the winner needs ${GAMES_TO_WIN}.`
 }
 
-/** Match points for one side: 4 for a win; a loss earns its games won, min 1, max 3. */
+/** Match points for one side: 4 for a win; a loss earns its games won, 0 to 3. */
 export function rrMatchPoints(gamesWon: number, gamesLost: number): number {
-  return gamesWon > gamesLost ? 4 : Math.max(1, Math.min(3, gamesWon))
+  return gamesWon > gamesLost ? 4 : Math.max(0, Math.min(3, gamesWon))
+}
+
+/** Battle pass XP per match point for round robin matches (v0.0.6.4). */
+export const XP_PER_POINT = 4
+
+/** Play XP one round robin match is worth to one side, before the weekly cap. */
+export function rrMatchXp(gamesWon: number, gamesLost: number): number {
+  return XP_PER_POINT * rrMatchPoints(gamesWon, gamesLost)
 }

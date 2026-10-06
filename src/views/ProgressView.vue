@@ -44,6 +44,10 @@
             played · <strong class="mono">+{{ progress.playXpWeek.xp }} XP</strong>
             <span v-if="progress.playXpWeek.matches > 5">(after 5 matches each one earns a little less)</span>
           </p>
+          <p class="play-xp-rule muted">
+            Round robin matches: a win earns {{ winXp }} XP, and a loss earns {{ XP_PER_POINT }} XP for each
+            game you won (up to {{ lossMaxXp }}). Ladder matches earn 15.
+          </p>
         </div>
 
         <div v-if="progress.error" class="flash flash-error" style="margin-bottom:1.5rem">{{ progress.error }}</div>
@@ -100,6 +104,7 @@ import { useLeagueStore } from '@/stores/leagues'
 import { usePlayersStore } from '@/stores/players'
 import { useProgressStore, type QuestView } from '@/stores/progress'
 import { levelProgress } from '@/lib/xp'
+import { XP_PER_POINT, rrMatchXp } from '@/lib/score'
 import { useSport } from '@/composables/useSport'
 
 const { user } = useAuth()
@@ -111,6 +116,8 @@ const loading = computed(() => progress.loading || playersStore.loading)
 const me = computed(() => playersStore.byId(user.value?.id ?? ''))
 const { sport } = useSport()
 const lp = computed(() => levelProgress(me.value?.xp ?? 0, sport.value))
+const winXp = rrMatchXp(4, 0)
+const lossMaxXp = rrMatchXp(3, 4)
 
 const groups = computed(() => [
   { key: 'weekly',   label: 'This week',   refresh: 'Refreshes every Monday',
@@ -143,6 +150,7 @@ watch(() => leagueStore.currentLeagueId, load)
 .level-title { font-family: var(--font-display); font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.1; }
 .level-xp { color: var(--txt-secondary); font-size: 1rem; }
 .play-xp { font-size: 0.85rem; margin-top: 0.5rem; }
+.play-xp-rule { font-size: 0.8rem; margin-top: 0.25rem; }
 .xp-track { height: 12px; border-radius: 999px; background: var(--table-light); border: 1px solid var(--line); overflow: hidden; }
 .xp-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--ball), #f3dc7a); transition: width 0.6s ease; }
 .level-next { margin-top: 0.7rem; font-size: 0.85rem; }
