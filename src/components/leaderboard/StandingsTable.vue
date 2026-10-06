@@ -242,5 +242,7 @@ function profileLink(row: StandingRow) {
 @media (max-width: 600px) {
   .leaderboard-table { display: none; }
   .leaderboard-cards { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.5rem; }
+  /* v0.0.6.5: long names wrap onto a second line instead of ending in "…" */
+  .lb-name { white-space: normal; max-width: none; overflow-wrap: break-word; }
 }
 </style>

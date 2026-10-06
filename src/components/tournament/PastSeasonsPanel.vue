@@ -18,7 +18,7 @@
           <div v-if="loadingId === s.id" style="text-align:center;padding:1rem">
             <span class="spinner" style="width:18px;height:18px;border-width:2px" />
           </div>
-          <table v-else-if="standingsBySeason[s.id]?.length" class="table">
+          <table v-else-if="standingsBySeason[s.id]?.length" class="table past-table">
             <thead>
               <tr><th>Seed</th><th>Player</th><th>W–L</th><th>Points</th><th>Games + bonus</th></tr>
             </thead>

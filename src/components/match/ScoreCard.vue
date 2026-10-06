@@ -142,6 +142,11 @@ defineProps<{
 }
 .sc-winner .sc-total { color: var(--txt-primary); }
 
+@media (max-width: 600px) {
+  /* v0.0.6.5: long player names wrap instead of ending in "…" */
+  .sc-name-text { white-space: normal; overflow-wrap: break-word; }
+}
+
 @media (max-width: 420px) {
   .sc-game { min-width: 1.3rem; font-size: 0.75rem; }
   .sc-row { gap: 0.55rem; padding: 0.5rem 0.35rem; }

@@ -16,15 +16,15 @@
 
       <template v-else>
         <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-          <div style="display:flex;align-items:center;gap:1rem">
+          <div style="display:flex;align-items:center;gap:1rem;min-width:0">
             <PlayerAvatar :name="myName" :size="56" />
-            <div>
+            <div style="min-width:0">
               <p class="eyebrow">Your profile</p>
               <h1 style="font-size:clamp(1.4rem,3vw,2rem)">{{ myName }}</h1>
               <p v-if="me.profile?.unit" class="muted" style="font-size:0.85rem">Unit {{ me.profile.unit }}</p>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:0.75rem">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem 0.75rem">
             <button v-if="!editingProfile" class="btn btn-ghost" style="font-size:0.85rem" @click="startEditProfile">
               Edit profile
             </button>
@@ -104,7 +104,7 @@
             No matches yet.
           </div>
           <div v-else class="table-scroll">
-            <table class="table">
+            <table class="table table-stack-match">
               <thead>
                 <tr><th>Result</th><th>Opponent</th><th>Score</th><th>Δ</th><th>Date</th></tr>
               </thead>

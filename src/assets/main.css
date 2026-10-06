@@ -189,8 +189,48 @@ select.input { cursor: pointer; }
      its own row. Force a clean 2x2 instead. */
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 
-  /* Keep table columns from wrapping mid-word (e.g. "Sep 1" breaking into
-     "Se"/"1") — let the table scroll horizontally instead via .table-scroll */
-  .table { min-width: 460px; }
-  .table th, .table td { white-space: nowrap; padding: 0.6rem 0.75rem; }
+  /* v0.0.6.5: tables now fit the screen instead of being forced 460px wide
+     (which pushed the last columns off the edge of the card). Short cells
+     — headers, dates, scores, numbers — never wrap mid-word ("Sep 1" must
+     not become "Se"/"1"); name and text cells are free to wrap onto a
+     second line. A table that genuinely has too many columns to fit can opt
+     in to sideways scrolling with .table-wide (inside a .table-scroll). */
+  .table th, .table td { padding: 0.6rem 0.5rem; }
+  .table th { white-space: nowrap; }
+  .table td.mono, .table td.muted, .table td .mono, .table td .delta { white-space: nowrap; }
+  .table-wide { min-width: 460px; }
+
+  /* Long-text tables (a match with a partner and two opponents, a season
+     name) turn into two-line rows on phones instead of a squeezed grid.
+     Same markup; only the layout changes. Column order is what these rely
+     on, so keep it if a column is ever added.
+       .table-stack-match   Result | Match/Opponent | Score | Δ | [Season] | Date
+       .table-stack-season  Season | Finish | W–L | RR rating | Date          */
+  .table-stack-match thead, .table-stack-season thead { display: none; }
+  .table-stack-match, .table-stack-season { min-width: 0; display: block; }
+  .table-stack-match tbody, .table-stack-season tbody { display: block; }
+  .table-stack-match tr, .table-stack-season tr {
+    display: grid; align-items: center; column-gap: 0.75rem; row-gap: 0.15rem;
+    padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--line);
+  }
+  .table-stack-match tr:last-child, .table-stack-season tr:last-child { border-bottom: none; }
+  .table-stack-match td, .table-stack-season td { padding: 0; border: 0; white-space: normal; min-width: 0; }
+  .table-stack-match tbody tr:hover td, .table-stack-season tbody tr:hover td { background: none; }
+
+  .table-stack-match tr { grid-template-columns: 1.4rem 1fr auto; }
+  .table-stack-match td:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; }
+  .table-stack-match td:nth-child(2) { grid-column: 2; grid-row: 1; font-size: 0.9rem; color: var(--txt-primary); overflow-wrap: break-word; }
+  .table-stack-match td:nth-child(3) { grid-column: 3; grid-row: 1; text-align: right; }
+  .table-stack-match td:nth-child(4) { grid-column: 3; grid-row: 2; text-align: right; }
+  .table-stack-match td:nth-child(5) { grid-column: 2; grid-row: 2; font-size: 0.75rem; }
+  /* all-time board adds a Season column (5th) before Date (6th) */
+  .table-stack-match td:nth-child(6) { grid-column: 2; grid-row: 3; font-size: 0.75rem; }
+  .table-stack-match td:nth-child(5):not(:last-child) { grid-row: 2; }
+
+  .table-stack-season tr { grid-template-columns: repeat(3, auto) 1fr; }
+  .table-stack-season td:nth-child(1) { grid-column: 1 / -1; grid-row: 1; font-size: 0.9rem; color: var(--txt-primary); overflow-wrap: break-word; }
+  .table-stack-season td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .table-stack-season td:nth-child(3) { grid-column: 2; grid-row: 2; }
+  .table-stack-season td:nth-child(4) { grid-column: 3; grid-row: 2; }
+  .table-stack-season td:nth-child(5) { grid-column: 4; grid-row: 2; text-align: right; font-size: 0.75rem; }
 }

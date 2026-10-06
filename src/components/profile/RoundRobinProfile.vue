@@ -59,7 +59,7 @@
             No finished seasons yet.
           </p>
           <div v-else class="table-scroll">
-            <table class="table">
+            <table class="table table-stack-season">
               <thead><tr><th>Season</th><th>Finish</th><th>W–L</th><th>RR rating</th><th>Date</th></tr></thead>
               <tbody>
                 <tr v-for="h in history" :key="h.tournament.id">
@@ -85,7 +85,7 @@
           No round robin matches {{ season === 'alltime' ? 'yet' : 'in this season' }}.
         </p>
         <div v-else class="table-scroll">
-          <table class="table">
+          <table class="table table-stack-match">
             <thead>
               <tr>
                 <th>Result</th><th>Match</th><th>Score</th><th>Δ</th>

@@ -69,7 +69,7 @@
           <div class="card-header"><h3>Match history</h3></div>
           <div v-if="!playerMatches.length" style="padding:2rem;text-align:center;color:var(--txt-muted)">No matches yet.</div>
           <div v-else class="table-scroll">
-            <table class="table">
+            <table class="table table-stack-match">
               <thead>
                 <tr><th>Result</th><th>Opponent</th><th>Score</th><th>Δ Rating</th><th>Date</th></tr>
               </thead>
@@ -110,7 +110,7 @@
           <div v-if="rrHistoryLoading" style="text-align:center;padding:1rem">
             <span class="spinner" style="width:18px;height:18px;border-width:2px" />
           </div>
-          <table v-else-if="rrHistory.length" class="table">
+          <div v-else-if="rrHistory.length" class="table-scroll"><table class="table">
             <thead>
               <tr><th>Season</th><th>Finish</th><th>W–L</th><th>Date</th></tr>
             </thead>
@@ -122,7 +122,7 @@
                 <td class="muted mono">{{ formatDate(h.tournament.completed_at) }}</td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         <div v-if="isAuthed && playerId !== user?.id" style="margin-top:1rem;text-align:right">

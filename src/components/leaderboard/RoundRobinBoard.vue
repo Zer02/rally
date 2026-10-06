@@ -236,4 +236,10 @@ const board = computed<{ rows: Row[]; columns: StandingColumn[]; ratingLabel: st
 
 <style scoped>
 .board-filters { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 1rem; }
+/* v0.0.6.5: on a phone the two dropdowns stack full width and line up with the
+   rest of the page (they were indented on one side and right-aligned on the other). */
+@media (max-width: 600px) {
+  .board-filters { justify-content: stretch; flex-direction: column; gap: 0.75rem; }
+  .board-filters .field { min-width: 0 !important; width: 100%; }
+}
 </style>

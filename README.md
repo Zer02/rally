@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.4**
+> Current version: **v0.0.6.5**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -552,6 +552,19 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **New:** `supabase-migration-v0.0.6.4.sql`. **Changed:** `src/lib/score.ts`, `src/components/tournament/PointsKey.vue`, `src/views/ProgressView.vue`, `src/stores/tournaments.ts` (comment only). No Edge Function changes.
 - **Deploy (manual):** run the migration in the SQL Editor after confirming v0.0.6.3 is applied (it stops with a clear message if not), then deploy the frontend. Safe to re-run; the cut-off week is set the first time and never moved. Change the cut-off by editing the one row in `play_xp_rule` if you ever need to.
 - **Validated:** the base schema and all earlier migrations were replayed in version order into a real Postgres engine, then the new one, both on top of a seeded copy at 6.3 (the real upgrade path) and as a fresh install. A staged league covered singles and doubles round robin matches, a challenge match and a ladder match across three weeks (bracket matches share the same code path but were not staged separately). Past weeks and every quest row were byte-identical before and after. The rule week matched a hand calculation for every player (for example 57 XP for a player with a ladder match, six round robin matches and a challenge: the first five matches earn 15+16+0+12+8, the rest earn 2 each). A repeat sync and a second run of the migration changed nothing. The upgraded copy and the fresh install produced identical XP, weekly rows, points and quests. Removing a match took back the right points and XP, with a later match moving into the full-rate five. The migration refuses to run without 6.3. The JavaScript rule agrees with the SQL function on all 100 score pairs from 0-0 to 9-9. 14 headless-browser checks on the points key at 375px and 1280px covered the rows, headers, wording and no overflow. The production build passes. Not tested: against your live Supabase data (so how many rows the points backfill changes is unknown until you run it), and the Progress page itself was not driven; its new line was only compiled by the build.
+
+### v0.0.6.5 — Mobile pass: nothing cut off on a phone
+
+> The profile page was wider than a phone screen: the Level and Tier badges ran off the right edge and the whole page scrolled sideways, and the match tables were forced 460px wide so their last columns were cut off inside the card. This pass fixes those and the smaller cut-offs found while checking every page.
+
+- **Profile header:** the Edit profile / Change password buttons and the Level and Tier badges now wrap onto a second line instead of running off the screen. This was the page-wide sideways scroll.
+- **Tables fit the screen.** The global phone rule that forced every table to 460px wide (and stopped all wrapping) is gone. Headers, dates, scores and numbers still never break mid-word; names and text cells wrap normally. A table that truly has too many columns can opt in to sideways scrolling with `.table-wide` inside a `.table-scroll`; none currently needs it.
+- **Match lists become two-line rows on phones** (My matches, Match history, Round Robin matches): result, opponent or partner/opponents, and score on the first line; date and rating change underneath. Season history rows do the same. Desktop keeps the normal tables. New classes `.table-stack-match` and `.table-stack-season` in `main.css` rely on column order, so keep it if you add a column.
+- **Player page:** the round robin history table had no scroll wrapper at all and could push the page wider than the screen. Fixed.
+- **Long names** on the leaderboard cards and match cards wrap onto a second line instead of ending in "…".
+- **Standings filters:** Season and Rank by now stack full width on a phone (they were indented on one side and right-aligned on the other).
+- **Changed:** `src/assets/main.css`, `src/views/ProfileView.vue`, `src/views/PlayerView.vue`, `src/components/profile/RoundRobinProfile.vue`, `src/components/tournament/PastSeasonsPanel.vue`, `src/components/tournament/PointsKey.vue` (dropped its now-unneeded width override), `src/components/leaderboard/RoundRobinBoard.vue`, `src/components/leaderboard/StandingsTable.vue`, `src/components/match/ScoreCard.vue`. Frontend only: no migration, no Edge Function changes.
+- **Validated:** the real app was run in headless Chromium with the database replaced by mock data (long names, a doubles match, a challenge match, two seasons) and every page checked at 375px, 320px and 1280px for sideways page scroll, content poking past the screen edge, and boxes clipping their content. The profile page reproduced the bug before the change (page 522px wide on a 375px screen) and is clean after. All pages are clean at 375px and 1280px; at 320px only the small grey "meta" line on match cards still ends in "…". The production build passes. Not covered: the expanded "past seasons" panel, the all-time board's extra Season column in the new match layout, admin panels, and the login and password screens were not driven in the browser; real data and a real phone may still show something the mock did not. The mock data and test harness are not part of the delivery.
 
 ## Quick start
 

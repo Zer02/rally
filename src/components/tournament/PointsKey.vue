@@ -56,8 +56,6 @@ const rows = [
 .points-key summary::before { content: '▸'; display: inline-block; width: 1rem; color: var(--txt-muted); }
 .points-key[open] summary::before { content: '▾'; }
 .points-key-body { margin-top: 0.75rem; }
-/* The global mobile .table rule forces min-width: 460px for wide data tables;
-   this key is only three short columns, so opt out and let it fit the card. */
-.points-key-table { max-width: 20rem; min-width: 0; }
+.points-key-table { max-width: 20rem; }
 .points-key-notes { margin: 0.75rem 0 0; padding-left: 1.1rem; font-size: 0.8rem; line-height: 1.5; }
 </style>
