@@ -16,6 +16,8 @@
       <span v-else-if="status" class="status" :class="`status-${status}`">{{ status }}</span>
       <span v-if="meta" class="sc-meta">{{ meta }}</span>
       <span class="sc-when">{{ when }}</span>
+      <!-- Optional control at the far right of the header, e.g. the admin's remove "x" (v0.0.6.6) -->
+      <slot name="head-action" />
     </div>
 
     <div

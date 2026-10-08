@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.5**
+> Current version: **v0.0.6.6**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -565,6 +565,17 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Standings filters:** Season and Rank by now stack full width on a phone (they were indented on one side and right-aligned on the other).
 - **Changed:** `src/assets/main.css`, `src/views/ProfileView.vue`, `src/views/PlayerView.vue`, `src/components/profile/RoundRobinProfile.vue`, `src/components/tournament/PastSeasonsPanel.vue`, `src/components/tournament/PointsKey.vue` (dropped its now-unneeded width override), `src/components/leaderboard/RoundRobinBoard.vue`, `src/components/leaderboard/StandingsTable.vue`, `src/components/match/ScoreCard.vue`. Frontend only: no migration, no Edge Function changes.
 - **Validated:** the real app was run in headless Chromium with the database replaced by mock data (long names, a doubles match, a challenge match, two seasons) and every page checked at 375px, 320px and 1280px for sideways page scroll, content poking past the screen edge, and boxes clipping their content. The profile page reproduced the bug before the change (page 522px wide on a 375px screen) and is clean after. All pages are clean at 375px and 1280px; at 320px only the small grey "meta" line on match cards still ends in "…". The production build passes. Not covered: the expanded "past seasons" panel, the all-time board's extra Season column in the new match layout, admin panels, and the login and password screens were not driven in the browser; real data and a real phone may still show something the mock did not. The mock data and test harness are not part of the delivery.
+
+### v0.0.6.6 — Remove is now a red x at the top right of each match
+
+> On the Matches page, the admin's "Remove" button under each round robin match is replaced by a small red x in the top right of the card, to the right of the date.
+
+- The x appears on the same matches as the old button did: admin only, round robin or challenge matches in a season that is still running. Everyone else sees no change.
+- Clicking it opens the same confirmation as before ("Remove ... ? Standings and ratings are recalculated as if it was never played"), with **Yes, remove it** and **Cancel**. Clicking the x again also closes the confirmation. Nothing is removed until **Yes, remove it** is pressed.
+- The x is a 28px round tap target, red, with a tooltip and a screen-reader label naming the match. It does not make the card header any taller.
+- `ScoreCard.vue` gains an optional `head-action` slot at the far right of its header, which this uses. Cards that do not use it look the same.
+- **Changed:** `src/views/MatchesView.vue`, `src/components/match/ScoreCard.vue`. Frontend only: no migration, no Edge Function changes.
+- **Validated:** the real Matches page was run in headless Chromium with mock data and an admin user, at 375px and 1280px (38 checks): one x per card, to the right of the date and on the same row, inside the card, red, at least 28px, header height unchanged, no sideways scroll, the old text button gone, the confirmation opens and closes from the x, Cancel closes it, and **Yes, remove it** calls the remove function for the right match and shows the success notice. The production build passes. Not covered: the removal itself against a real database (that function was not changed in this version) and non-admin accounts (the x's condition is the same as the old button's).
 
 ## Quick start
 

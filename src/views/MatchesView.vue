@@ -59,12 +59,24 @@
                 :meta="c.meta"
                 :result="c.result"
               >
-                <!-- Admin only, and only while the match's season is still running -->
-                <template v-if="c.removable" #footer>
-                  <div v-if="confirmingId !== c.id" class="rm-row">
-                    <button class="btn btn-ghost btn-sm" type="button" :disabled="removeBusy" @click="askRemove(c.id)">Remove</button>
-                  </div>
-                  <div v-else class="rm-confirm">
+                <!-- Admin only, and only while the match's season is still running.
+                     The red x sits at the right of the header, after the date; it opens
+                     the confirmation below, and clicking it again closes it. -->
+                <template v-if="c.removable" #head-action>
+                  <button
+                    class="rm-x"
+                    type="button"
+                    :disabled="removeBusy"
+                    :aria-label="`Remove match: ${c.summary}`"
+                    :aria-expanded="confirmingId === c.id"
+                    title="Remove this match"
+                    @click="confirmingId === c.id ? (confirmingId = null) : askRemove(c.id)"
+                  >
+                    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" /></svg>
+                  </button>
+                </template>
+                <template v-if="c.removable && confirmingId === c.id" #footer>
+                  <div class="rm-confirm">
                     <p class="rm-text">
                       Remove <strong>{{ c.summary }}</strong>? Standings and ratings for this season are
                       recalculated as if it was never played. To fix a wrong score, remove it, then add the
@@ -421,7 +433,16 @@ async function resolve(matchId: string, useChallengerReport: boolean) {
 
 <style scoped>
 .match-filters { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.rm-row { display: flex; justify-content: flex-end; padding: 0.25rem 0.25rem 0; }
+/* Red x in the card header, to the right of the date. 28px square keeps it tappable
+   without making the header taller than it already is. */
+.rm-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.75rem; height: 1.75rem; margin: -0.3rem -0.2rem -0.3rem 0; padding: 0; flex-shrink: 0;
+  background: transparent; color: var(--ace); border: 1px solid transparent; border-radius: 50%;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.rm-x:hover:not(:disabled), .rm-x:focus-visible, .rm-x[aria-expanded="true"] { background: rgba(224,82,82,0.12); border-color: rgba(224,82,82,0.4); outline: none; }
+.rm-x:disabled { opacity: 0.45; cursor: default; }
 .rm-confirm { margin-top: 0.5rem; padding: 0.7rem 0.75rem; border-radius: var(--radius-sm); background: rgba(224,82,82,0.07); border: 1px solid rgba(224,82,82,0.25); }
 .rm-text { font-size: 0.82rem; line-height: 1.5; margin: 0 0 0.6rem; color: var(--txt-secondary); word-break: break-word; }
 .rm-text strong { color: var(--txt-primary); font-weight: 600; }
