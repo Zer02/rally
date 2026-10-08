@@ -2,6 +2,7 @@
   <AppNav />
   <PasswordNudge />
   <RouterView />
+  <BottomTabBar />
 </template>
 
 <script setup lang="ts">
@@ -9,6 +10,7 @@ import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppNav from '@/components/layout/AppNav.vue'
 import PasswordNudge from '@/components/layout/PasswordNudge.vue'
+import BottomTabBar from '@/components/layout/BottomTabBar.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useSport } from '@/composables/useSport'
 

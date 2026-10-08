@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.6**
+> Current version: **v0.0.6.7**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -576,6 +576,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - `ScoreCard.vue` gains an optional `head-action` slot at the far right of its header, which this uses. Cards that do not use it look the same.
 - **Changed:** `src/views/MatchesView.vue`, `src/components/match/ScoreCard.vue`. Frontend only: no migration, no Edge Function changes.
 - **Validated:** the real Matches page was run in headless Chromium with mock data and an admin user, at 375px and 1280px (38 checks): one x per card, to the right of the date and on the same row, inside the card, red, at least 28px, header height unchanged, no sideways scroll, the old text button gone, the confirmation opens and closes from the x, Cancel closes it, and **Yes, remove it** calls the remove function for the right match and shows the success notice. The production build passes. Not covered: the removal itself against a real database (that function was not changed in this version) and non-admin accounts (the x's condition is the same as the old button's).
+
+### v0.0.6.7 — Bottom tab bar on phones
+
+> A bar of the five most-used pages now sits at the bottom of the screen on a phone, so getting around is one tap instead of open-menu-then-tap. The top bar and its menu stay.
+
+- **Tabs, left to right:** Leaderboard, Matches, Round Robin, Progress, Profile. The current page is highlighted in the ball yellow.
+- **Signed out:** the three public pages plus **Sign in** (Progress and Profile need an account). The bar is not shown on the sign-in and password screens.
+- **Phones only (700px wide or less).** On a wider screen the top bar already shows every link, so the bar is hidden there and nothing else changes. The top-right menu is unchanged and still holds Challenge, Referee (admins) and Sign out.
+- **Stays out of the way:** it hides while a text box or dropdown has focus, so it never floats above the on-screen keyboard while someone types a score, and returns when they finish. Pages get extra bottom space so the last card is never hidden behind it, and it clears the home indicator on phones that have one.
+- Each tab is at least 56px tall and a fifth of the screen wide. Labels shrink slightly at 320px so none are cut off.
+- New file `src/components/layout/BottomTabBar.vue` (icons are inlined Feather icons, MIT licensed, nothing to download). **Changed:** `src/App.vue` (one line to show it), `src/assets/main.css` (bottom space for pages on phones). Frontend only: no migration, no Edge Function changes.
+- **Validated:** the real app was run in headless Chromium with mock data (33 checks): tab order and destinations, the bar fixed at the bottom at full width, tap targets, the current page highlighted and moving correctly after each tap, one tap navigating each time, the last card clearing the bar when scrolled to the bottom, no sideways scroll, labels uncut at 375px and 320px, hidden at 701px and wider and shown at 700px, hidden while a dropdown has focus and back after, the signed-out set, and no bar on the sign-in page. The production build passes. Not covered: a real phone (the keyboard behaviour in particular depends on the browser; this was simulated with focus only), landscape orientation, and iPhones with a home indicator (the spacing for it is in place but only the zero-inset case was exercised). Player pages (`/player/...`) highlight no tab, since they are reached from several places.
 
 ## Quick start
 
