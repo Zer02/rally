@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.8**
+> Current version: **v0.0.6.9**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -603,6 +603,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **New:** `supabase-migration-v0.0.6.8.sql`, `tests/`, `src/lib/score.ts` changes. **Changed:** `package.json` (test scripts only), `.gitignore`, and the front-end files that showed or asked for "Unit" or limited scores to 4. **Deleted:** `PlaceholderPlayersPanel.vue`. No Edge Function changes.
 - **Deploy (manual):** run the migration in the SQL Editor after confirming v0.0.6.4 is applied (it stops with a clear message if the score rule from 6.3 is missing), read the notices it prints, then deploy the frontend. Then `git rm src/components/admin/PlaceholderPlayersPanel.vue`. Safe to run twice.
 - **Validated:** all of the above ran green on my side (7 + 15 + 234 checks) and the production build passes. Not covered: your live Supabase data (the audit notice is how you will find out whether any old scores are affected), a real phone, and the Edge Functions. The database tests ran on Postgres 16; Supabase's own extras are only stood in for (`tests/db/stub-supabase.sql`).
+
+### v0.0.6.9 — The tab bar no longer disappears when you open a dropdown
+
+> Bug fix. On a phone, opening a dropdown (Board, Season, Rank by and so on) made the bottom tab bar vanish. That was a mistake in v0.0.6.7: the bar hides while you type so it does not sit on top of the on-screen keyboard, but I applied that to dropdowns too, and a dropdown opens a picker, not a keyboard.
+
+- The bar now hides only while a box you type into has focus: text, number, email, password and search boxes and text areas (for example the score boxes when entering a result). It comes back when you leave the box, and does not flicker when you move from one score box to the next.
+- Dropdowns, checkboxes, radio buttons and buttons leave the bar alone.
+- **Changed:** `src/components/layout/BottomTabBar.vue`. Frontend only: no migration, no Edge Function changes.
+- **Test:** the browser suite had a check asserting the old behaviour (bar hidden while a dropdown is focused). It now asserts the opposite for focused and opened dropdowns and buttons, and checks that the score boxes still hide the bar and release it afterwards (239 checks, passing). With the old behaviour put back, the new checks fail.
+- **Not covered:** a real phone. The browser test can focus and open a dropdown but cannot show the phone's own picker or keyboard, so whether the bar sits well with them is for your phone to confirm.
 
 ## Quick start
 

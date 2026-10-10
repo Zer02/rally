@@ -1,5 +1,5 @@
 <!--
-  BottomTabBar — v0.0.6.7. The five pages people use most, one tap away at
+  BottomTabBar — v0.0.6.9. The five pages people use most, one tap away at
   the bottom of the screen on a phone (the top bar and its menu stay; the
   menu still holds Challenge, Referee and Sign out). Signed-out visitors get
   the three public pages plus Sign in.
@@ -9,9 +9,11 @@
   layout never jumps on rotate/resize).
 
   Two details that matter on a real phone:
-    - Hidden while a text box or dropdown has focus. A fixed bar otherwise
-      floats on top of the on-screen keyboard and eats the space needed to type
-      a score.
+    - Hidden while a box you TYPE into has focus (text, number, email,
+      password, search, a text area). A fixed bar otherwise floats on top of the
+      on-screen keyboard and eats the space needed to type a score. Dropdowns,
+      checkboxes and buttons do not open a keyboard, so the bar stays put for
+      them (v0.0.6.7 hid it for dropdowns too, which was a mistake).
     - Adds the `has-tabbar` class to <body> so pages get bottom padding and the
       last card is never hidden behind the bar.
 -->
@@ -62,14 +64,21 @@ watch(visible, (v) => document.body.classList.toggle('has-tabbar', v), { immedia
 
 const typing = ref(false)
 let blurTimer: number | undefined
-const FIELD = 'input, select, textarea, [contenteditable="true"]'
+// Inputs that do not bring up the on-screen keyboard.
+const NO_KEYBOARD = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'range', 'color', 'hidden', 'image'])
+function bringsUpKeyboard(el: Element | null | undefined): boolean {
+  if (!el) return false
+  if (el instanceof HTMLTextAreaElement) return true
+  if (el instanceof HTMLInputElement) return !NO_KEYBOARD.has(el.type)
+  return el instanceof HTMLElement && el.isContentEditable
+}
 function onFocusIn(e: FocusEvent) {
-  if ((e.target as Element | null)?.matches?.(FIELD)) { window.clearTimeout(blurTimer); typing.value = true }
+  if (bringsUpKeyboard(e.target as Element | null)) { window.clearTimeout(blurTimer); typing.value = true }
 }
 function onFocusOut() {
   // A short delay so tabbing from one box to the next does not flash the bar.
   window.clearTimeout(blurTimer)
-  blurTimer = window.setTimeout(() => { typing.value = !!document.activeElement?.matches?.(FIELD) }, 120)
+  blurTimer = window.setTimeout(() => { typing.value = bringsUpKeyboard(document.activeElement) }, 120)
 }
 onMounted(() => { document.addEventListener('focusin', onFocusIn); document.addEventListener('focusout', onFocusOut) })
 onBeforeUnmount(() => {

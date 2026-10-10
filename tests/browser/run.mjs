@@ -107,8 +107,16 @@ try {
     await p.locator('.tabbar .tab', { hasText: label }).tap(); await p.waitForTimeout(450)
     ok(new URL(p.url()).pathname === path && (await p.locator('.tab.active').allInnerTexts()).map(s => s.trim()).join() === label, `one tap to ${label}`)
   }
-  await p.locator('select').first().focus(); await p.waitForTimeout(250); ok(!(await p.locator('.tabbar').isVisible()), 'hidden while a dropdown has focus')
-  await p.evaluate(() => document.activeElement.blur()); await p.waitForTimeout(400); ok(await p.locator('.tabbar').isVisible(), 'back after blur'); await close(p)
+  // A dropdown opens a picker, not a keyboard, so the bar must stay; a box you type into hides it until you leave.
+  await p.locator('select').first().focus(); await p.waitForTimeout(250); ok(await p.locator('.tabbar').isVisible(), 'a focused dropdown does NOT hide the bar')
+  await p.locator('select').first().click(); await p.waitForTimeout(250); ok(await p.locator('.tabbar').isVisible(), 'an opened dropdown does NOT hide the bar')
+  await p.evaluate(() => document.activeElement.blur()); await close(p)
+  p = await open('/tournament', { pending: true })
+  await p.locator('select').first().focus().catch(() => {}); await p.waitForTimeout(250); ok(await p.locator('.tabbar').isVisible(), 'tournament page: a focused dropdown keeps the bar')
+  await p.locator('.score-input').first().focus(); await p.waitForTimeout(250); ok(!(await p.locator('.tabbar').isVisible()), 'bar hides while a score box (number input) has focus')
+  await p.locator('.score-input').nth(1).focus(); await p.waitForTimeout(300); ok(!(await p.locator('.tabbar').isVisible()), 'bar stays hidden when moving from one score box to the next')
+  await p.evaluate(() => document.activeElement.blur()); await p.waitForTimeout(400); ok(await p.locator('.tabbar').isVisible(), 'bar is back after leaving the score boxes')
+  await p.locator('.match-score-inputs button, .match-score-inputs .btn').first().focus(); await p.waitForTimeout(250); ok(await p.locator('.tabbar').isVisible(), 'a focused button keeps the bar'); await close(p)
   p = await open('/leaderboard', { width: 320 }); ok(await p.evaluate(() => [...document.querySelectorAll('.tab-label')].filter(l => l.scrollWidth > l.clientWidth).length === 0), '320px: labels whole'); await close(p)
   for (const [w, shown] of [[700, true], [701, false], [1280, false]]) { p = await open('/matches', { width: w }); ok((await p.locator('.tabbar').isVisible()) === shown, `@${w}: tab bar ${shown ? 'shown' : 'hidden'}`); await close(p) }
   p = await open('/leaderboard', { anon: true }); ok(JSON.stringify(await p.$$eval('.tabbar .tab', t => t.map(x => x.textContent.trim()))) === JSON.stringify(['Leaderboard', 'Matches', 'Round Robin', 'Sign in']), 'signed out: Sign in replaces Progress/Profile'); await close(p)
