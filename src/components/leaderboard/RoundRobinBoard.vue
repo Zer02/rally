@@ -163,7 +163,7 @@ const board = computed<{ rows: Row[]; columns: StandingColumn[]; ratingLabel: st
       })
     const primary = { titles: 'Titles', seasons: 'Seasons', best: 'Best finish' }[m] ?? 'Titles'
     const rows: Row[] = sorted.map(p => ({
-      id: p.id, profile_id: p.profile_id, name: nameOf(p.profile), unit: p.profile?.unit,
+      id: p.id, profile_id: p.profile_id, name: nameOf(p.profile),
       rating: m === 'seasons' ? p.rr_seasons_played : m === 'best' ? (p.rr_best_finish ?? 0) : p.rr_titles,
       extra: {
         titles:  String(p.rr_titles),
@@ -205,7 +205,7 @@ const board = computed<{ rows: Row[]; columns: StandingColumn[]; ratingLabel: st
   const ratingLabel = { standings: 'Points', points: 'Points', wins: 'Wins', rr_rating: 'RR Rating', win_pct: 'Win %', games_won: 'Games won' }[m] ?? 'Points'
 
   const rows: Row[] = sorted.map(p => ({
-    id: p.id, profile_id: p.profile_id, name: nameOf(p.profile), unit: p.profile?.unit,
+    id: p.id, profile_id: p.profile_id, name: nameOf(p.profile),
     rating: primaryOf(p),
     extra: {
       final: p.seed ? `#${p.seed}` : '—',

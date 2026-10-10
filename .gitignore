@@ -21,3 +21,11 @@ Thumbs.db
 .idea/
 .vercel
 .env*
+
+# Editor swap / backup files (a stray .ProfileView.vue.swp was once committed)
+*.swp
+*.swo
+*~
+
+# Test-suite scratch output (tests/)
+tests/.tmp/

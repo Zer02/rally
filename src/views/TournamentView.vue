@@ -211,7 +211,6 @@ const standingsRows = computed(() =>
       id: p.id,
       profile_id: p.profile_id,
       name: p.profile?.display_name || p.profile?.username || 'Unknown',
-      unit: p.profile?.unit,
       rating: p.rr_points,
       wl: `${p.wins}–${p.losses}`,
       rr: String(Math.round(p.rr_rating)),

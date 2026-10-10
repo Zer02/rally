@@ -12,9 +12,9 @@
     </div>
 
     <div class="match-score-inputs">
-      <input v-model.number="scoreA" type="number" min="0" max="4" step="1" inputmode="numeric" class="input score-input" placeholder="0" aria-label="Games won, first side" />
+      <input v-model.number="scoreA" type="number" min="0" :max="GAMES_TO_WIN" step="1" inputmode="numeric" class="input score-input" placeholder="0" aria-label="Games won, first side" />
       <span class="muted">–</span>
-      <input v-model.number="scoreB" type="number" min="0" max="4" step="1" inputmode="numeric" class="input score-input" placeholder="0" aria-label="Games won, second side" />
+      <input v-model.number="scoreB" type="number" min="0" :max="GAMES_TO_WIN" step="1" inputmode="numeric" class="input score-input" placeholder="0" aria-label="Games won, second side" />
       <button
         class="btn btn-primary btn-sm"
         :disabled="!canSubmit || submitting"
@@ -41,7 +41,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { TournamentMatch } from '@/types'
-import { isLegalRrScore, rrScoreError } from '@/lib/score'
+import { GAMES_TO_WIN, isLegalRrScore, rrScoreError } from '@/lib/score'
 
 const props = defineProps<{
   match: TournamentMatch
@@ -56,7 +56,7 @@ const scoreB = ref<number | null>(null)
 const submitting = ref(false)
 const removing = ref(false)
 
-// First to 4 games: the winner has exactly 4, the loser 0–3 (lib/score.ts).
+// First to GAMES_TO_WIN games: the winner has exactly that many, the loser 0 up to one less (lib/score.ts).
 const canSubmit = computed(() => isLegalRrScore(scoreA.value, scoreB.value))
 
 // Say what's wrong only once both boxes hold a number, so it doesn't nag

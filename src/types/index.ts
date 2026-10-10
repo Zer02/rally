@@ -4,7 +4,6 @@ export interface Profile {
   id:           string
   username:     string
   display_name: string | null
-  unit:         string | null
   avatar_url:   string | null
   is_admin:     boolean
   is_placeholder?: boolean

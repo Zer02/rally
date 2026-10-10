@@ -15,7 +15,7 @@ import { useAuth } from '@/composables/useAuth'
 import type { Tournament, TournamentParticipant, TournamentMatch, TournamentWeek } from '@/types'
 import { rrScoreError } from '@/lib/score'
 
-const PARTICIPANT_SELECT = '*, profile:profiles(id, username, display_name, unit, avatar_url, is_placeholder)'
+const PARTICIPANT_SELECT = '*, profile:profiles(id, username, display_name, avatar_url, is_placeholder)'
 const MATCH_SELECT = `
   *,
   player_a:profiles!tournament_matches_player_a_id_fkey(id, username, display_name, avatar_url, is_placeholder),
@@ -252,7 +252,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   // RPC branches on the match's phase. Challenge wins add to bonus_points
   // only; round-robin wins update wins/losses/points_for/points_against.
   async function reportMatch(matchId: string, scoreA: number, scoreB: number) {
-    // v0.0.6.3: first to 4 games. The database enforces this too; checking
+    // v0.0.6.3: first to N games (GAMES_TO_WIN). The database enforces this too; checking
     // here just fails fast with the same plain-English reason.
     const problem = rrScoreError(scoreA, scoreB)
     if (problem) throw new Error(problem)

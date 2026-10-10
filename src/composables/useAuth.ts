@@ -59,11 +59,11 @@ export function useAuth() {
   const isAuthed  = computed(() => !!user.value)
   const isAdmin   = computed(() => !!(profile.value as any)?.is_admin)
 
-  async function signUp(email: string, password: string, displayName: string, unit: string) {
+  async function signUp(email: string, password: string, displayName: string) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName, unit } },
+      options: { data: { display_name: displayName } },
     })
     return error
   }
@@ -138,11 +138,11 @@ export function useAuth() {
     return null
   }
 
-  // Updates the signed-in user's own display name / unit, then refreshes
+  // Updates the signed-in user's own display name, then refreshes
   // the cached profile so every component reading it (nav, this page,
   // etc.) picks up the change without a manual reload. Same
   // "Users update own profile" RLS policy as updatePassword() above.
-  async function updateProfile(fields: { display_name?: string; unit?: string | null }) {
+  async function updateProfile(fields: { display_name?: string }) {
     if (!user.value) return new Error('Not signed in')
     const { error } = await supabase.from('profiles').update(fields).eq('id', user.value.id)
     if (error) return error

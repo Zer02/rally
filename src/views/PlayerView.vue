@@ -14,7 +14,6 @@
             <div>
               <p class="eyebrow">Player profile</p>
               <h1 style="font-size:clamp(1.4rem,3vw,2rem)">{{ pname }}</h1>
-              <p v-if="player.profile?.unit" class="muted" style="font-size:0.85rem">Unit {{ player.profile.unit }}</p>
             </div>
           </div>
           <TierBadge :rating="player.rating" />

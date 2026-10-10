@@ -1,5 +1,5 @@
 <!--
-  PointsKey — v0.0.6.4. A small collapsible "How points work" key, shown
+  PointsKey — v0.0.6.8. A small collapsible "How points work" key, shown
   under the round robin tables (Round Robin page and the leaderboard's
   season views — not the all-time view, which has no match points).
   The numbers come from rrMatchPoints()/rrMatchXp() in src/lib/score.ts, which
@@ -21,7 +21,7 @@
         </tbody>
       </table>
       <ul class="points-key-notes muted">
-        <li>A loss earns the games you won, up to 3. A 0–4 loss earns nothing.</li>
+        <li>A match is first to {{ GAMES_TO_WIN }} games. A loss earns the games you won, up to {{ LOSS_MAX_POINTS }}. A 0–{{ GAMES_TO_WIN }} loss earns nothing.</li>
         <li>Doubles: both partners earn their side's points.</li>
         <li>Ranking: total points, then wins, then games won.</li>
         <li>Challenge matches earn no points.</li>
@@ -32,18 +32,27 @@
 </template>
 
 <script setup lang="ts">
-import { rrMatchPoints, rrMatchXp } from '@/lib/score'
+import { GAMES_TO_WIN, LOSS_MAX_POINTS, rrMatchPoints, rrMatchXp } from '@/lib/score'
 
-const row = (label: string, won: number, lost: number) =>
-  ({ label, points: rrMatchPoints(won, lost), xp: rrMatchXp(won, lost) })
-
-const rows = [
-  row('Win', 4, 0),
-  row('Lose 3–4', 3, 4),
-  row('Lose 2–4', 2, 4),
-  row('Lose 1–4', 1, 4),
-  row('Lose 0–4', 0, 4),
+// One row for a win, then one row per distinct loss value, walking down from the
+// closest loss. Losses that earn the same are merged ("Lose 3–6 to 5–6").
+const N = GAMES_TO_WIN
+const rows: { label: string; points: number; xp: number }[] = [
+  { label: 'Win', points: rrMatchPoints(N, 0), xp: rrMatchXp(N, 0) },
 ]
+const grouped: { hi: number; lo: number }[] = []
+for (let g = N - 1; g >= 0; g--) {
+  const last = grouped[grouped.length - 1]
+  if (last && rrMatchPoints(last.lo, N) === rrMatchPoints(g, N)) last.lo = g
+  else grouped.push({ hi: g, lo: g })
+}
+for (const { hi, lo } of grouped) {
+  rows.push({
+    label: lo === hi ? `Lose ${lo}–${N}` : `Lose ${lo}–${N} to ${hi}–${N}`,
+    points: rrMatchPoints(hi, N),
+    xp: rrMatchXp(hi, N),
+  })
+}
 </script>
 
 <style scoped>

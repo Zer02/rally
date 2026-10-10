@@ -21,7 +21,6 @@
             <div style="min-width:0">
               <p class="eyebrow">Your profile</p>
               <h1 style="font-size:clamp(1.4rem,3vw,2rem)">{{ myName }}</h1>
-              <p v-if="me.profile?.unit" class="muted" style="font-size:0.85rem">Unit {{ me.profile.unit }}</p>
             </div>
           </div>
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem 0.75rem">
@@ -40,10 +39,6 @@
           <div class="field" style="flex:1;min-width:160px">
             <label class="field-label">Display name</label>
             <input v-model="editName" class="input" required />
-          </div>
-          <div class="field" style="flex:1;min-width:120px">
-            <label class="field-label">Unit</label>
-            <input v-model="editUnit" class="input" placeholder="e.g. 4B" />
           </div>
           <button type="submit" class="btn btn-primary" :disabled="editSaving || !editName.trim()">
             <span v-if="editSaving" class="spinner" style="width:14px;height:14px;border-width:2px" />
@@ -168,7 +163,6 @@ const board = ref<'rr' | 'ladder'>('rr')
 
 const editingProfile = ref(false)
 const editName        = ref('')
-const editUnit         = ref('')
 const editSaving       = ref(false)
 const editError        = ref('')
 
@@ -214,7 +208,6 @@ const myRank = computed(() => playersStore.sorted.findIndex(p => p.profile_id ==
 
 function startEditProfile() {
   editName.value = me.value?.profile?.display_name || ''
-  editUnit.value = me.value?.profile?.unit || ''
   editError.value = ''
   editingProfile.value = true
 }
@@ -222,7 +215,7 @@ function startEditProfile() {
 async function saveProfile() {
   editSaving.value = true
   editError.value = ''
-  const err = await updateProfile({ display_name: editName.value.trim(), unit: editUnit.value.trim() || null })
+  const err = await updateProfile({ display_name: editName.value.trim() })
   editSaving.value = false
   if (err) { editError.value = err.message; return }
   editingProfile.value = false

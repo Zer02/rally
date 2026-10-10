@@ -41,7 +41,7 @@ export const usePlayersStore = defineStore('players', () => {
     loading.value = true
     const { data, error: err } = await supabase
       .from('players')
-      .select('*, profile:profiles(id, username, display_name, unit, avatar_url, is_admin, is_placeholder, invited_email, invited_at)')
+      .select('*, profile:profiles(id, username, display_name, avatar_url, is_admin, is_placeholder, invited_email, invited_at)')
       .eq('league_id', leagueId)
       .order('rating', { ascending: false })
 
@@ -98,12 +98,12 @@ export const usePlayersStore = defineStore('players', () => {
   // isn't reachable from the browser client. Authorization is enforced
   // inside the function itself via is_league_admin(), same as every RPC
   // here — this is just the transport.
-  async function createPlaceholderPlayer(displayName: string, unit?: string) {
+  async function createPlaceholderPlayer(displayName: string) {
     const leagueId = useLeagueStore().currentLeagueId
     if (!leagueId) throw new Error('No league selected')
 
     const { data, error: err } = await supabase.functions.invoke('create-placeholder-player', {
-      body: { league_id: leagueId, display_name: displayName, unit: unit || null },
+      body: { league_id: leagueId, display_name: displayName },
     })
     if (err) throw new Error(await describeFunctionError(err))
     if (data?.error) throw new Error(data.error)

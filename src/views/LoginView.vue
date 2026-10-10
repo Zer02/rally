@@ -95,9 +95,6 @@
               <label class="field-label" for="signup-name">Name</label>
               <input id="signup-name" v-model="displayName" name="name" type="text" class="input" placeholder="Alex K." autocomplete="name" required />
 
-              <label class="field-label" style="margin-top:0.875rem" for="signup-unit">Unit / apartment</label>
-              <input id="signup-unit" v-model="unit" name="unit" type="text" class="input" placeholder="4B" />
-
               <label class="field-label" style="margin-top:0.875rem" for="signup-email">Email</label>
               <input id="signup-email" v-model="email" name="email" type="email" class="input" placeholder="you@email.com" autocomplete="email" required />
 
@@ -138,7 +135,6 @@ const mode        = ref<Mode>('login')
 const email       = ref('')
 const password    = ref('')
 const displayName = ref('')
-const unit        = ref('')
 const newPassword     = ref('')
 const confirmPassword = ref('')
 const busy        = ref(false)
@@ -213,7 +209,7 @@ async function handleLogin() {
 
 async function handleSignup() {
   busy.value = true; clearMessages()
-  const err = await signUp(email.value.trim(), password.value, displayName.value, unit.value)
+  const err = await signUp(email.value.trim(), password.value, displayName.value)
   busy.value = false
   if (err) { setFlash(friendlyAuthError(err.message)); return }
   setFlash('Account created! Check your email to confirm, then sign in.', 'success')

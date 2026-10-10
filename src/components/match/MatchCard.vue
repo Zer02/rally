@@ -57,12 +57,12 @@ const sides = computed<[ScoreSide, ScoreSide]>(() => {
   const done = m.status === 'completed'
   return [
     {
-      names: [nm(m.challenger)], unit: m.challenger?.unit, delta: done ? m.challenger_delta : null,
+      names: [nm(m.challenger)], delta: done ? m.challenger_delta : null,
       isWinner: done && m.winner_id === m.challenger_id, isMe: m.challenger_id === props.currentUserId,
       games: both ? cGames : null, total: cWon,
     },
     {
-      names: [nm(m.opponent)], unit: m.opponent?.unit, delta: done ? m.opponent_delta : null,
+      names: [nm(m.opponent)], delta: done ? m.opponent_delta : null,
       isWinner: done && m.winner_id === m.opponent_id, isMe: m.opponent_id === props.currentUserId,
       games: both ? oGames : null, total: oWon,
     },

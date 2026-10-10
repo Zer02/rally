@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.7**
+> Current version: **v0.0.6.8**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -14,7 +14,7 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - TrueSkill-lite rating engine (`src/lib/rating.ts`): dynamic K-factor, uncertainty decay, streak bonus, match quality scoring
 - Supabase schema: `profiles`, `players`, `matches`, `elo_history` with RLS policies
 - Auto-creates `profiles` row on signup and `players` row on profile creation (two triggers)
-- Auth: email/password signup with display name + unit number, persistent session via `useAuth` composable
+- Auth: email/password signup with display name, persistent session via `useAuth` composable
 - Router with auth guard — `/profile` and `/challenge` require login
 - Pages: `/` (landing), `/login`, `/leaderboard`, `/matches`, `/profile`, `/player/:id`, `/challenge`
 - Leaderboard with top-3 podium, full standings table, Challenge button per row
@@ -588,6 +588,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - Each tab is at least 56px tall and a fifth of the screen wide. Labels shrink slightly at 320px so none are cut off.
 - New file `src/components/layout/BottomTabBar.vue` (icons are inlined Feather icons, MIT licensed, nothing to download). **Changed:** `src/App.vue` (one line to show it), `src/assets/main.css` (bottom space for pages on phones). Frontend only: no migration, no Edge Function changes.
 - **Validated:** the real app was run in headless Chromium with mock data (33 checks): tab order and destinations, the bar fixed at the bottom at full width, tap targets, the current page highlighted and moving correctly after each tap, one tap navigating each time, the last card clearing the bar when scrolled to the bottom, no sideways scroll, labels uncut at 375px and 320px, hidden at 701px and wider and shown at 700px, hidden while a dropdown has focus and back after, the signed-out set, and no bar on the sign-in page. The production build passes. Not covered: a real phone (the keyboard behaviour in particular depends on the browser; this was simulated with focus only), landscape orientation, and iPhones with a home indicator (the spacing for it is in place but only the zero-inset case was exercised). Player pages (`/player/...`) highlight no tab, since they are reached from several places.
+
+### v0.0.6.8 — Matches are first to 6, "Unit" is gone, and the project has a test suite
+
+> Round robin scores can now go up to 6: a finished match is 6-0 up to 6-5 either way round (it was 4-0 up to 4-3). The apartment-building "Unit" field is removed from the app, the leftover files are cleaned up, and `npm test` now checks the rules, every migration and the pages on a phone.
+
+- **First to 6.** The target lives in one place in the database, `rr_games_to_win()` (6), and `rr_score_is_legal()` follows it. Reporting a match refuses anything else with a message that states the target. The score boxes accept 0 to 6, the Report button stays off until the score is a finished one, and the "How points work" key and Progress page read their numbers from the same constant in `src/lib/score.ts`. Changing the target later is one number in each of those two places.
+- **Points and XP are unchanged:** a win is 4 points, a loss earns the games you won up to 3, XP is 4 per point. With first to 6 that means 3-6, 4-6 and 5-6 losses all earn 3 points (and 0-6 earns 0). If you would rather spread the loss scale over the new range (for example 5-6 = 3, 3-6 = 2, 1-6 = 1), that is a small follow-up.
+- **Old results:** matches already completed as first-to-4 (4-2 and so on) keep counting exactly as before. The migration prints a notice listing any of them (first 25 and a count) and changes nothing; to re-enter one, Remove it and add it again. Not accepted: 7-5 or 7-6 (a 7th game); the winner must have exactly 6.
+- **"Unit" removed** from sign-up, Edit profile, the profile and player pages, the leaderboard and match cards, and the data the app loads. The `unit` column stays in the database (nothing was dropped, and the sign-up trigger still tolerates it being absent); it is simply no longer asked for or shown.
+- **Cleanup:** `src/components/admin/PlaceholderPlayersPanel.vue` (unused) is deleted, and `.gitignore` now ignores editor swap files (`*.swp`, `*.swo`, `*~`) and the test scratch folder. The stray `.ProfileView.vue.swp` was already gone from the repo.
+- **Test suite (`tests/`, run with `npm test`).** `npm run test:js` checks the score and points rules (7 checks, one second). `npm run test:db` builds throwaway Postgres databases and checks that the base schema and every migration apply in order, that recent ones can be re-run and refuse to run without their prerequisite, that the SQL rules and `score.ts` agree on every score from 0-0 to 9-9, that reporting, removing and re-syncing give exactly the points and battle pass XP an independent calculation predicts, and that upgrading a database holding old results keeps them (15 checks). `npm run test:browser` runs the real app in headless Chromium against made-up data and checks every page at 375px, 320px and 1280px, the tab bar, the remove "x", the points key, the profile lists and score entry (234 checks). `npm test` runs the first two and **fails loudly** if Postgres can't be reached, instead of quietly skipping. How to set each one up is in `tests/README.md`. No new dependencies were added to `package.json`; the browser tests need Playwright installed on the side (`npm i --no-save playwright`).
+- **Checked that the tests can fail:** five deliberate breakages (score box limit back to 4, score.ts target changed, loss-points floor put back, database target changed, the legality check removed from reporting) were each caught by at least one test, then undone.
+- **New:** `supabase-migration-v0.0.6.8.sql`, `tests/`, `src/lib/score.ts` changes. **Changed:** `package.json` (test scripts only), `.gitignore`, and the front-end files that showed or asked for "Unit" or limited scores to 4. **Deleted:** `PlaceholderPlayersPanel.vue`. No Edge Function changes.
+- **Deploy (manual):** run the migration in the SQL Editor after confirming v0.0.6.4 is applied (it stops with a clear message if the score rule from 6.3 is missing), read the notices it prints, then deploy the frontend. Then `git rm src/components/admin/PlaceholderPlayersPanel.vue`. Safe to run twice.
+- **Validated:** all of the above ran green on my side (7 + 15 + 234 checks) and the production build passes. Not covered: your live Supabase data (the audit notice is how you will find out whether any old scores are affected), a real phone, and the Edge Functions. The database tests ran on Postgres 16; Supabase's own extras are only stood in for (`tests/db/stub-supabase.sql`).
 
 ## Quick start
 

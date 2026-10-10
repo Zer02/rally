@@ -104,7 +104,7 @@ import { useLeagueStore } from '@/stores/leagues'
 import { usePlayersStore } from '@/stores/players'
 import { useProgressStore, type QuestView } from '@/stores/progress'
 import { levelProgress } from '@/lib/xp'
-import { XP_PER_POINT, rrMatchXp } from '@/lib/score'
+import { GAMES_TO_WIN, LOSS_MAX_POINTS, XP_PER_POINT, rrMatchXp } from '@/lib/score'
 import { useSport } from '@/composables/useSport'
 
 const { user } = useAuth()
@@ -116,8 +116,8 @@ const loading = computed(() => progress.loading || playersStore.loading)
 const me = computed(() => playersStore.byId(user.value?.id ?? ''))
 const { sport } = useSport()
 const lp = computed(() => levelProgress(me.value?.xp ?? 0, sport.value))
-const winXp = rrMatchXp(4, 0)
-const lossMaxXp = rrMatchXp(3, 4)
+const winXp = rrMatchXp(GAMES_TO_WIN, 0)
+const lossMaxXp = XP_PER_POINT * LOSS_MAX_POINTS
 
 const groups = computed(() => [
   { key: 'weekly',   label: 'This week',   refresh: 'Refreshes every Monday',

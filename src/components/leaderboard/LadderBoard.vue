@@ -108,7 +108,6 @@ const rows = computed<(StandingRow & { seasonRecord: string })[]>(() =>
     id: p.id,
     profile_id: p.profile_id,
     name: name(p),
-    unit: p.profile?.unit,
     rating: p.rating,
     streak: p.streak,
     seasonRecord: seasonRecordDisplay(p),

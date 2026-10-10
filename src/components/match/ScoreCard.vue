@@ -42,8 +42,7 @@
           <span v-if="done && side.isWinner" class="sc-check" title="Winner" aria-label="Winner">✓</span>
           <span v-if="side.isMe" class="sc-you">you</span>
         </div>
-        <div v-if="side.unit || side.points != null || side.delta != null" class="sc-sub">
-          <span v-if="side.unit">{{ side.unit }}</span>
+        <div v-if="side.points != null || side.delta != null" class="sc-sub">
           <span v-if="side.points != null" class="sc-pts" :title="`${side.points} round robin points from this match`">+{{ side.points }} {{ side.points === 1 ? 'pt' : 'pts' }}</span>
           <span
             v-if="side.delta != null"
@@ -73,7 +72,6 @@ import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 
 export interface ScoreSide {
   names:    string[]            // one name (singles) or two (doubles)
-  unit?:    string | null
   delta?:   number | null       // rating change from this match, if known
   points?:  number | null       // round robin points earned (v0.0.6.3); null = none, e.g. challenges
   isWinner: boolean

@@ -9,8 +9,8 @@ import { useLeagueStore } from './leagues'
 
 const MATCH_SELECT = `
   *,
-  challenger:profiles!matches_challenger_id_fkey(id, username, display_name, unit),
-  opponent:profiles!matches_opponent_id_fkey(id, username, display_name, unit),
+  challenger:profiles!matches_challenger_id_fkey(id, username, display_name),
+  opponent:profiles!matches_opponent_id_fkey(id, username, display_name),
   winner:profiles!matches_winner_id_fkey(id, username, display_name)
 `
 

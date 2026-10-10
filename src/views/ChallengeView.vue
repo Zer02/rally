@@ -35,7 +35,6 @@
                 <div class="opponent-meta muted">
                   <TierBadge :rating="p.rating" />
                   <span class="mono">{{ p.rating }}</span>
-                  <span v-if="p.profile?.unit">· Unit {{ p.profile.unit }}</span>
                 </div>
               </div>
               <div class="opponent-pts" v-if="selected === p.profile_id && preview">

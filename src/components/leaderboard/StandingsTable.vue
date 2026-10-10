@@ -64,7 +64,6 @@
                     {{ p.name }}
                     <span v-if="rankCrown(i + 1)" class="crown crown-sm" :class="`crown-${rankCrown(i + 1)?.tier}`" aria-hidden="true">{{ rankCrown(i + 1)?.emoji }}</span>
                   </div>
-                  <div v-if="p.unit" class="muted" style="font-size:0.72rem">Unit {{ p.unit }}</div>
                 </RouterLink>
               </td>
               <td v-if="showTier"><TierBadge :rating="p.rating" /></td>
@@ -104,7 +103,6 @@
               <TierBadge v-if="showTier" :rating="p.rating" />
             </div>
             <div class="lb-sub muted">
-              <span v-if="p.unit">Unit {{ p.unit }} · </span>
               <template v-for="(col, ci) in mobileColumns" :key="col.key">
                 <span v-if="ci">  ·  </span>{{ col.value(p) }}
               </template>
@@ -133,7 +131,6 @@ export interface StandingRow {
   id:         string
   profile_id: string
   name:       string
-  unit?:      string | null
   rating:     number
   streak?:    number
 }
