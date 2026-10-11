@@ -7,7 +7,7 @@ tests run the real app against made-up data.
 
 | Command | What it checks | Needs |
 |---|---|---|
-| `npm run test:js` | The score and points rules in `src/lib/score.ts` | Node only. Takes a second. |
+| `npm run test:js` | The score and points rules in `src/lib/score.ts`, and the repo layout (schema, migrations and scripts under `supabase/`) | Node only. Takes a second. |
 | `npm run test:db` | Every migration, replayed in order, plus the rules as the database enforces them | A local Postgres (see below) |
 | `npm run test:browser` | Every page at 375px, 320px and 1280px (no sideways scroll, nothing cut off), the tab bar, the remove "x", the points key, the profile lists, and score entry | Playwright (see below) |
 | `npm test` | `js` + `db` | Postgres |
@@ -16,7 +16,7 @@ tests run the real app against made-up data.
 
 ## What the database tests prove
 
-- The base schema and **every** `supabase-migration-v*.sql` file apply, in version
+- The base schema (`supabase/schema.sql`) and **every** `supabase/migrations/supabase-migration-v*.sql` file apply, in version
   order, with no SQL errors; the recent ones can be run twice without changing anything,
   and refuse to run when the version before them is missing.
 - `rr_games_to_win()`, `rr_score_is_legal()` and `rr_match_points()` give the right
@@ -71,4 +71,5 @@ ladder matches, one unreported match); see the top of `supabase-mock.ts`.
 3. If the change moves what a page shows, run `npm run test:browser` too.
 
 When you add a migration, nothing needs registering: the tests pick up every
-`supabase-migration-v*.sql` file in the repo root.
+`supabase-migration-v*.sql` file in `supabase/migrations/`. If that folder is missing or empty the
+database tests fail with an error rather than replaying nothing.

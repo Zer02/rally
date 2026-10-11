@@ -5,10 +5,10 @@
 // 6-0 up to 6-5 either way round. These mirror functions in the database,
 // which is the real authority; if a rule changes, change both. The test
 // suite (npm run test:js, tests/db) fails if they drift apart.
-//   GAMES_TO_WIN         — rr_games_to_win() in supabase-migration-v0.0.6.8.sql
-//   rr_score_is_legal()  — supabase-migration-v0.0.6.8.sql (last redefined there)
-//   rr_match_points()    — supabase-migration-v0.0.6.4.sql (last redefined there)
-//   XP per point         — c_xp_per_point in sync_quest_progress(), supabase-migration-v0.0.6.4.sql
+//   GAMES_TO_WIN         — rr_games_to_win() in supabase/migrations/supabase-migration-v0.0.6.8.sql
+//   rr_score_is_legal()  — supabase/migrations/supabase-migration-v0.0.6.8.sql (last redefined there)
+//   rr_match_points()    — supabase/migrations/supabase-migration-v0.0.6.4.sql (last redefined there)
+//   XP per point         — c_xp_per_point in sync_quest_progress(), supabase/migrations/supabase-migration-v0.0.6.4.sql
 
 /** Games a side needs to win a round robin match. */
 export const GAMES_TO_WIN = 6

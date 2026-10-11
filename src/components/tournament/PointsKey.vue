@@ -3,7 +3,7 @@
   under the round robin tables (Round Robin page and the leaderboard's
   season views — not the all-time view, which has no match points).
   The numbers come from rrMatchPoints()/rrMatchXp() in src/lib/score.ts, which
-  mirror rr_match_points() in supabase-migration-v0.0.6.4.sql; if the rule
+  mirror rr_match_points() in supabase/migrations/supabase-migration-v0.0.6.4.sql; if the rule
   changes, change both.
 -->
 <template>

@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.6.9**
+> Current version: **v0.0.7.0**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -614,11 +614,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Test:** the browser suite had a check asserting the old behaviour (bar hidden while a dropdown is focused). It now asserts the opposite for focused and opened dropdowns and buttons, and checks that the score boxes still hide the bar and release it afterwards (239 checks, passing). With the old behaviour put back, the new checks fail.
 - **Not covered:** a real phone. The browser test can focus and open a dropdown but cannot show the phone's own picker or keyboard, so whether the bar sits well with them is for your phone to confirm.
 
+### v0.0.7.0 — Housekeeping: the database files now live under `supabase/`
+
+> Tidy-up only, no change to how the app behaves. The base schema, every migration and the one-time reset scripts now sit under `supabase/` next to the Edge Functions, instead of being scattered in the repo root. The tests had been left looking in the old place, so the database suite found no migrations; they now look in the new place and refuse to pass if they find none.
+
+- **Moved (with `git mv`, so history follows the files):** `supabase-schema.sql` → `supabase/schema.sql`; `reset-for-launch.sql` and `reset-round-robin.sql` → `supabase/scripts/`. The migrations were already in `supabase/migrations/`. File names are unchanged.
+- **Tests:** `tests/db/helpers.mjs` reads `supabase/schema.sql` and `supabase/migrations/`, and throws if the migrations folder is empty rather than replaying nothing. New `tests/js/layout.test.mjs` checks that the schema and scripts are where they should be, that no `.sql` file is left in the repo root, and that every file in `supabase/migrations/` is named `supabase-migration-vX.X.X.X.sql`. `tests/README.md` updated.
+- **Paths in comments and docs:** the comments in `score.ts`, `xp.ts`, `PointsKey.vue` and `AppNav.vue`, `supabase/functions/README.md`, the Quick start and the project-structure tree now give the new paths. Older changelog entries are left as they were written.
+- **Not changed:** the text inside migration files (some error messages say "Run supabase-migration-v0.0.6.3.sql first"; those are still the right file names). Migration files are not renamed to the Supabase CLI's `<timestamp>_name.sql` style, because migrations here are run by hand in the SQL Editor.
+- **Manual steps:** `git mv supabase-schema.sql supabase/schema.sql`, `git mv reset-for-launch.sql supabase/scripts/` and `git mv reset-round-robin.sql supabase/scripts/` (create `supabase/scripts/` first), `git rm src/components/admin/PlaceholderPlayersPanel.vue`, then commit. No migration to run and nothing to deploy beyond the normal frontend deploy.
+
 ## Quick start
 
 ### 1. Supabase setup
 - Create a project at supabase.com
-- Run `supabase-schema.sql` in **SQL Editor**
+- Run `supabase/schema.sql` in **SQL Editor**, then the files in `supabase/migrations/` in version order (a fresh project needs all of them)
 - Copy from **Settings → API**: Project URL + Publishable key
 
 ### 2. Environment
@@ -646,7 +656,12 @@ rally/
 ├── .env.example
 ├── index.html
 ├── vite.config.ts
-├── supabase-schema.sql
+├── supabase/
+│   ├── schema.sql               # base schema (run first)
+│   ├── migrations/              # supabase-migration-vX.X.X.X.sql, run in version order
+│   ├── scripts/                 # one-time operational scripts (reset-for-launch, reset-round-robin)
+│   └── functions/               # Edge Functions
+├── tests/                       # npm test (see tests/README.md)
 └── src/
     ├── main.ts
     ├── App.vue

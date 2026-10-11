@@ -9,7 +9,7 @@
 // reaches Level 10 in about a year; early levels come within a few weeks
 // so new players feel movement right away. To change the overall pace,
 // scale every xp value here — the per-match / quest numbers live in
-// supabase-migration-v0.0.5.1.sql.
+// supabase/migrations/supabase-migration-v0.0.5.1.sql.
 // Titles that mention the surface or gear ("Table Legend", "Paddle Enthusiast")
 // are built from the league's sport so a tennis league gets "Court Legend" and
 // "Racket Enthusiast". Pass a SportInfo (from useSport) to any function below;

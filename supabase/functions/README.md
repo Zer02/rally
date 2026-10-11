@@ -48,10 +48,10 @@ injects into every Edge Function automatically.
 
 ## Before deploying
 
-Run `supabase-migration-v0.0.4.4.sql` in the SQL Editor first — both
+Run `supabase/migrations/supabase-migration-v0.0.4.4.sql` in the SQL Editor first — both
 functions assume `profiles.is_placeholder` already exists.
 
-For the three `admin-*` functions, also run `supabase-migration-v0.0.5.9.sql`
+For the three `admin-*` functions, also run `supabase/migrations/supabase-migration-v0.0.5.9.sql`
 (creates `account_admin_log`, which they write to). The reset links they
 send land on `/login`, so `https://<your-domain>/login` must be under
 Authentication → URL Configuration → Redirect URLs (already required since

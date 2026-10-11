@@ -11,11 +11,21 @@ export const STUB = join(ROOT, 'tests', 'db', 'stub-supabase.sql')
 const versionOf = f => f.match(/v([\d.]+)\.sql$/)[1].split('.').map(Number)
 const cmp = (a, b) => { for (let i = 0; i < 4; i++) { const d = (a[i] ?? 0) - (b[i] ?? 0); if (d) return d } return 0 }
 
-/** supabase-migration-vX.X.X.X.sql files, oldest first. */
-export const migrations = () =>
-  readdirSync(ROOT).filter(f => /^supabase-migration-v[\d.]+\.sql$/.test(f)).sort((x, y) => cmp(versionOf(x), versionOf(y)))
+export const MIGRATIONS_DIR = join(ROOT, 'supabase', 'migrations')
+export const SCHEMA = join(ROOT, 'supabase', 'schema.sql')
 
-export const file = f => join(ROOT, f)
+/**
+ * supabase-migration-vX.X.X.X.sql files in supabase/migrations/, oldest first.
+ * Finding none is an error, never an empty replay: a database test that replays
+ * nothing would pass while checking nothing.
+ */
+export const migrations = () => {
+  const found = readdirSync(MIGRATIONS_DIR).filter(f => /^supabase-migration-v[\d.]+\.sql$/.test(f))
+  if (!found.length) throw new Error(`No supabase-migration-v*.sql files found in ${MIGRATIONS_DIR}`)
+  return found.sort((x, y) => cmp(versionOf(x), versionOf(y)))
+}
+
+export const file = f => join(MIGRATIONS_DIR, f)
 export const versionName = f => f.match(/v([\d.]+)\.sql$/)[1]
 
 /**
@@ -26,7 +36,7 @@ export const versionName = f => f.match(/v([\d.]+)\.sql$/)[1]
 export function replay(db, { through } = {}) {
   createDb(db)
   psql(db, { file: STUB })
-  psql(db, { file: file('supabase-schema.sql') })
+  psql(db, { file: SCHEMA })
   const notices = {}
   for (const m of migrations()) {
     notices[versionName(m)] = psql(db, { file: file(m) }).notices

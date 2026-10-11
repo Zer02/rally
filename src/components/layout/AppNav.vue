@@ -158,7 +158,7 @@ import RacketIcon from '@/components/icons/RacketIcon.vue'
 import { SPORTS, getSport } from '@/lib/sports'
 
 // leagues.icon is `not null default '🏆'` at the DB level (see
-// supabase-migration-v0.0.3.0.sql), so an untouched league genuinely
+// supabase/migrations/supabase-migration-v0.0.3.0.sql), so an untouched league genuinely
 // has that literal string stored — this isn't a missing value the
 // frontend invented a fallback for. v0.0.4.8 treats that old default
 // the same as "no icon set" so existing leagues pick up the new
