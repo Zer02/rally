@@ -7,7 +7,7 @@
 <template>
   <div>
     <div class="board-filters">
-      <div class="field" style="min-width:170px">
+      <div class="field">
         <label class="field-label">Season</label>
         <select v-model="selectedSeasonId" class="input">
           <option value="current">Current season</option>
@@ -122,7 +122,3 @@ const columns: StandingColumn[] = [
   },
 ]
 </script>
-
-<style scoped>
-.board-filters { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 1rem; }
-</style>

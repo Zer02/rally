@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.2**
+> Current version: **v0.0.7.3**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -645,6 +645,17 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Side effect to know about:** points and Play XP are recomputed from match history. First-to-4 results keep exactly the points they had. Any result already reported as played to 6 under 6.8 is re-scored (a 2-6, 3-6 or 4-6 loss now earns 1, 2 or 2 points instead of 2, 3 or 3), and the migration prints how many matches that is. Play XP for those matches follows the next time Progress is opened, for weeks the v0.0.6.4 rule already covers.
 - **Tests:** new rule written out independently for both formats (JS and database), the front end and database agreeing on every score, a season that mixes both formats, and an upgrade test that plays two sets to 6 under 6.8 and checks the exact points and XP change when 7.2 is applied. I also broke the rule on purpose (rounding down, accepting 7-5) to confirm the tests catch it. JS 11, database 17, browser 253 checks pass. Not covered: a real phone.
 - **Manual steps:** take a Supabase backup, run `supabase-migration-v0.0.7.2.sql` in the SQL Editor and read its notices, then deploy the frontend.
+
+### v0.0.7.3 — A cleaner top of the Leaderboard and Round Robin pages
+
+> Layout only. The Leaderboard had three dropdowns stacked above the podium (Board, Season, Rank by), and Round Robin put two admin-style cards (Past seasons, Player accounts) above the season itself. Both pages now lead with the standings.
+
+- **Leaderboard:** Board is now a two-way toggle (Round robin | Ladder) beside the page title instead of a dropdown. Season and Rank by sit side by side on one row. On a phone the podium starts about 130px higher (measured at 375px), and the ladder shows just its Season dropdown on the same row style.
+- **Season label:** the running season shows as just its name (for example "Autumn Season 2026") instead of "Current season — Autumn Season 2026", which was cut off in the narrower dropdown. It is still the first entry in the list.
+- **Round Robin:** Past seasons and Player accounts (admin) moved to a quiet block at the very bottom of the page, under a divider. They sit outside the season states, so they are still there when no season is running. Nothing was removed.
+- **Changed:** `src/views/LeaderboardView.vue`, `src/views/TournamentView.vue`, `src/components/leaderboard/RoundRobinBoard.vue` and `LadderBoard.vue` (their separate filter styles are gone), and `src/assets/main.css` (new shared `.segmented`, `.board-filters`, `.page-more` and `.page-header-row`). Frontend only: no migration, no Edge Function changes.
+- **Not changed:** the Matches page keeps its Board and Show dropdowns in the title block, and the Profile page keeps its own season dropdown (it still reads "Current season — name"). Say if you want those to match.
+- **Tests:** new browser checks (at 320, 375 and 1280px) that Board is a toggle, only two dropdowns remain, Season and Rank by share a row, standings start high on a phone, and Round Robin goes header, then season, then the tools at the bottom. I broke each on purpose (stacked the filters, moved the panels back to the top) to confirm the checks fail. JS 11, database 17, browser 280 checks pass. Not covered: a real phone.
 
 ## Quick start
 

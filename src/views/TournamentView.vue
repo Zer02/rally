@@ -5,16 +5,6 @@
       <h1>Round Robin</h1>
     </div>
 
-    <div style="margin-bottom:1.25rem">
-      <PastSeasonsPanel :seasons="store.pastSeasons" :get-standings="store.fetchSeasonStandings" />
-    </div>
-
-    <!-- Global admin: every player's account (invite, reset, change email).
-         Lives above the season states so it's reachable even with no season running. -->
-    <div v-if="isAdmin" style="margin-bottom:1.25rem">
-      <PlayerAccountsPanel />
-    </div>
-
     <div v-if="store.loading && !store.active" style="text-align:center;padding:3rem 0">
       <span class="spinner" style="width:28px;height:28px;border-width:3px" />
     </div>
@@ -147,6 +137,14 @@
 
       <p v-if="reportError" class="flash flash-error" style="margin-top:1rem">{{ reportError }}</p>
     </template>
+
+    <!-- Housekeeping lives below the standings, so the season is the first thing on the page.
+         Outside the season states on purpose: reachable with no season running too. -->
+    <section class="page-more">
+      <PastSeasonsPanel :seasons="store.pastSeasons" :get-standings="store.fetchSeasonStandings" />
+      <!-- Global admin: every player's account (invite, reset, change email). -->
+      <PlayerAccountsPanel v-if="isAdmin" />
+    </section>
   </main>
 </template>
 

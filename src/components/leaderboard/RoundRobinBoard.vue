@@ -15,7 +15,7 @@
 <template>
   <div>
     <div class="board-filters">
-      <div class="field" style="min-width:170px">
+      <div class="field">
         <label class="field-label">Season</label>
         <select v-model="season" class="input">
           <option value="current">{{ currentLabel }}</option>
@@ -23,7 +23,7 @@
           <option value="alltime">All-time</option>
         </select>
       </div>
-      <div class="field" style="min-width:170px">
+      <div class="field">
         <label class="field-label">Rank by</label>
         <select v-model="metric" class="input">
           <option v-for="o in metricOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
@@ -75,9 +75,9 @@ const isAllTime = computed(() => season.value === 'alltime')
 const isPast    = computed(() => season.value !== 'current' && season.value !== 'alltime')
 const busy      = computed(() => store.loading || pastLoading.value)
 
-const currentLabel = computed(() =>
-  store.active ? `Current season — ${store.active.name}` : 'Current season'
-)
+// Just the season's name: a long "Current season — …" label was cut off in the
+// narrow dropdown on a phone. The running season is always first in the list.
+const currentLabel = computed(() => store.active?.name ?? 'Current season')
 
 const SEASON_METRICS = [
   { value: 'points',    label: 'Points' },
@@ -233,13 +233,3 @@ const board = computed<{ rows: Row[]; columns: StandingColumn[]; ratingLabel: st
   return { rows, columns, ratingLabel, empty }
 })
 </script>
-
-<style scoped>
-.board-filters { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 1rem; }
-/* v0.0.6.5: on a phone the two dropdowns stack full width and line up with the
-   rest of the page (they were indented on one side and right-aligned on the other). */
-@media (max-width: 600px) {
-  .board-filters { justify-content: stretch; flex-direction: column; gap: 0.75rem; }
-  .board-filters .field { min-width: 0 !important; width: 100%; }
-}
-</style>

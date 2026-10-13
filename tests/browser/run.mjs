@@ -179,6 +179,41 @@ try {
     }
     await close(p)
   }
+
+  // ── 9. Leaderboard filters and Round Robin page order (v0.0.7.3) ──────
+  section('leaderboard filters on one row; round robin leads with the season')
+  for (const width of [320, 375, 1280]) {
+    const T = `@${width}`
+    let p = await open('/leaderboard', { width })
+    ok(await p.locator('.segmented button').count() === 2, `${T}: Board is a two-way toggle`)
+    ok(await p.locator('select').count() === 2, `${T}: two dropdowns left (Season, Rank by), not three`)
+    const tops = await p.$$eval('.board-filters select', els => els.map(e => Math.round(e.getBoundingClientRect().top)))
+    ok(tops.length === 2 && tops[0] === tops[1], `${T}: Season and Rank by share a row ${tops}`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    if (width < 700) {
+      // the podium / table used to start ~455px down; the filters are now compact
+      const firstRow = await p.evaluate(() => { const e = document.querySelector('main .container > div:last-child .standings, main table, main .podium, main [class*="podium"]'); return e ? Math.round(e.getBoundingClientRect().top) : -1 })
+      ok(firstRow > 0 && firstRow < 400, `${T}: standings start high on the page (${firstRow}px)`)
+    }
+    await p.locator('.segmented button', { hasText: 'Ladder' }).click(); await p.waitForTimeout(300)
+    ok((await p.locator('.segmented button.active').innerText()).trim() === 'Ladder', `${T}: choosing Ladder switches the board`)
+    ok(await p.locator('select').count() === 1, `${T}: the ladder has just its Season dropdown`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    const p = await open('/tournament', { width: 375 })
+    const order = await p.evaluate(() => {
+      const main = document.querySelector('main'); const kids = [...main.children]
+      const idx = sel => kids.findIndex(k => k.matches(sel) || k.querySelector(sel))
+      return { header: idx('.page-header'), season: idx('table, .standings, [class*="podium"]'), more: idx('.page-more') }
+    })
+    ok(order.header === 0 && order.season > 0 && order.more > order.season, `round robin: header, then the season, then the tools at the bottom ${JSON.stringify(order)}`)
+    ok(await p.locator('.page-more').getByText(/past seasons/i).count() === 1, 'past seasons is still there, in the bottom block')
+    ok(await p.locator('.page-more').getByText('Player accounts').count() === 1, 'player accounts is still there for an admin, in the bottom block')
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'round robin: no sideways scroll')
+    await close(p)
+  }
 } finally {
   await browser.close(); await server.close()
 }

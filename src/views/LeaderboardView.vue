@@ -1,18 +1,22 @@
-<!-- src/views/LeaderboardView.vue — v0.0.5.2 -->
+<!-- src/views/LeaderboardView.vue — v0.0.7.3 (Board is a two-way toggle beside the title, not a dropdown) -->
 <template>
   <main class="page">
     <div class="container">
-      <div class="page-header" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div class="page-header page-header-row">
         <div>
           <p class="eyebrow">{{ leagueName }}</p>
           <h1>Standings</h1>
         </div>
-        <div class="field" style="min-width:170px">
-          <label class="field-label">Board</label>
-          <select v-model="board" class="input">
-            <option value="rr">Round robin</option>
-            <option value="ladder">Ladder</option>
-          </select>
+        <div class="segmented" role="tablist" aria-label="Board">
+          <button
+            v-for="b in BOARDS"
+            :key="b.value"
+            type="button"
+            role="tab"
+            :class="{ active: board === b.value }"
+            :aria-selected="board === b.value"
+            @click="board = b.value"
+          >{{ b.label }}</button>
         </div>
       </div>
 
@@ -32,5 +36,9 @@ const { leagueName } = useSport()
 
 // Round robin is the default board as of v0.0.5.2; the ladder standings
 // are unchanged, just one dropdown away.
+const BOARDS = [
+  { value: 'rr', label: 'Round robin' },
+  { value: 'ladder', label: 'Ladder' },
+] as const
 const board = ref<'rr' | 'ladder'>('rr')
 </script>
