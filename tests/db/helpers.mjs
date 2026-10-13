@@ -91,8 +91,10 @@ end $f$;
 /**
  * The staged season used by the XP tests. Each match: week offset from this
  * week (-2, -1, 0), hour of that week, the two sides, who won, and how many
- * games the loser took (0-3, so the same list is legal at first-to-4 and
- * first-to-6). `ladder` matches go in the separate 1v1 ladder table.
+ * games the loser took (0-3, so the same list is legal whether the match was
+ * played to 4 or to 6). `ladder` matches go in the separate 1v1 ladder table.
+ * The target each match was played to (4 or 6) is added by allTo() / MIXED
+ * below, as `t`.
  */
 export const SEASON = [
   // two weeks ago: player 1 plays 3
@@ -119,28 +121,38 @@ export const SEASON = [
   { wk: 0, hr: 5, a: [1], b: [2], win: 'a', ladder: true },
 ]
 
-/** SQL that plays SEASON, with winners reaching `target` games. */
-export function seasonSql(target) {
-  return REP_FN + SEASON.map(m => {
+/** SEASON with every match played to `t` games (4 or 6). */
+export const allTo = t => SEASON.map(m => ({ ...m, t }))
+
+/** SEASON with the formats mixed, as a real season is: odd-numbered matches played to 6, the rest to 4. */
+export const MIXED = SEASON.map((m, i) => ({ ...m, t: i % 2 ? 6 : 4 }))
+
+/** SQL that plays a season (each match carries its target `t`). */
+export function seasonSql(season) {
+  return REP_FN + season.map(m => {
     if (m.ladder) return `insert into matches(league_id,challenger_id,opponent_id,winner_id,challenger_score,opponent_score,status,completed_at)
       values ('${L}','${pid(m.a[0])}','${pid(m.b[0])}','${pid(m.a[0])}','11,11','5,6','completed', date_trunc('week', now()) + interval '${m.hr} hours');`
-    const sa = m.win === 'a' ? target : m.lg, sb = m.win === 'b' ? target : m.lg
+    const sa = m.win === 'a' ? m.t : m.lg, sb = m.win === 'b' ? m.t : m.lg
     const [a, c] = m.a, [b, d] = m.b
     return `select pg_temp.rep(${m.wk},${m.hr},${a},${b},${sa},${sb},${c ?? 'null'},${d ?? 'null'},'${m.fmt ?? 'singles'}','${m.phase ?? 'round_robin'}');`
   }).join('\n')
 }
 
 // ── Reference model (written independently of the SQL) ──────────────────
-export const pointsFor = (won, lost) => won > lost ? 4 : Math.max(0, Math.min(3, won))
+// Match points for one side: a win is 4; a loss is looked up by the target the
+// winner reached (4 or 6) and the games the loser took. Spelled out, not computed.
+const LOSS_POINTS = { 4: [0, 1, 2, 3], 6: [0, 1, 1, 2, 2, 3] }
+export const winPoints = 4
+export const lossPoints = (gamesWon, target) => LOSS_POINTS[target][gamesWon]
 
 /** Expected round robin points per player (challenge matches earn none). */
-export function expectedRrPoints(season = SEASON) {
+export function expectedRrPoints(season) {
   const pts = {}
   for (const m of season) {
     if (m.ladder || m.phase === 'challenge') continue
     const winners = m.win === 'a' ? m.a : m.b, losers = m.win === 'a' ? m.b : m.a
-    for (const p of winners) pts[p] = (pts[p] ?? 0) + 4
-    for (const p of losers) pts[p] = (pts[p] ?? 0) + pointsFor(m.lg, 99)
+    for (const p of winners) pts[p] = (pts[p] ?? 0) + winPoints
+    for (const p of losers) pts[p] = (pts[p] ?? 0) + lossPoints(m.lg, m.t)
   }
   return pts
 }
@@ -152,14 +164,14 @@ export function expectedRrPoints(season = SEASON) {
  * started (`ruleStartWk`, an offset from this week); otherwise 4 per match point.
  * Returns { 'player|week': { n, xp } }.
  */
-export function expectedPlayXp(season = SEASON, ruleStartWk = 0, { skip = new Set() } = {}) {
+export function expectedPlayXp(season, ruleStartWk = 0, { skip = new Set() } = {}) {
   const per = {}
   season.forEach((m, i) => {
     if (skip.has(i)) return
     const sides = m.ladder ? [[m.a[0]], [m.b[0]]] : [m.a, m.b]
     sides.forEach((side, si) => {
       const won = m.ladder ? (si === 0) : (m.win === (si === 0 ? 'a' : 'b'))
-      const xp = (m.ladder || m.phase === 'challenge' || m.wk < ruleStartWk) ? 15 : 4 * (won ? 4 : pointsFor(m.lg, 99))
+      const xp = (m.ladder || m.phase === 'challenge' || m.wk < ruleStartWk) ? 15 : 4 * (won ? winPoints : lossPoints(m.lg, m.t))
       for (const p of side) (per[`${p}|${m.wk}`] ??= []).push({ hr: m.hr, xp })
     })
   })
@@ -170,3 +182,7 @@ export function expectedPlayXp(season = SEASON, ruleStartWk = 0, { skip = new Se
   }
   return out
 }
+
+/** SQL that plays extra round robin matches: [{ wk, hr, a, b, sa, sb }] (a reports). */
+export const extraMatchesSql = list => REP_FN + list.map(m =>
+  `select pg_temp.rep(${m.wk},${m.hr},${m.a},${m.b},${m.sa},${m.sb});`).join('\n')

@@ -39,7 +39,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   const error         = ref<string | null>(null)
 
   // Live, unadjusted standings — v0.0.6.2: sorted by match points
-  // (rr_points: 4 per win, a loss earns its games won, 0 to 3),
+  // (rr_points: 4 per win, a loss earns 0 to 3 by how close it was),
   // then wins, then total games won (points_for). Differential
   // deliberately isn't part of this: with short first-to-4 no-ad sets, a
   // 4-3 loss and a 4-0 loss should count the same for tiebreak purposes.
@@ -252,7 +252,7 @@ export const useTournamentsStore = defineStore('tournaments', () => {
   // RPC branches on the match's phase. Challenge wins add to bonus_points
   // only; round-robin wins update wins/losses/points_for/points_against.
   async function reportMatch(matchId: string, scoreA: number, scoreB: number) {
-    // v0.0.6.3: first to N games (GAMES_TO_WIN). The database enforces this too; checking
+    // v0.0.6.3: first to 4, or a full set to 6 (lib/score.ts). The database enforces this too; checking
     // here just fails fast with the same plain-English reason.
     const problem = rrScoreError(scoreA, scoreB)
     if (problem) throw new Error(problem)

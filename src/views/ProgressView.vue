@@ -45,8 +45,8 @@
             <span v-if="progress.playXpWeek.matches > 5">(after 5 matches each one earns a little less)</span>
           </p>
           <p class="play-xp-rule muted">
-            Round robin matches: a win earns {{ winXp }} XP, and a loss earns {{ XP_PER_POINT }} XP for each
-            game you won (up to {{ lossMaxXp }}). Ladder matches earn 15.
+            Round robin matches: a win earns {{ winXp }} XP, and a loss earns 0 to {{ lossMaxXp }} XP, the
+            closer the loss the more. Ladder matches earn 15.
           </p>
         </div>
 
@@ -104,7 +104,7 @@ import { useLeagueStore } from '@/stores/leagues'
 import { usePlayersStore } from '@/stores/players'
 import { useProgressStore, type QuestView } from '@/stores/progress'
 import { levelProgress } from '@/lib/xp'
-import { GAMES_TO_WIN, LOSS_MAX_POINTS, XP_PER_POINT, rrMatchXp } from '@/lib/score'
+import { LOSS_MAX_POINTS, WIN_POINTS, XP_PER_POINT, rrMatchXp } from '@/lib/score'
 import { useSport } from '@/composables/useSport'
 
 const { user } = useAuth()
@@ -116,7 +116,7 @@ const loading = computed(() => progress.loading || playersStore.loading)
 const me = computed(() => playersStore.byId(user.value?.id ?? ''))
 const { sport } = useSport()
 const lp = computed(() => levelProgress(me.value?.xp ?? 0, sport.value))
-const winXp = rrMatchXp(GAMES_TO_WIN, 0)
+const winXp = rrMatchXp(WIN_POINTS, 0)
 const lossMaxXp = XP_PER_POINT * LOSS_MAX_POINTS
 
 const groups = computed(() => [

@@ -1,9 +1,9 @@
 <!--
-  PointsKey — v0.0.6.8. A small collapsible "How points work" key, shown
+  PointsKey — v0.0.7.2. A small collapsible "How points work" key, shown
   under the round robin tables (Round Robin page and the leaderboard's
   season views — not the all-time view, which has no match points).
   The numbers come from rrMatchPoints()/rrMatchXp() in src/lib/score.ts, which
-  mirror rr_match_points() in supabase/migrations/supabase-migration-v0.0.6.4.sql; if the rule
+  mirror rr_match_points() in supabase/migrations/supabase-migration-v0.0.7.2.sql; if the rule
   changes, change both.
 -->
 <template>
@@ -13,15 +13,24 @@
       <table class="table points-key-table">
         <thead><tr><th>Result</th><th>Points</th><th>XP</th></tr></thead>
         <tbody>
-          <tr v-for="r in rows" :key="r.label">
-            <td>{{ r.label }}</td>
-            <td class="mono">{{ r.points }}</td>
-            <td class="mono">{{ r.xp }}</td>
+          <tr>
+            <td>Win</td>
+            <td class="mono">{{ win.points }}</td>
+            <td class="mono">{{ win.xp }}</td>
           </tr>
+          <template v-for="sec in sections" :key="sec.title">
+            <tr class="points-key-section"><th colspan="3">{{ sec.title }}</th></tr>
+            <tr v-for="r in sec.rows" :key="sec.title + r.label">
+              <td>{{ r.label }}</td>
+              <td class="mono">{{ r.points }}</td>
+              <td class="mono">{{ r.xp }}</td>
+            </tr>
+          </template>
         </tbody>
       </table>
       <ul class="points-key-notes muted">
-        <li>A match is first to {{ GAMES_TO_WIN }} games. A loss earns the games you won, up to {{ LOSS_MAX_POINTS }}. A 0–{{ GAMES_TO_WIN }} loss earns nothing.</li>
+        <li>A match is first to 4 games, or a full set to 6 if you play it out (at 5–5 the next game wins). The score says which it was.</li>
+        <li>A win earns {{ win.points }}. A loss earns up to {{ LOSS_MAX_POINTS }}, the closer it was the more: one game short is always {{ LOSS_MAX_POINTS }}, and a 0–4 or 0–6 loss earns nothing.</li>
         <li>Doubles: both partners earn their side's points.</li>
         <li>Ranking: total points, then wins, then games won.</li>
         <li>Challenge matches earn no points.</li>
@@ -32,27 +41,29 @@
 </template>
 
 <script setup lang="ts">
-import { GAMES_TO_WIN, LOSS_MAX_POINTS, rrMatchPoints, rrMatchXp } from '@/lib/score'
+import { GAME_TARGETS, LOSS_MAX_POINTS, WIN_POINTS, rrMatchPoints, rrMatchXp } from '@/lib/score'
 
-// One row for a win, then one row per distinct loss value, walking down from the
-// closest loss. Losses that earn the same are merged ("Lose 3–6 to 5–6").
-const N = GAMES_TO_WIN
-const rows: { label: string; points: number; xp: number }[] = [
-  { label: 'Win', points: rrMatchPoints(N, 0), xp: rrMatchXp(N, 0) },
-]
-const grouped: { hi: number; lo: number }[] = []
-for (let g = N - 1; g >= 0; g--) {
-  const last = grouped[grouped.length - 1]
-  if (last && rrMatchPoints(last.lo, N) === rrMatchPoints(g, N)) last.lo = g
-  else grouped.push({ hi: g, lo: g })
-}
-for (const { hi, lo } of grouped) {
-  rows.push({
-    label: lo === hi ? `Lose ${lo}–${N}` : `Lose ${lo}–${N} to ${hi}–${N}`,
-    points: rrMatchPoints(hi, N),
-    xp: rrMatchXp(hi, N),
-  })
-}
+const win = { points: rrMatchPoints(WIN_POINTS, 0), xp: rrMatchXp(WIN_POINTS, 0) }
+
+// For each format, one row per distinct loss value, walking down from the
+// closest loss. Losses that earn the same are merged ("Lose 3–6 to 4–6").
+type Row = { label: string; points: number; xp: number }
+const sections: { title: string; rows: Row[] }[] = GAME_TARGETS.map(N => {
+  const grouped: { hi: number; lo: number }[] = []
+  for (let g = N - 1; g >= 0; g--) {
+    const last = grouped[grouped.length - 1]
+    if (last && rrMatchPoints(last.lo, N) === rrMatchPoints(g, N)) last.lo = g
+    else grouped.push({ hi: g, lo: g })
+  }
+  return {
+    title: N === 4 ? 'First to 4' : 'Full set to 6',
+    rows: grouped.map(({ hi, lo }) => ({
+      label: lo === hi ? `Lose ${lo}–${N}` : `Lose ${lo}–${N} to ${hi}–${N}`,
+      points: rrMatchPoints(hi, N),
+      xp: rrMatchXp(hi, N),
+    })),
+  }
+})
 </script>
 
 <style scoped>
@@ -66,5 +77,6 @@ for (const { hi, lo } of grouped) {
 .points-key[open] summary::before { content: '▾'; }
 .points-key-body { margin-top: 0.75rem; }
 .points-key-table { max-width: 20rem; }
+.points-key-section th { padding-top: 0.75rem; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--txt-muted); text-align: left; }
 .points-key-notes { margin: 0.75rem 0 0; padding-left: 1.1rem; font-size: 0.8rem; line-height: 1.5; }
 </style>

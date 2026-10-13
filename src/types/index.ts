@@ -123,7 +123,7 @@ export interface TournamentParticipant {
   points_for:     number
   points_against: number
   bonus_points:   number
-  rr_points:      number   // v0.0.6.2: match points (4 per win; a loss earns its games won, 1–3)
+  rr_points:      number   // v0.0.6.2: match points (4 per win; a loss earns 0–3 by how close it was)
   rr_rating:      number
   adjusted_score: number | null
   seed:           number | null

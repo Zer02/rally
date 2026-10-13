@@ -74,15 +74,17 @@ try {
   ok(!/unit/i.test(await p.locator('form').innerText()), 'edit-profile form has no unit label')
   await close(p)
 
-  // ── 3. "How points work" key matches the first-to-6 rules ───────────
+  // ── 3. "How points work" key matches the first-to-4 / full-set-to-6 rules ──
   section('how-points-work key')
   for (const width of [375, 1280]) {
     p = await open('/leaderboard', { width }); await p.locator('.points-key summary').click(); await p.waitForTimeout(200)
     const rowsTxt = await p.$$eval('.points-key-table tbody tr', trs => trs.map(t => [...t.children].map(c => c.textContent.trim())))
-    const want = [['Win', '4', '16'], ['Lose 3–6 to 5–6', '3', '12'], ['Lose 2–6', '2', '8'], ['Lose 1–6', '1', '4'], ['Lose 0–6', '0', '0']]
+    const want = [['Win', '4', '16'],
+      ['First to 4'], ['Lose 3–4', '3', '12'], ['Lose 2–4', '2', '8'], ['Lose 1–4', '1', '4'], ['Lose 0–4', '0', '0'],
+      ['Full set to 6'], ['Lose 5–6', '3', '12'], ['Lose 3–6 to 4–6', '2', '8'], ['Lose 1–6 to 2–6', '1', '4'], ['Lose 0–6', '0', '0']]
     ok(JSON.stringify(rowsTxt) === JSON.stringify(want), `@${width}: key rows ${JSON.stringify(rowsTxt)}`)
     const notes = await p.locator('.points-key-notes').innerText()
-    ok(/first to 6 games/.test(notes) && /0–6 loss earns nothing/.test(notes), `@${width}: notes say first to 6 / 0–6 earns nothing`)
+    ok(/first to 4 games, or a full set to 6/.test(notes) && /0–4 or 0–6 loss earns nothing/.test(notes), `@${width}: notes say first to 4 or a full set to 6 / a shutout earns nothing`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `@${width}: key does not overflow`)
     await close(p)
   }
@@ -90,7 +92,7 @@ try {
   // ── 4. Progress page states the XP rule ─────────────────────────────
   section('progress page XP line')
   p = await open('/progress'); const prog = await p.locator('body').innerText()
-  ok(/win earns 16 XP/.test(prog) && /4 XP for each\s+game you won \(up to 12\)/.test(prog.replace(/\n/g, ' ')), 'progress explains 16 XP for a win, 4 per game won up to 12'); await close(p)
+  ok(/win earns 16 XP/.test(prog) && /loss earns 0 to 12 XP/.test(prog.replace(/\n/g, ' ')), 'progress explains 16 XP for a win, 0 to 12 for a loss'); await close(p)
 
   // ── 5. Bottom tab bar ───────────────────────────────────────────────
   section('bottom tab bar')
@@ -150,8 +152,8 @@ try {
   p = await open('/profile', { width: 1280 })
   ok(await p.evaluate(() => { const t = document.querySelector('.table-stack-match'); return !!t && getComputedStyle(t.querySelector('thead')).display !== 'none' }), 'desktop keeps the normal table with its header'); await close(p)
 
-  // ── 8. Score entry: the boxes and the Report button follow the first-to-6 rule ──
-  section('score entry: up to 6, only a finished score can be sent')
+  // ── 8. Score entry: the boxes and the Report button follow the first-to-4 / full-set-to-6 rule ──
+  section('score entry: up to 6, only a finished score (4 or 6) can be sent')
   for (const width of [375, 1280]) {
     p = await open('/tournament', { width, pending: true }); const T = `score entry @${width}`
     const boxes = await p.locator('.score-input').count()
@@ -160,13 +162,15 @@ try {
       ok((await p.locator('.score-input').first().getAttribute('max')) === '6', `${T}: score box max is 6`)
       const [a, b] = [p.locator('.score-input').nth(0), p.locator('.score-input').nth(1)]
       const btn = p.locator('.match-score-inputs button, .match-score-inputs .btn').first()
-      for (const [x, y, legal] of [[6, 4, true], [4, 6, true], [6, 0, true], [0, 6, true], [6, 5, true], [5, 6, true], [4, 4, false], [6, 6, false], [7, 2, false], [4, 2, false], [2, 4, false], [5, 5, false], [3, 0, false]]) {
+      for (const [x, y, legal] of [[6, 4, true], [4, 6, true], [6, 0, true], [0, 6, true], [6, 5, true], [5, 6, true], [4, 0, true], [0, 4, true], [4, 3, true], [3, 4, true], [4, 2, true], [4, 4, false], [6, 6, false], [7, 2, false], [5, 3, false], [3, 5, false], [5, 4, false], [5, 5, false], [3, 0, false]]) {
         await a.fill(String(x)); await b.fill(String(y))
         ok((await btn.isEnabled()) === legal, `${T}: ${x}-${y} ${legal ? 'can' : 'cannot'} be submitted`)
       }
-      await a.fill('4'); await b.fill('2'); await p.waitForTimeout(150)
+      await a.fill('5'); await b.fill('3'); await p.waitForTimeout(150)
       const hint = (await p.locator('.score-hint').allInnerTexts()).join(' ')
-      ok(/first to 6/i.test(hint), `${T}: the hint for 4-2 says first to 6 (got "${hint}")`)
+      ok(/exactly 4 games.*exactly 6/i.test(hint), `${T}: the hint for 5-3 names both formats (got "${hint}")`)
+      await a.fill('4'); await b.fill('2'); await p.waitForTimeout(150)
+      ok((await p.locator('.score-hint').count()) === 0, `${T}: no hint for 4-2, a finished first-to-4 score`)
       await a.fill('6'); await b.fill('3'); await btn.click(); await p.waitForTimeout(300)
       const calls = await p.evaluate(() => window.__rpc || [])
       ok(calls.some(c => c.name === 'report_tournament_match' && c.args.p_match_id === 'tmP' && c.args.p_score_a === 6 && c.args.p_score_b === 3), `${T}: 6-3 is sent to the database for the right match (${JSON.stringify(calls.map(c => c.name))})`)

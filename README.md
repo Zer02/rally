@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.1**
+> Current version: **v0.0.7.2**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -633,6 +633,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Changed:** `src/assets/main.css` (`.page-header`, plus one line in the 600px media query). Every page that uses the shared title block picks it up: Leaderboard, Matches, Round Robin, Progress, Profile, Player, Challenge and Referee. Home and Login have no title block and are unchanged.
 - **Test:** the browser suite passes; I also looked at the Matches page screenshot at 375px and 1280px. Not covered: a real phone.
 - Frontend only: no migration, no Edge Function changes.
+
+### v0.0.7.2 — Matches are first to 4, or a full set to 6
+
+> The club plays first to 4 games (no-ad) and, when other courts or players are still going, sometimes plays a full set to 6 instead. v0.0.6.8 allowed only first to 6, so most real results would have been refused. Both are now legal, in the same season, match by match, and nobody picks a format: the score says which one was played. Loss points now follow how close the loss was in each format.
+
+- **Legal scores:** the winner has exactly 4 and the other side 0 to 3, or the winner has exactly 6 and the other side 0 to 5. At 5-5 the next game wins, so 6-5 is a finished set. Anything else (5-3, 7-5, 4-4 ...) is refused with a message that names both formats. Old first-to-4 results are legal again, so the 6.8 audit has nothing left to list.
+- **Loss points:** a win is still 4. A loss earns `round(3 × games won ÷ (target − 1))`, halves up, where the target is the winner's score. First to 4 keeps the scale it always had (0-4 earns 0, 1-4 earns 1, 2-4 earns 2, 3-4 earns 3). A full set to 6 spreads it: 0-6 earns 0, 1-6 and 2-6 earn 1, 3-6 and 4-6 earn 2, 5-6 earns 3. A loss one game short of the target earns 3 in either format. XP stays at 4 per match point.
+- **Database:** `supabase/migrations/supabase-migration-v0.0.7.2.sql` redefines `rr_score_is_legal()` and `rr_match_points()`, drops `rr_games_to_win()` (there is no single target any more), updates the message in `report_tournament_match()`, recomputes `rr_points` and prints notices. It needs v0.0.6.4 and works whether or not 6.8 was run. Safe to run twice.
+- **Front end:** `src/lib/score.ts` mirrors the rule (`GAME_TARGETS`, `MAX_GAMES`). Score boxes accept up to 6. The "How points work" key lists the loss scale for each format. The Progress page says a loss earns 0 to 12 XP, the closer the more.
+- **Side effect to know about:** points and Play XP are recomputed from match history. First-to-4 results keep exactly the points they had. Any result already reported as played to 6 under 6.8 is re-scored (a 2-6, 3-6 or 4-6 loss now earns 1, 2 or 2 points instead of 2, 3 or 3), and the migration prints how many matches that is. Play XP for those matches follows the next time Progress is opened, for weeks the v0.0.6.4 rule already covers.
+- **Tests:** new rule written out independently for both formats (JS and database), the front end and database agreeing on every score, a season that mixes both formats, and an upgrade test that plays two sets to 6 under 6.8 and checks the exact points and XP change when 7.2 is applied. I also broke the rule on purpose (rounding down, accepting 7-5) to confirm the tests catch it. JS 11, database 17, browser 253 checks pass. Not covered: a real phone.
+- **Manual steps:** take a Supabase backup, run `supabase-migration-v0.0.7.2.sql` in the SQL Editor and read its notices, then deploy the frontend.
 
 ## Quick start
 

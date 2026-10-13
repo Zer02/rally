@@ -19,17 +19,21 @@ tests run the real app against made-up data.
 - The base schema (`supabase/schema.sql`) and **every** `supabase/migrations/supabase-migration-v*.sql` file apply, in version
   order, with no SQL errors; the recent ones can be run twice without changing anything,
   and refuse to run when the version before them is missing.
-- `rr_games_to_win()`, `rr_score_is_legal()` and `rr_match_points()` give the right
-  answer for every score from 0-0 to 9-9, and `src/lib/score.ts` gives the *same*
-  answer for all of them. If someone changes the rule in one place only, this fails.
+- `rr_score_is_legal()` and `rr_match_points()` give the right answer for every score
+  from 0-0 to 9-9 under the rule (first to 4, or a full set to 6; the loss scale for each
+  format is written out in the test), and `src/lib/score.ts` gives the *same* answer for
+  all of them. If someone changes the rule in one place only, this fails.
 - Reporting a match accepts legal scores, refuses the rest with a reason, and refuses a
   second report of the same match.
-- A staged season (singles, doubles, a challenge, a ladder match, three weeks) produces
-  exactly the round robin points and battle pass XP that an independent calculation in
-  the test predicts, including full rate for five matches a week and the trickle after.
+- A staged season (singles, doubles, a challenge, a ladder match, three weeks, with
+  matches played to 4 and to 6 mixed in one season) produces exactly the round robin
+  points and battle pass XP that an independent calculation in the test predicts,
+  including full rate for five matches a week and the trickle after.
   Syncing twice changes nothing; removing a match takes back its points and XP.
 - Upgrading a database that already holds results from an earlier version keeps its
   history, and the score audit lists results that no longer count as a legal score.
+  Upgrading to v0.0.7.2 leaves first-to-4 results exactly as they were and re-scores
+  sets already played to 6 under the new loss scale (points and Play XP).
 
 ## Running the database tests
 
