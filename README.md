@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.0**
+> Current version: **v0.0.7.1**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -623,6 +623,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Paths in comments and docs:** the comments in `score.ts`, `xp.ts`, `PointsKey.vue` and `AppNav.vue`, `supabase/functions/README.md`, the Quick start and the project-structure tree now give the new paths. Older changelog entries are left as they were written.
 - **Not changed:** the text inside migration files (some error messages say "Run supabase-migration-v0.0.6.3.sql first"; those are still the right file names). Migration files are not renamed to the Supabase CLI's `<timestamp>_name.sql` style, because migrations here are run by hand in the SQL Editor.
 - **Manual steps:** `git mv supabase-schema.sql supabase/schema.sql`, `git mv reset-for-launch.sql supabase/scripts/` and `git mv reset-round-robin.sql supabase/scripts/` (create `supabase/scripts/` first), `git rm src/components/admin/PlaceholderPlayersPanel.vue`, then commit. No migration to run and nothing to deploy beyond the normal frontend deploy.
+
+### v0.0.7.1 — Less empty space under the top bar
+
+> Styling only. On every page the title block sat too far below the top bar: the page's own top padding and the title block's top padding were stacking on top of each other. They no longer do, and the space under the title block is a little tighter too.
+
+- **Gap from the top bar to the page title:** 56px to 24px on a phone, 72px to 40px on desktop (measured in the browser tests' Chromium, on the Matches page).
+- **Space under the title block** (before the first card or table): header bottom padding 1.75rem to 1.25rem and margin 2rem to 1.5rem on desktop; 1rem and 1.25rem on phones.
+- **Changed:** `src/assets/main.css` (`.page-header`, plus one line in the 600px media query). Every page that uses the shared title block picks it up: Leaderboard, Matches, Round Robin, Progress, Profile, Player, Challenge and Referee. Home and Login have no title block and are unchanged.
+- **Test:** the browser suite passes; I also looked at the Matches page screenshot at 375px and 1280px. Not covered: a real phone.
+- Frontend only: no migration, no Edge Function changes.
 
 ## Quick start
 

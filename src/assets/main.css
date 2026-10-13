@@ -168,7 +168,7 @@ select.input { cursor: pointer; }
 .card-header { padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
 
 /* ── Page header ── */
-.page-header { padding: 2.5rem 0 1.75rem; border-bottom: 1px solid var(--line); margin-bottom: 2rem; }
+.page-header { padding: 0.5rem 0 1.25rem; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; }
 .eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ball); margin-bottom: 0.4rem; }
 
 /* ── Spinner ── */
@@ -188,6 +188,7 @@ select.input { cursor: pointer; }
 
 @media (max-width: 600px) {
   .page { padding-top: 1rem; padding-bottom: 5rem; }
+  .page-header { padding-bottom: 1rem; margin-bottom: 1.25rem; }
   .stat-value { font-size: 1.1rem; }
 
   /* auto-fit was leaving 2 orphaned empty grid cells (rendered as a solid
