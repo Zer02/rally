@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.4**
+> Current version: **v0.0.7.5**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -664,6 +664,20 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Gap from the top bar to the hero:** 96px to 24px on a phone, 112px to 40px on desktop (measured in the browser tests' Chromium), the same as every other page. Space below the hero is unchanged on desktop and a little tighter on phones.
 - **Changed:** `src/views/HomeView.vue` (`.hero` padding only). Frontend only: no migration, no Edge Function changes.
 - **Test:** new browser check at 375px and 1280px that the gap is at most 48px (it fails on the old padding). JS 11, database 17, browser 284 checks pass. Not covered: a real phone.
+
+### v0.0.7.5 — Rally can be installed as an app
+
+> Players can add Rally to their phone's home screen and open it full screen like an app. This is the installable half of the old "notifications and install" idea; notifications come later, once the email sender is settled. Frontend only: no migration, no Edge Function changes.
+
+- **Install:** on Android and desktop Chrome or Edge a small card at the bottom of Profile offers an Install button. On iPhone and iPad, where browsers can't offer it, the same card shows the steps (Share, then Add to Home Screen). The card disappears once Rally is installed or running as an app, and shows nothing in a browser that can't install apps.
+- **Opens at:** the Leaderboard (`start_url`), with long-press shortcuts for Round Robin and Matches on Android. Dark theme colour (`#0e1117`) for the status bar and splash screen; iPhone status bar style is black.
+- **Icons:** the existing tennis icons (192 and 512) plus a new maskable 512 (`public/icon-maskable-512.png`) with the artwork inside the safe area, so Android's circle or squircle crop doesn't clip it. Swap the files to change the app icon.
+- **Offline page:** `public/sw.js` is a deliberately tiny service worker. When Rally is opened with no connection it shows a friendly "You're offline" page with Try again, instead of the browser's error screen. It caches only that one page, never the app files or any Supabase request, so nobody can get stuck on an old version or see stale standings. It runs in production builds only. If `public/offline.html` ever changes, bump `OFFLINE_CACHE` in `sw.js`.
+- **Phone layout:** the viewport now has `viewport-fit=cover`, which is what makes the bottom tab bar's existing home-indicator padding work on iPhones, and the page keeps clear of the notch in landscape.
+- **Hosting:** `vercel.json` serves `sw.js` uncached (so updates reach phones) and the manifest with its own content type.
+- **Changed/new:** `index.html`, `src/main.ts`, `src/composables/useInstallPrompt.ts`, `src/components/ui/InstallAppCard.vue`, `src/views/ProfileView.vue`, `src/assets/main.css`, `vercel.json`, and in `public/`: `manifest.webmanifest`, `sw.js`, `offline.html`, `icon-maskable-512.png`.
+- **Tests:** static checks of the manifest, that every icon is the size it claims, that the start page and shortcuts are real routes, and that the worker caches only the offline page. Browser checks of the manifest and icons loading, the install card (appears on the browser's offer, Install replays the prompt once, iPhone steps, hidden when installed), and the worker itself: install it from a throwaway server, take the server away, and open a page to get the offline page. I broke the offline fallback and the install card on purpose to confirm the checks fail. JS 18, database 17, browser 306 checks pass. **Not covered:** the real install prompt on a phone, iPhone Add to Home Screen, and the installed app's look. Those need your phone.
+- **Manual steps:** deploy the frontend. To try it, open leaguematch.site on your phone (it must be the live https site, not localhost), then Profile, and look for the Install card. If you ever need to remove the worker from a device, unregister it in the browser's site settings.
 
 ## Quick start
 

@@ -4,6 +4,8 @@
 // (or point CHROME_PATH at an installed Chrome/Chromium).   run:  npm run test:browser
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { createServer as createHttpServer } from 'node:http'
+import { readFileSync, existsSync } from 'node:fs'
 import { createServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -28,8 +30,15 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false } = {}) {
-  const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700 })
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, ua, standalone = false } = {}) {
+  const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
+  // Pretend the page is running as an installed app (display-mode: standalone).
+  if (standalone) await ctx.addInitScript(() => {
+    const real = window.matchMedia.bind(window)
+    window.matchMedia = q => /display-mode:\s*standalone/.test(q)
+      ? { matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }
+      : real(q)
+  })
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
@@ -223,6 +232,86 @@ try {
     ok(gap > 0 && gap <= 48, `@${width}: gap from the top bar to the hero is ${gap}px (was 96px+)`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `@${width}: no sideways scroll`)
     await close(p)
+  }
+
+  // ── 11. Installable app (v0.0.7.5) ─────────────────────────────────────
+  section('installable app: manifest, install card, offline page')
+  {
+    const p = await open('/', { width: 375 })
+    ok(await p.evaluate(() => document.querySelector('link[rel="manifest"]')?.getAttribute('href')) === '/manifest.webmanifest', 'the page links the manifest')
+    ok(await p.evaluate(() => document.querySelector('meta[name="theme-color"]')?.getAttribute('content')) === '#0e1117', 'theme colour is set')
+    const man = await p.evaluate(async () => { const r = await fetch('/manifest.webmanifest'); return { ok: r.ok, json: await r.json() } })
+    ok(man.ok && man.json.display === 'standalone' && man.json.icons.length >= 3, 'the manifest is served and says standalone with icons')
+    for (const ic of man.json.icons) {
+      const st = await p.evaluate(async src => (await fetch(src)).status, ic.src)
+      ok(st === 200, `icon ${ic.src} loads (${st})`)
+    }
+    await close(p)
+  }
+  {
+    // Chrome-style: the browser offers to install, we show a button and replay its prompt.
+    const p = await open('/profile', { width: 375 })
+    ok(await p.locator('.install-card').count() === 0, 'no install card when the browser has not offered to install')
+    await p.evaluate(() => {
+      const e = new Event('beforeinstallprompt'); e.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; return Promise.resolve() }
+      e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e)
+    })
+    await p.waitForTimeout(200)
+    ok(await p.locator('.install-card').isVisible(), 'install card appears once the browser offers to install')
+    ok(await p.locator('.install-card button', { hasText: 'Install' }).count() === 1, 'it has an Install button')
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'install card: no sideways scroll')
+    await p.locator('.install-card button', { hasText: 'Install' }).click({ timeout: 3000 }).catch(() => {}); await p.waitForTimeout(300)
+    ok(await p.evaluate(() => window.__prompted) === 1, 'tapping Install replays the browser prompt exactly once')
+    ok(await p.locator('.install-card').count() === 0, 'the card goes away after installing')
+    ok(p.errs.length === 0, `install: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    // iPhone Safari never sends the event: show the Share / Add to Home Screen steps.
+    const IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+    const p = await open('/profile', { width: 375, ua: IOS })
+    const t = (await p.locator('.install-card').innerText({ timeout: 3000 }).catch(() => '')).replace(/\s+/g, ' ')
+    ok(/Share/.test(t) && /Add to Home Screen/.test(t), `iPhone sees the steps (${t})`)
+    ok(await p.locator('.install-card button').count() === 0, 'iPhone: no Install button (there is nothing to replay)')
+    await close(p)
+    // ...and nothing once it is already running as an installed app.
+    const q = await open('/profile', { width: 375, ua: IOS, standalone: true })
+    ok(await q.locator('.install-card').count() === 0, 'nothing to install when already running as an app')
+    await q.evaluate(() => { const e = new Event('beforeinstallprompt'); e.prompt = () => Promise.resolve(); e.userChoice = Promise.resolve({ outcome: 'dismissed' }); window.dispatchEvent(e) })
+    await q.waitForTimeout(200)
+    ok(await q.locator('.install-card').count() === 0, 'still nothing, even if the browser offers')
+    await close(q)
+  }
+  {
+    // The service worker, on its own: serve public/ from a throwaway server, let it install,
+    // then take the server away and open a page. We should get the offline page, and nothing
+    // else should have been cached (no stale app, no stale data).
+    const publicDir = join(ROOT, 'public')
+    const types = { '.html': 'text/html', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon' }
+    const sockets = new Set()
+    const srv = createHttpServer((req, res) => {
+      const url = new URL(req.url, 'http://x'); const name = url.pathname === '/' ? '/shell.html' : url.pathname
+      if (name === '/shell.html') { res.setHeader('content-type', 'text/html'); return res.end('<!doctype html><title>shell</title><p id="shell">app shell</p>') }
+      const f = join(publicDir, name)
+      if (!f.startsWith(publicDir) || !existsSync(f)) { res.statusCode = 404; return res.end('nope') }
+      res.setHeader('content-type', types[name.slice(name.lastIndexOf('.'))] || 'application/octet-stream'); res.end(readFileSync(f))
+    })
+    srv.on('connection', c => { sockets.add(c); c.on('close', () => sockets.delete(c)) })
+    await new Promise(r => srv.listen(0, '127.0.0.1', r))
+    const origin = `http://127.0.0.1:${srv.address().port}`
+    const ctx = await browser.newContext({ serviceWorkers: 'allow' }); const p = await ctx.newPage()
+    await p.goto(origin + '/'); 
+    const reg = await p.evaluate(async () => { const r = await navigator.serviceWorker.register('/sw.js'); await navigator.serviceWorker.ready; return !!r.active || !!r.installing || !!r.waiting })
+    ok(reg, 'the service worker installs')
+    await p.waitForFunction(() => navigator.serviceWorker.controller || true); await p.reload(); await p.waitForTimeout(300)
+    ok(await p.evaluate(() => !!navigator.serviceWorker.controller), 'it takes control of the page')
+    const cached = await p.evaluate(async () => { const out = {}; for (const k of await caches.keys()) out[k] = (await (await caches.open(k)).keys()).map(r => new URL(r.url).pathname); return out })
+    ok(JSON.stringify(cached) === JSON.stringify({ 'rally-offline-v1': ['/offline.html'] }), `only the offline page is cached ${JSON.stringify(cached)}`)
+    for (const c of sockets) c.destroy(); await new Promise(r => srv.close(r))
+    await p.goto(origin + '/leaderboard', { waitUntil: 'domcontentloaded' }).catch(() => {})
+    ok(/You're offline/.test(await p.locator('h1').innerText({ timeout: 3000 }).catch(() => '')), 'with the server gone, opening a page shows the offline page')
+    ok((await p.locator('button', { hasText: 'Try again' }).count()) === 1, 'and it offers Try again')
+    await ctx.close()
   }
 } finally {
   await browser.close(); await server.close()

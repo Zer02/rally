@@ -126,6 +126,8 @@
         </template>
       </template>
     </div>
+
+    <InstallAppCard />
   </main>
 </template>
 
@@ -145,6 +147,7 @@ import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import RatingChart from '@/components/ui/RatingChart.vue'
 import RoundRobinProfile from '@/components/profile/RoundRobinProfile.vue'
 import ChangePasswordForm from '@/components/auth/ChangePasswordForm.vue'
+import InstallAppCard from '@/components/ui/InstallAppCard.vue'
 import type { Match } from '@/types'
 
 const playersStore    = usePlayersStore()

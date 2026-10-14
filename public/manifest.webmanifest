@@ -1,0 +1,21 @@
+{
+  "name": "Rally",
+  "short_name": "Rally",
+  "description": "Live ratings, round robin seasons and match results for your club.",
+  "id": "/",
+  "start_url": "/leaderboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0e1117",
+  "theme_color": "#0e1117",
+  "lang": "en",
+  "icons": [
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Round Robin", "short_name": "Round Robin", "url": "/tournament" },
+    { "name": "Matches", "short_name": "Matches", "url": "/matches" }
+  ]
+}

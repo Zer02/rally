@@ -7,7 +7,7 @@ tests run the real app against made-up data.
 
 | Command | What it checks | Needs |
 |---|---|---|
-| `npm run test:js` | The score and points rules in `src/lib/score.ts`, and the repo layout (schema, migrations and scripts under `supabase/`) | Node only. Takes a second. |
+| `npm run test:js` | The score and points rules in `src/lib/score.ts`, the repo layout (schema, migrations and scripts under `supabase/`), and the installable-app files (manifest, icons, service worker, offline page) | Node only. Takes a second. |
 | `npm run test:db` | Every migration, replayed in order, plus the rules as the database enforces them | A local Postgres (see below) |
 | `npm run test:browser` | Every page at 375px, 320px and 1280px (no sideways scroll, nothing cut off), the tab bar, the remove "x", the points key, the profile lists, and score entry | Playwright (see below) |
 | `npm test` | `js` + `db` | Postgres |
