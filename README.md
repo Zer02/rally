@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.5**
+> Current version: **v0.0.7.6**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -678,6 +678,17 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Changed/new:** `index.html`, `src/main.ts`, `src/composables/useInstallPrompt.ts`, `src/components/ui/InstallAppCard.vue`, `src/views/ProfileView.vue`, `src/assets/main.css`, `vercel.json`, and in `public/`: `manifest.webmanifest`, `sw.js`, `offline.html`, `icon-maskable-512.png`.
 - **Tests:** static checks of the manifest, that every icon is the size it claims, that the start page and shortcuts are real routes, and that the worker caches only the offline page. Browser checks of the manifest and icons loading, the install card (appears on the browser's offer, Install replays the prompt once, iPhone steps, hidden when installed), and the worker itself: install it from a throwaway server, take the server away, and open a page to get the offline page. I broke the offline fallback and the install card on purpose to confirm the checks fail. JS 18, database 17, browser 306 checks pass. **Not covered:** the real install prompt on a phone, iPhone Add to Home Screen, and the installed app's look. Those need your phone.
 - **Manual steps:** deploy the frontend. To try it, open leaguematch.site on your phone (it must be the live https site, not localhost), then Profile, and look for the Install card. If you ever need to remove the worker from a device, unregister it in the browser's site settings.
+
+### v0.0.7.6 — A new Home page: your day for players, a short welcome for visitors
+
+> The Home page was the same sales pitch for everyone, with big gaps and three large feature cards, and it looked spaced wrong once Rally was installed on a phone. It is now two pages in one route. Signed-in players get a view of their own day; visitors get a tighter welcome. Frontend only: no migration, no Edge Function changes, no new data (it reads stores the other pages already use).
+
+- **Players ("Hi, Alexandra"):** a season card with rank, points and record (and the week's progress), a card listing your matches this week with a status on each (To play, Court 2 or Playing now, Won 6–0, Lost 3–6; challenge matches are labelled), a level card with an XP bar that opens Progress, and two buttons for the things players do most: Challenge someone and Round Robin. If you are not in the season yet, or no season is running, the card says so in a sentence. On wide screens this week's matches get their own column.
+- **Visitors:** a short pitch (same wording as before), Join the league and View standings side by side on a phone, and three one-line steps (Play, Live ratings, Full history) in place of the three big cards.
+- **Not shown while signing in:** nothing renders until the session is known, so a signed-in player never sees the visitor page flash by.
+- **Left out on purpose:** a "top of the table" preview for visitors. A brand-new visitor has no league selected yet, so there is nothing to show; it would need a decision about which league the public sees.
+- **Changed/new:** `src/views/HomeView.vue` (now only chooses between the two), `src/components/home/HomeDashboard.vue`, `src/components/home/HomeWelcome.vue`.
+- **Tests:** browser checks at 320, 375 and 1280px for both homes: the greeting, rank/points/record, a status on every match, the level card, the quick actions, no visitor page for a signed-in player, the visitor buttons on one row, a second column on desktop, no sideways scroll and no page errors. I broke the page on purpose (showed the visitor page to players) and the checks failed. JS 18, database 17, browser 349 checks pass. Not covered: a real phone, and real data (the browser tests use fake data).
 
 ## Quick start
 

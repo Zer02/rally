@@ -1,70 +1,20 @@
+<!-- src/views/HomeView.vue — v0.0.7.6
+     Two homes in one route: players see their own day (HomeDashboard: rank, this week's
+     matches, level), visitors see a short welcome (HomeWelcome). Nothing is shown while
+     the session is still being worked out, so a signed-in player never sees the visitor page flash by. -->
 <template>
   <main class="page">
     <div class="container">
-      <section class="hero">
-        <p class="eyebrow">{{ leagueName }}</p>
-        <h1>Track every rally.<br /><em>Own the {{ sport.surface }}.</em></h1>
-        <p class="hero-sub">
-          Live ratings for everyone in the building. Challenge neighbors, log scores,
-          climb the leaderboard.
-        </p>
-        <div class="hero-cta">
-          <RouterLink to="/leaderboard" class="btn btn-primary" style="font-size:1rem;padding:0.7rem 1.75rem">
-            View standings →
-          </RouterLink>
-          <RouterLink v-if="!isAuthed" to="/login" class="btn btn-ghost" style="font-size:1rem;padding:0.7rem 1.75rem">
-            Join the league
-          </RouterLink>
-          <RouterLink v-else to="/challenge" class="btn btn-ghost" style="font-size:1rem;padding:0.7rem 1.75rem">
-            Challenge someone
-          </RouterLink>
-        </div>
-      </section>
-
-      <div class="divider" style="margin:3.5rem 0" />
-
-      <section class="features">
-        <div class="feature-grid">
-          <div class="feature card">
-            <span class="feature-icon">{{ sport.emoji }}</span>
-            <h4>Challenge flow</h4>
-            <p>Send a challenge, your neighbor accepts, play the match, log the score. Both players see the rating update instantly.</p>
-          </div>
-          <div class="feature card">
-            <span class="feature-icon">📈</span>
-            <h4>Live ratings</h4>
-            <p>Ratings move faster early on as the system learns your level, then stabilise. Streak bonuses reward hot runs.</p>
-          </div>
-          <div class="feature card">
-            <span class="feature-icon">📊</span>
-            <h4>Full history</h4>
-            <p>Head-to-head records, match history, and a rating graph for every player in the building.</p>
-          </div>
-        </div>
-      </section>
+      <HomeDashboard v-if="isAuthed" />
+      <HomeWelcome v-else-if="!loading" />
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth'
-import { useSport } from '@/composables/useSport'
-const { isAuthed } = useAuth()
-const { sport, leagueName } = useSport()
-</script>
+import HomeDashboard from '@/components/home/HomeDashboard.vue'
+import HomeWelcome from '@/components/home/HomeWelcome.vue'
 
-<style scoped>
-/* v0.0.7.4: the page already pads its top (2rem, 1rem on a phone), so the hero adds only a
-   little more (the same as the other pages' title blocks); its old 5rem stacked on top of that and left a big gap under the top bar. */
-.hero { padding: 0.5rem 0 3rem; max-width: 620px; }
-@media (max-width: 600px) { .hero { padding-bottom: 2rem; } }
-.hero h1 { margin: 0.75rem 0 1.25rem; }
-.hero h1 em { font-style: italic; color: var(--ball); }
-.hero-sub { font-size: 1.05rem; color: var(--txt-secondary); line-height: 1.7; margin-bottom: 1.75rem; max-width: 480px; }
-.hero-cta { display: flex; gap: 0.875rem; flex-wrap: wrap; }
-.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 1rem; padding-bottom: 3rem; }
-.feature { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.feature-icon { font-size: 1.5rem; }
-.feature h4 { font-size: 0.95rem; font-weight: 600; color: var(--txt-primary); }
-.feature p  { font-size: 0.85rem; color: var(--txt-secondary); line-height: 1.6; }
-</style>
+const { isAuthed, loading } = useAuth()
+</script>

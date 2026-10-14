@@ -224,12 +224,12 @@ try {
     await close(p)
   }
 
-  // ── 10. Home page: the hero sits close under the top bar (v0.0.7.4) ──
+  // ── 10. Home page sits close under the top bar (v0.0.7.4; both homes since v0.0.7.6) ──
   section('home page spacing under the top bar')
   for (const width of [375, 1280]) {
     const p = await open('/', { width })
     const gap = await p.evaluate(() => Math.round(document.querySelector('.eyebrow').getBoundingClientRect().top - document.querySelector('nav, header').getBoundingClientRect().bottom))
-    ok(gap > 0 && gap <= 48, `@${width}: gap from the top bar to the hero is ${gap}px (was 96px+)`)
+    ok(gap > 0 && gap <= 48, `@${width}: gap from the top bar to the first heading is ${gap}px (was 96px+)`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `@${width}: no sideways scroll`)
     await close(p)
   }
@@ -312,6 +312,40 @@ try {
     ok(/You're offline/.test(await p.locator('h1').innerText({ timeout: 3000 }).catch(() => '')), 'with the server gone, opening a page shows the offline page')
     ok((await p.locator('button', { hasText: 'Try again' }).count()) === 1, 'and it offers Try again')
     await ctx.close()
+  }
+
+  // ── 12. Home page redesign (v0.0.7.6): a day view for players, a short welcome for visitors ──
+  section('home: player dashboard and visitor welcome')
+  for (const width of [320, 375, 1280]) {
+    const T = `@${width}`
+    const p = await open('/', { width })
+    ok(/^Hi, \S+/.test((await p.locator('h1').innerText({ timeout: 3000 }).catch(() => '')).trim()), `${T}: a signed-in player is greeted by name`)
+    ok(await p.locator('.welcome').count() === 0, `${T}: a signed-in player never sees the visitor page`)
+    const stats = await p.$$eval('[data-test="season-card"] .stat-val', els => els.map(e => e.textContent.trim()))
+    ok(stats.length === 3 && /^#\d+$/.test(stats[0]) && /^\d+$/.test(stats[1]) && /^\d+–\d+$/.test(stats[2]), `${T}: season card shows rank, points and record ${JSON.stringify(stats)}`)
+    const chips = await p.$$eval('[data-test="week-card"] .chip', els => els.map(e => e.textContent.trim()))
+    ok(chips.length > 0 && chips.every(c => /^(To play|Court \d+|Playing now|Won \d+–\d+|Lost \d+–\d+)$/.test(c)), `${T}: this week's matches each carry a status ${JSON.stringify(chips)}`)
+    ok(/level \d+/i.test(await p.locator('[data-test="level-card"]').innerText({ timeout: 3000 }).catch(() => '')), `${T}: level card shows the level`)
+    ok(await p.locator('.actions a', { hasText: 'Challenge someone' }).count() === 1 && await p.locator('.actions a', { hasText: 'Round Robin' }).count() === 1, `${T}: the two quick actions are there`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    if (width === 1280) {
+      const cols = await p.evaluate(() => ['[data-test="season-card"]', '[data-test="week-card"]'].map(s => Math.round(document.querySelector(s).getBoundingClientRect().left)))
+      ok(cols[1] > cols[0] + 200, `${T}: on a wide screen this week's matches sit in a second column ${cols}`)
+    }
+    await close(p)
+  }
+  for (const width of [320, 375, 1280]) {
+    const T = `@${width}`
+    const p = await open('/', { width, anon: true })
+    ok(await p.locator('.welcome').count() === 1 && await p.locator('[data-test="season-card"]').count() === 0, `${T}: a visitor sees the welcome, not the dashboard`)
+    ok(await p.locator('.welcome-cta a', { hasText: 'Join the league' }).count() === 1 && await p.locator('.welcome-cta a', { hasText: 'View standings' }).count() === 1, `${T}: visitor has Join the league and View standings`)
+    ok(await p.locator('.steps li').count() === 3, `${T}: three short steps explain how it works`)
+    const tops = await p.$$eval('.welcome-cta a', els => els.map(e => Math.round(e.getBoundingClientRect().top)))
+    ok(width > 600 ? true : tops[0] === tops[1], `${T}: the two buttons share a row on a phone ${tops}`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
   }
 } finally {
   await browser.close(); await server.close()
