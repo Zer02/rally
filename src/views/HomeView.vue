@@ -54,7 +54,10 @@ const { sport, leagueName } = useSport()
 </script>
 
 <style scoped>
-.hero { padding: 5rem 0 3rem; max-width: 620px; }
+/* v0.0.7.4: the page already pads its top (2rem, 1rem on a phone), so the hero adds only a
+   little more (the same as the other pages' title blocks); its old 5rem stacked on top of that and left a big gap under the top bar. */
+.hero { padding: 0.5rem 0 3rem; max-width: 620px; }
+@media (max-width: 600px) { .hero { padding-bottom: 2rem; } }
 .hero h1 { margin: 0.75rem 0 1.25rem; }
 .hero h1 em { font-style: italic; color: var(--ball); }
 .hero-sub { font-size: 1.05rem; color: var(--txt-secondary); line-height: 1.7; margin-bottom: 1.75rem; max-width: 480px; }

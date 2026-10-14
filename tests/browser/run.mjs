@@ -214,6 +214,16 @@ try {
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'round robin: no sideways scroll')
     await close(p)
   }
+
+  // ── 10. Home page: the hero sits close under the top bar (v0.0.7.4) ──
+  section('home page spacing under the top bar')
+  for (const width of [375, 1280]) {
+    const p = await open('/', { width })
+    const gap = await p.evaluate(() => Math.round(document.querySelector('.eyebrow').getBoundingClientRect().top - document.querySelector('nav, header').getBoundingClientRect().bottom))
+    ok(gap > 0 && gap <= 48, `@${width}: gap from the top bar to the hero is ${gap}px (was 96px+)`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `@${width}: no sideways scroll`)
+    await close(p)
+  }
 } finally {
   await browser.close(); await server.close()
 }

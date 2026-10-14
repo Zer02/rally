@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.3**
+> Current version: **v0.0.7.4**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -656,6 +656,14 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Changed:** `src/views/LeaderboardView.vue`, `src/views/TournamentView.vue`, `src/components/leaderboard/RoundRobinBoard.vue` and `LadderBoard.vue` (their separate filter styles are gone), and `src/assets/main.css` (new shared `.segmented`, `.board-filters`, `.page-more` and `.page-header-row`). Frontend only: no migration, no Edge Function changes.
 - **Not changed:** the Matches page keeps its Board and Show dropdowns in the title block, and the Profile page keeps its own season dropdown (it still reads "Current season — name"). Say if you want those to match.
 - **Tests:** new browser checks (at 320, 375 and 1280px) that Board is a toggle, only two dropdowns remain, Season and Rank by share a row, standings start high on a phone, and Round Robin goes header, then season, then the tools at the bottom. I broke each on purpose (stacked the filters, moved the panels back to the top) to confirm the checks fail. JS 11, database 17, browser 280 checks pass. Not covered: a real phone.
+
+### v0.0.7.4 — Home page: less empty space under the top bar
+
+> Styling only, the same fix as v0.0.7.1 but for the Home page, which has its own title block and was missed. The page's own top padding and the hero's 5rem top padding were stacking.
+
+- **Gap from the top bar to the hero:** 96px to 24px on a phone, 112px to 40px on desktop (measured in the browser tests' Chromium), the same as every other page. Space below the hero is unchanged on desktop and a little tighter on phones.
+- **Changed:** `src/views/HomeView.vue` (`.hero` padding only). Frontend only: no migration, no Edge Function changes.
+- **Test:** new browser check at 375px and 1280px that the gap is at most 48px (it fails on the old padding). JS 11, database 17, browser 284 checks pass. Not covered: a real phone.
 
 ## Quick start
 
