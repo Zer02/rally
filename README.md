@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.7**
+> Current version: **v0.0.7.8**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -699,6 +699,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Head-to-head:** under each match still to play against one opponent, a line says how you have done against them this season: "You lead 1–0 this season", "You trail 0–1", "Level 1–1" or "First meeting this season". One-on-one matches only: doubles results are not counted, and doubles rows show your partner instead. Finished matches show no head-to-head.
 - **Changed/new:** `src/lib/form.ts` (the streak and head-to-head rules, as small pure functions), `src/components/home/HomeDashboard.vue`.
 - **Tests:** the rules are worked out by hand in `tests/js/form.test.mjs` (order of results does not matter; unfinished, tied and other people's matches are ignored; both sides; doubles excluded). Browser checks at 320, 375 and 1280px against fake data (a new `streak` switch in the test harness adds two recent wins): the bar's percentage and label, the season total, the three-win streak, no streak at a run of one, the head-to-head line on the upcoming match, none on finished ones. I broke the streak and head-to-head rules on purpose and the tests failed. JS 24, database 17, browser 376 checks pass. Not covered: a real phone, and real league data.
+
+### v0.0.7.8 — Install card: always a way in, and "Not now"
+
+> A follow-up to v0.0.7.5. The install card could disappear on Android after a cancelled install prompt (the browser waits before offering again), leaving no visible way to reinstall. It now always points to a way in, and people can hide it without losing the option for good. Frontend only: no migration, no Edge Function changes.
+
+- **Android with no install offer:** the card shows the manual steps (browser menu, then Install app or Add to Home screen) instead of vanishing. When the browser does offer, the Install button shows, with a short line that the menu option exists too.
+- **"Not now":** a link on the card (iPhone and Android alike) hides it for 30 days in that browser, then it comes back, so hiding it can never block a later reinstall. If browser storage is blocked it hides until the page is reloaded.
+- **Unchanged:** the card still disappears inside the installed app, after installing, and on a desktop browser that makes no install offer. iPhone still cannot tell whether Rally is installed, so the Share steps keep showing in Safari until you tap Not now.
+- **Changed:** `src/composables/useInstallPrompt.ts`, `src/components/ui/InstallAppCard.vue`.
+- **Tests:** browser checks for Android with no offer (steps shown, no Install button), the offer arriving (button plus the menu hint), Not now hiding the card for 30 days and staying hidden after a reload, the card returning once the 30 days are up, iPhone having Not now, and nothing on desktop. I made Not now forget itself on purpose and the checks failed. JS 24, database 17, browser 387 checks pass. Not covered: real phones.
 
 ## Quick start
 

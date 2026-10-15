@@ -272,7 +272,7 @@ try {
     const p = await open('/profile', { width: 375, ua: IOS })
     const t = (await p.locator('.install-card').innerText({ timeout: 3000 }).catch(() => '')).replace(/\s+/g, ' ')
     ok(/Share/.test(t) && /Add to Home Screen/.test(t), `iPhone sees the steps (${t})`)
-    ok(await p.locator('.install-card button').count() === 0, 'iPhone: no Install button (there is nothing to replay)')
+    ok(await p.locator('.install-card button', { hasText: 'Install' }).count() === 0, 'iPhone: no Install button (there is nothing to replay)')
     await close(p)
     // ...and nothing once it is already running as an installed app.
     const q = await open('/profile', { width: 375, ua: IOS, standalone: true })
@@ -377,6 +377,46 @@ try {
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
     ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
     await close(p)
+  }
+
+  // ── 14. Install card: Android steps, "Not now" for 30 days (v0.0.7.8) ──
+  section('install card: android steps, hide for 30 days')
+  {
+    const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36'
+    const card = p => p.locator('.install-card')
+    const p = await open('/profile', { width: 375, ua: ANDROID })
+    // No offer from the browser (say, after a cancelled prompt): the menu steps are shown, with no Install button.
+    const t = (await card(p).innerText({ timeout: 3000 }).catch(() => '')).replace(/\s+/g, ' ')
+    ok(/Install app/.test(t) && /Add to Home screen/.test(t), `Android with no offer sees the menu steps (${t})`)
+    ok(await p.locator('.install-card button', { hasText: 'Install' }).count() === 0, 'and no Install button, because there is nothing to replay')
+    // The browser then offers: the Install button replaces the steps, and the menu is still mentioned.
+    await p.evaluate(() => { const e = new Event('beforeinstallprompt'); e.prompt = () => Promise.resolve(); e.userChoice = Promise.resolve({ outcome: 'dismissed' }); window.dispatchEvent(e) })
+    await p.waitForTimeout(200)
+    ok(await p.locator('.install-card button', { hasText: 'Install' }).count() === 1, 'once the browser offers, there is an Install button')
+    ok(/No button later\? Use your browser's menu/.test(await card(p).innerText()), 'and the card still says where the menu option is')
+    // "Not now" hides it, and it stays hidden after a reload.
+    await p.locator('.install-card button', { hasText: 'Not now' }).click({ timeout: 3000 }).catch(() => {})
+    await p.waitForTimeout(200)
+    ok(await card(p).count() === 0, '"Not now" hides the card')
+    const until = await p.evaluate(() => Number(localStorage.getItem('rally.installHiddenUntil')))
+    const days = (until - Date.now()) / 864e5
+    ok(days > 29 && days <= 30, `it is hidden for 30 days (${days.toFixed(1)})`)
+    await p.reload({ waitUntil: 'networkidle' }); await p.waitForTimeout(400)
+    ok(await card(p).count() === 0, 'still hidden after a reload')
+    // Once the 30 days are up it comes back, so hiding it can never block a later reinstall.
+    await p.evaluate(() => localStorage.setItem('rally.installHiddenUntil', String(Date.now() - 1000)))
+    await p.reload({ waitUntil: 'networkidle' }); await p.waitForTimeout(400)
+    ok(await card(p).count() === 1, 'back again once the 30 days have passed')
+    ok(p.errs.length === 0, `no page errors ${p.errs}`)
+    await close(p)
+    // iPhone has "Not now" too, and a desktop browser with no offer still shows nothing.
+    const IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+    const q = await open('/profile', { width: 375, ua: IOS })
+    ok(await q.locator('.install-card button', { hasText: 'Not now' }).count() === 1, 'iPhone card has Not now')
+    await close(q)
+    const d = await open('/profile', { width: 1280 })
+    ok(await card(d).count() === 0, 'a desktop browser with no install offer shows nothing')
+    await close(d)
   }
 } finally {
   await browser.close(); await server.close()
