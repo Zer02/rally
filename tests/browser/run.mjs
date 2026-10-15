@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending, streak })
+  }, { anon, noladder, pending, streak, nonmember, ghost })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -417,6 +417,66 @@ try {
     const d = await open('/profile', { width: 1280 })
     ok(await card(d).count() === 0, 'a desktop browser with no install offer shows nothing')
     await close(d)
+  }
+
+  // ── 15. New accounts that have not joined a league (v0.0.7.9) ──
+  section('not in a league yet: join card instead of a half-working app')
+  for (const width of [320, 375, 1280]) {
+    const T = `@${width}`
+    const card = p => p.locator('[data-test="join-card"]')
+    // Home: the join card, no dashboard, and joining turns it into the real thing
+    let p = await open('/', { width, nonmember: true })
+    ok((await card(p).innerText({ timeout: 3000 }).catch(() => '')).includes('Join Riverside Tennis Club'), `${T}: Home offers to join the league by name`)
+    ok(await p.locator('[data-test="season-card"]').count() === 0, `${T}: Home does not show a dashboard to a non-member`)
+    ok(/once you've joined/.test(await p.locator('main').innerText()), `${T}: Home says what joining unlocks`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    await p.locator('[data-test="join-card"] button', { hasText: 'Join Riverside Tennis Club' }).click({ timeout: 3000 }).catch(() => {})
+    await p.waitForTimeout(600)
+    const ins = await p.evaluate(() => (window.__inserts || []).filter(i => i.table === 'players'))
+    ok(ins.length === 1 && ins[0].payload.profile_id === '00000000-0000-0000-0000-000000000099' && ins[0].payload.league_id === '00000000-0000-0000-0000-0000000000aa', `${T}: Join saves the person's own player record (${JSON.stringify(ins)})`)
+    ok(await card(p).count() === 0 && await p.locator('[data-test="season-card"]').count() === 1, `${T}: after joining the card is gone and the dashboard appears`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+    // Profile: the card replaces "use the league icon in the nav"
+    p = await open('/profile', { width, nonmember: true })
+    ok(await card(p).count() === 1 && !/league icon in the nav/.test(await p.locator('main').innerText()), `${T}: Profile offers the join button, not a hunt through the menu`)
+    await close(p)
+    // Challenge: no opponent list for someone who cannot actually play
+    p = await open('/challenge', { width, nonmember: true })
+    ok(await card(p).count() === 1 && await p.getByText('Pick an opponent').count() === 0, `${T}: Challenge asks a non-member to join first`)
+    await close(p)
+    // Leaderboard: the standings are still there to look at, with the card above
+    p = await open('/leaderboard', { width, nonmember: true })
+    ok(await card(p).count() === 1 && await p.locator('.board-filters').count() === 1, `${T}: Leaderboard shows the join card above the standings`)
+    await close(p)
+    // Members never see it
+    for (const path of ['/', '/profile', '/challenge', '/leaderboard']) {
+      p = await open(path, { width })
+      ok(await card(p).count() === 0, `${T}: a member never sees the join card on ${path}`)
+      await close(p)
+    }
+  }
+  {
+    // The stuck-spinner bug: reporting a result against someone who never joined must explain itself,
+    // stop spinning, and save nothing.
+    const p = await open('/matches', { width: 375, ghost: true })
+    await p.getByText('view ladder').first().click({ timeout: 3000 }).catch(() => {})       // the page opens on Round robin
+    await p.waitForTimeout(300)
+    await p.getByRole('button', { name: 'Submit result' }).first().click({ timeout: 3000 }).catch(() => {})
+    const inputs = p.locator('.score-input')
+    await inputs.nth(0).fill('11', { timeout: 3000 }).catch(() => {}); await inputs.nth(1).fill('8', { timeout: 3000 }).catch(() => {})
+    await p.locator('.modal-footer .btn-primary').click({ timeout: 3000 }).catch(() => {})
+    await p.waitForTimeout(600)
+    const err = (await p.locator('.backdrop .flash-error').innerText({ timeout: 3000 }).catch(() => '')).replace(/\s+/g, ' ')
+    ok(/Gwen Ghost hasn't joined this league yet/.test(err), `the result window says who has not joined (${err})`)
+    ok(await p.locator('.modal-footer .spinner').count() === 0, 'the submit button stops spinning')
+    ok(await p.locator('.modal-footer .btn-primary').isEnabled({ timeout: 3000 }).catch(() => false), 'and can be used again')
+    const saved = await p.evaluate(() => (window.__updates || []).filter(u => u.table === 'matches'))
+    ok(saved.length === 0, `nothing was saved, so no half-reported match is left behind (${JSON.stringify(saved)})`)
+    await p.locator('.modal-footer .btn-ghost').click({ timeout: 3000 }).catch(() => {})
+    ok(await p.locator('.modal-footer').count() === 0, 'Cancel still closes the window')
+    ok(p.errs.length === 0, `no uncaught errors ${p.errs}`)
+    await close(p)
   }
 } finally {
   await browser.close(); await server.close()

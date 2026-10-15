@@ -60,4 +60,14 @@ export const TABLES: Record<string, any[]> = {
   tournament_matches: tm, rating_history: history, rr_rating_history: rrHist, quest_templates: quests, player_quest_progress: [], player_weekly_play_xp: [{ matches_counted: 4, xp_awarded: 40 }],
   league_admins: [{ league_id: L, profile_id: ids[0] }], match_removal_log: [], seasons: [], match_games: [],
 }
+// An account that has signed up but never joined a league: a profile, and no player record.
+export const NEWCOMER_PROFILE = { id: '00000000-0000-0000-0000-000000000099', username: 'nina', display_name: 'Nina Newcomer', unit: '', avatar_url: null, is_admin: false, is_placeholder: false, invited_email: null, invited_at: null }
+export const NEWCOMER = { id: NEWCOMER_PROFILE.id, email: 'nina@example.com', app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: day(1) }
+// Someone with an account but no player record in the league, and an accepted challenge against them
+// (the state a stuck match was in). Handed out only when a test turns the 'ghost' switch on.
+const GHOST_PROFILE = { id: '00000000-0000-0000-0000-000000000098', username: 'gwen', display_name: 'Gwen Ghost', unit: '', avatar_url: null, is_admin: false, is_placeholder: false, invited_email: null, invited_at: null }
+export const GHOST_MATCH = { id: 'mghost', league_id: L, challenger_id: ids[0], opponent_id: GHOST_PROFILE.id, status: 'accepted', winner_id: null,
+  challenger_reported_winner: null, opponent_reported_winner: null, challenger_reported_score: null, opponent_reported_score: null,
+  challenger_score: null, opponent_score: null, quality: null, challenger_delta: null, opponent_delta: null, created_at: day(0.2), completed_at: null,
+  challenger: profiles[0], opponent: GHOST_PROFILE, winner: null }
 export const USER = { id: ids[0], email: 'alex@example.com', app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: day(100) }

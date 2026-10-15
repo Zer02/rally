@@ -69,15 +69,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Match } from '@/types'
 
-const props = defineProps<{ match: Match; reporterId: string }>()
+const props = defineProps<{ match: Match; reporterId: string; error?: string }>()
 const emit  = defineEmits(['close', 'submit'])
 
 const games       = ref([{ c: null as number | null, o: null as number | null }])
 const submitting  = ref(false)
 const submitError = ref('')
+
+// v0.0.7.9: when saving fails the parent hands the reason back here. Without this the button
+// kept spinning forever and the person never learned why.
+watch(() => props.error, msg => {
+  if (!msg) return
+  submitError.value = msg
+  submitting.value = false
+})
 
 const detectedWinnerId = ref<string | null>(null)
 const detectedWinner   = computed(() => {

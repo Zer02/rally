@@ -21,10 +21,21 @@ export const useLeagueStore = defineStore('leagues', () => {
   const loading    = ref(false)
   const error      = ref<string | null>(null)
 
+  // v0.0.7.9: whether the signed-in user belongs to the league they are looking at. Signing up
+  // only creates an account (a profile); a player record, which is what puts someone on the
+  // leaderboard and lets them challenge and report scores, exists only after joining a league.
+  // membershipKnown turns true once the first lookup has finished, so pages don't flash a
+  // "join" prompt at someone whose leagues are still loading.
+  const membershipKnown = ref(false)
+
   const currentLeagueId = ref<string | null>(localStorage.getItem(STORAGE_KEY))
 
   const currentLeague = computed(() =>
     myLeagues.value.find(l => l.id === currentLeagueId.value) ?? myLeagues.value[0] ?? null
+  )
+
+  const isMember = computed(() =>
+    !!currentLeagueId.value && myLeagues.value.some(l => l.id === currentLeagueId.value)
   )
 
   // Whether the signed-in user administers the CURRENT league specifically
@@ -54,7 +65,7 @@ export const useLeagueStore = defineStore('leagues', () => {
 
   async function fetchMyLeagues() {
     const { user } = useAuth()
-    if (!user.value?.id) { myLeagues.value = []; return }
+    if (!user.value?.id) { myLeagues.value = []; membershipKnown.value = false; return }
 
     loading.value = true
     const { data, error: err } = await supabase
@@ -83,6 +94,15 @@ export const useLeagueStore = defineStore('leagues', () => {
       }
     }
     loading.value = false
+    membershipKnown.value = true
+
+    // Not in any league yet and none picked: if the whole site has exactly one league, look at that
+    // one, so the page can offer to join it instead of showing nothing. (With several leagues the
+    // person chooses from the list on the join card.)
+    if (!err && myLeagues.value.length === 0 && !currentLeagueId.value) {
+      if (!allLeagues.value.length) await fetchAllLeagues()
+      if (allLeagues.value.length === 1) setCurrentLeague(allLeagues.value[0].id)
+    }
   }
 
   async function fetchAllLeagues() {
@@ -132,6 +152,7 @@ export const useLeagueStore = defineStore('leagues', () => {
 
   return {
     myLeagues, allLeagues, joinableLeagues, currentLeagueId, currentLeague, isCurrentLeagueAdmin,
+    isMember, membershipKnown,
     loading, error,
     setCurrentLeague, fetchMyLeagues, fetchAllLeagues, joinLeague, createLeague, updateLeague,
   }

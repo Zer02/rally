@@ -15,6 +15,8 @@
         </div>
       </div>
 
+      <JoinLeagueCard v-else-if="leagueStore.membershipKnown && !leagueStore.isMember" />
+
       <template v-else>
         <div class="card" style="overflow:hidden">
           <div class="card-header"><h3>Pick an opponent</h3></div>
@@ -80,6 +82,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePlayersStore } from '@/stores/players'
 import { useMatchesStore } from '@/stores/matches'
+import { useLeagueStore } from '@/stores/leagues'
+import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
 import { useAuth } from '@/composables/useAuth'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
 import { previewPoints, qualityLabel } from '@/lib/rating'
@@ -88,6 +92,7 @@ import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import type { Player } from '@/types'
 
 const store   = usePlayersStore()
+const leagueStore = useLeagueStore()
 const matches = useMatchesStore()
 const { user } = useAuth()
 const route   = useRoute()

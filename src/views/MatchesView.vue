@@ -209,6 +209,7 @@
         v-if="activeMatch"
         :match="activeMatch"
         :reporter-id="user?.id ?? ''"
+        :error="resultError"
         @close="activeMatch = null"
         @submit="submitResult"
       />
@@ -413,14 +414,22 @@ function disputeReason(m: Match) {
 
 async function accept(id: string)  { await matchesStore.respond(id, true) }
 async function decline(id: string) { await matchesStore.respond(id, false) }
-function openResult(match: Match)  { activeMatch.value = match }
+function openResult(match: Match)  { resultError.value = ''; activeMatch.value = match }
+
+// The reason a result couldn't be saved, shown inside the open result window (see ResultModal).
+const resultError = ref('')
 
 async function submitResult(payload: any) {
-  await matchesStore.submitResult(
-    payload.matchId, payload.reporterId, payload.winnerId, payload.loserId,
-    payload.challengerScores, payload.opponentScores,
-  )
-  activeMatch.value = null
+  resultError.value = ''
+  try {
+    await matchesStore.submitResult(
+      payload.matchId, payload.reporterId, payload.winnerId, payload.loserId,
+      payload.challengerScores, payload.opponentScores,
+    )
+    activeMatch.value = null
+  } catch (e: any) {
+    resultError.value = e?.message || 'Could not save the result. Please try again.'
+  }
 }
 
 // useChallengerReport: true = trust challenger's winner+score together,

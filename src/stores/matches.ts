@@ -1,4 +1,4 @@
-// src/stores/matches.ts — v0.0.3.1
+// src/stores/matches.ts — v0.0.7.9
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +18,22 @@ export const useMatchesStore = defineStore('matches', () => {
   const matches     = ref<Match[]>([])
   const loading     = ref(false)
   const error       = ref<string | null>(null)
+
+  // v0.0.7.9: a player record exists only for people who have joined the league. Without one a
+  // result cannot be rated, so say so plainly, and who, before anything is saved.
+  function nameOfSide(match: any, id: string): string {
+    const p = id === match?.challenger_id ? match?.challenger : id === match?.opponent_id ? match?.opponent : null
+    return p?.display_name || p?.username || 'A player'
+  }
+  async function requireMembers(match: any, ids: string[]) {
+    const playersStore = usePlayersStore()
+    await playersStore.fetch()
+    for (const id of ids) {
+      if (!playersStore.byId(id)) {
+        throw new Error(`${nameOfSide(match, id)} hasn't joined this league yet, so this result can't be counted. They need to join the league first (league icon in the top bar, then Join), then report again.`)
+      }
+    }
+  }
   let   subscription: ReturnType<typeof supabase.channel> | null = null
 
   const completed = computed(() => matches.value.filter(m => m.status === 'completed'))
@@ -67,8 +83,10 @@ export const useMatchesStore = defineStore('matches', () => {
   }
 
   async function challenge(challengerId: string, opponentId: string) {
-    const leagueId = useLeagueStore().currentLeagueId
+    const leagueStore = useLeagueStore()
+    const leagueId = leagueStore.currentLeagueId
     if (!leagueId) throw new Error('No league selected')
+    if (!leagueStore.isMember) throw new Error('Join this league before challenging someone.')
 
     const { error: err } = await supabase.from('matches').insert({
       challenger_id: challengerId,
@@ -99,6 +117,10 @@ export const useMatchesStore = defineStore('matches', () => {
   ) {
     const match = matches.value.find(m => m.id === matchId)
     if (!match) throw new Error('Match not found')
+
+    // Check both sides are league members BEFORE saving anything, so a failure can't leave a
+    // half-reported match behind.
+    await requireMembers(match, [match.challenger_id, match.opponent_id])
 
     const isChallenger = reporterId === match.challenger_id
     const scoreStr     = challengerScores.map((s, i) => `${s}-${opponentScores[i]}`).join(',')
@@ -146,6 +168,7 @@ export const useMatchesStore = defineStore('matches', () => {
     await playersStore.fetch()
     const winner = playersStore.byId(winnerId)
     const loser  = playersStore.byId(loserId)
+    if (!winner || !loser) await requireMembers(matches.value.find(m => m.id === match.id) ?? match, [winnerId, loserId])
     if (!winner || !loser) throw new Error('Players not found')
 
     const result = calculateResult(

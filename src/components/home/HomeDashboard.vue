@@ -9,7 +9,12 @@
     <h1>Hi, {{ firstName }}</h1>
   </section>
 
-  <p v-if="!ready" class="muted loading">Loading your season…</p>
+  <JoinLeagueCard />
+
+  <p v-if="leagueStore.membershipKnown && !leagueStore.isMember" class="muted not-member-hint">
+    Your season, matches and level will show up here once you've joined.
+  </p>
+  <p v-else-if="!ready" class="muted loading">Loading your season…</p>
 
   <div v-else class="dash">
     <!-- Where you stand -->
@@ -91,12 +96,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useSport } from '@/composables/useSport'
 import { onLeagueChange } from '@/composables/useLeagueWatch'
 import { useTournamentsStore } from '@/stores/tournaments'
 import { usePlayersStore } from '@/stores/players'
+import { useLeagueStore } from '@/stores/leagues'
+import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
 import { levelProgress } from '@/lib/xp'
 import { winStreak, headToHead, headToHeadText } from '@/lib/form'
 import type { Profile, TournamentMatch } from '@/types'
@@ -105,6 +112,7 @@ const { user, profile } = useAuth()
 const { sport, leagueName } = useSport()
 const store = useTournamentsStore()
 const playersStore = usePlayersStore()
+const leagueStore = useLeagueStore()
 
 const ready = ref(false)
 async function load() {
@@ -113,6 +121,8 @@ async function load() {
 }
 onMounted(load)
 onLeagueChange(load)
+// Joining a league from the card above turns the page into the real dashboard.
+watch(() => leagueStore.isMember, member => { if (member) load() })
 
 const nameOf = (p?: Profile | null) => p?.display_name || p?.username || 'Player'
 const firstName = computed(() => nameOf(profile.value).split(/\s+/)[0] || 'there')
@@ -188,6 +198,7 @@ const lp = computed(() => levelProgress(me.value?.xp ?? 0, sport.value))
 .hello { padding: 0.5rem 0 1.25rem; }
 .hello h1 { margin-top: 0.5rem; }
 .loading { padding: 1rem 0; }
+.not-member-hint { font-size: 0.9rem; padding: 0.25rem 0 1rem; }
 
 .block { padding: 1rem 1.25rem; margin-bottom: 1rem; display: block; }
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }

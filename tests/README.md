@@ -34,6 +34,7 @@ tests run the real app against made-up data.
   history, and the score audit lists results that no longer count as a legal score.
   Upgrading to v0.0.7.2 leaves first-to-4 results exactly as they were and re-scores
   sets already played to 6 under the new loss scale (points and Play XP).
+- Who may create a challenge, run as the database's own `authenticated` role so row-level security applies as in production (`tests/db/permissions.test.mjs`): first on the old rules to show that someone who never joined a league could challenge and be challenged, then after v0.0.7.9 that only league members can, that nobody can challenge on another person's behalf, and that the league admin route is not a loophole.
 
 ## Running the database tests
 

@@ -6,9 +6,10 @@
 
       <div v-if="!me" style="text-align:center;padding:3rem 0">
         <span v-if="playersStore.loading" class="spinner" style="width:28px;height:28px;border-width:3px" />
-        <p v-else class="muted">
-          You haven't joined this league yet — use the league icon in the nav to join it first.
-        </p>
+        <div v-else-if="leagueStore.membershipKnown && !leagueStore.isMember" style="text-align:left;max-width:30rem;margin:0 auto">
+          <JoinLeagueCard />
+        </div>
+        <p v-else class="muted">Loading your profile…</p>
         <button v-if="!playersStore.loading && !changingPassword" class="btn btn-ghost" style="font-size:0.85rem;margin-top:1rem" @click="changingPassword = true">
           {{ profile?.is_placeholder ? 'Set password' : 'Change password' }}
         </button>
@@ -148,6 +149,7 @@ import RatingChart from '@/components/ui/RatingChart.vue'
 import RoundRobinProfile from '@/components/profile/RoundRobinProfile.vue'
 import ChangePasswordForm from '@/components/auth/ChangePasswordForm.vue'
 import InstallAppCard from '@/components/ui/InstallAppCard.vue'
+import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
 import type { Match } from '@/types'
 
 const playersStore    = usePlayersStore()

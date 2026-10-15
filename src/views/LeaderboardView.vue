@@ -1,4 +1,4 @@
-<!-- src/views/LeaderboardView.vue — v0.0.7.3 (Board is a two-way toggle beside the title, not a dropdown) -->
+<!-- src/views/LeaderboardView.vue — v0.0.7.9 (join prompt for non-members) · v0.0.7.3 (Board is a two-way toggle beside the title, not a dropdown) -->
 <template>
   <main class="page">
     <div class="container">
@@ -20,6 +20,8 @@
         </div>
       </div>
 
+      <JoinLeagueCard />
+
       <RoundRobinBoard v-if="board === 'rr'" />
       <LadderBoard v-else />
     </div>
@@ -28,6 +30,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
 import RoundRobinBoard from '@/components/leaderboard/RoundRobinBoard.vue'
 import LadderBoard from '@/components/leaderboard/LadderBoard.vue'
 import { useSport } from '@/composables/useSport'
