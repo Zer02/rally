@@ -41,6 +41,14 @@ export const PENDING = { id: 'tmP', tournament_id: T, phase: 'round_robin', roun
   score_a: null, score_b: null, winner_id: null, status: 'pending', reported_by: null, completed_at: null, created_at: day(0),
   player_a: profiles[0], player_b: profiles[3], player_a2: null, player_b2: null,
   tournament: { id: T, name: tournaments[0].name, league_id: L, status: 'round_robin' } }
+// Two more finished wins for the signed-in user, newer than everything else, so that with the
+// 'streak' switch on they are on a three-win run (the newest regular match is also a win). Only handed
+// out when a test turns that switch on, so the other pages' counts stay put.
+export const STREAK_WINS = [4, 5].map((b, k) => ({ id: 'tmS' + k, tournament_id: T, phase: 'round_robin', round: 3, slot: k, week_id: 'w2',
+  player_a_id: ids[0], player_b_id: ids[b], player_a2_id: null, player_b2_id: null, format: 'singles',
+  score_a: 6, score_b: k + 1, winner_id: ids[0], status: 'completed', reported_by: ids[0], completed_at: day(0.5 - k * 0.25), created_at: day(0.6 - k * 0.25),
+  player_a: profiles[0], player_b: profiles[b], player_a2: null, player_b2: null,
+  tournament: { id: T, name: tournaments[0].name, league_id: L, status: 'round_robin' } }))
 const history = Array.from({ length: 12 }, (_, k) => ({ rating: 1000 + k * 12, recorded_at: day(40 - k * 3), player_id: 'pl0', profile_id: ids[0] }))
 const rrHist = [T, 'tp1'].map((tid, k) => ({ tournament_id: tid, match_id: 'tm' + k, rating: 1050 + k * 20, delta: 8, recorded_at: day(k * 30), tournament: { id: tid, league_id: L, name: tournaments[k].name, status: k ? 'completed' : 'round_robin', completed_at: tournaments[k].completed_at } }))
 const quests = [

@@ -19,13 +19,29 @@
           <h3>{{ store.active.name }}</h3>
           <span class="muted card-sub">{{ weekLabel }}</span>
         </div>
+        <div
+          v-if="week.total"
+          class="week-track"
+          role="progressbar"
+          aria-label="Matches played this week"
+          :aria-valuenow="week.pct"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          data-test="week-progress"
+        >
+          <div class="week-fill" :style="{ width: week.pct + '%' }" />
+        </div>
         <div v-if="myRow" class="stats">
           <div class="stat"><span class="stat-val mono">#{{ myRank }}</span><span class="stat-label">of {{ store.standings.length }}</span></div>
           <div class="stat"><span class="stat-val mono">{{ myRow.rr_points }}</span><span class="stat-label">points</span></div>
           <div class="stat"><span class="stat-val mono">{{ myRow.wins }}–{{ myRow.losses }}</span><span class="stat-label">record</span></div>
         </div>
         <p v-else class="muted empty">You're not in this season yet. Ask your league admin to add you.</p>
-        <RouterLink to="/leaderboard" class="card-link">Full standings →</RouterLink>
+        <p v-if="streak >= 2" class="streak" data-test="streak">🔥 {{ streak }}-win streak</p>
+        <div class="card-foot">
+          <RouterLink to="/leaderboard" class="card-link">Full standings →</RouterLink>
+          <span v-if="seasonPlayed" class="muted card-sub">{{ seasonPlayed }} {{ seasonPlayed === 1 ? 'match' : 'matches' }} this season</span>
+        </div>
       </template>
       <template v-else>
         <h3>No season running</h3>
@@ -42,8 +58,7 @@
         <li v-for="m in myMatches" :key="m.id" class="match-row">
           <div class="match-who">
             <span class="match-opp">vs {{ m.opponents }}</span>
-            <span v-if="m.partner" class="match-meta muted">with {{ m.partner }}</span>
-            <span v-else-if="m.challenge" class="match-meta muted">Challenge match</span>
+            <span v-if="m.meta" class="match-meta muted">{{ m.meta }}</span>
           </div>
           <span class="chip" :class="m.chipClass">{{ m.chip }}</span>
         </li>
@@ -83,6 +98,7 @@ import { onLeagueChange } from '@/composables/useLeagueWatch'
 import { useTournamentsStore } from '@/stores/tournaments'
 import { usePlayersStore } from '@/stores/players'
 import { levelProgress } from '@/lib/xp'
+import { winStreak, headToHead, headToHeadText } from '@/lib/form'
 import type { Profile, TournamentMatch } from '@/types'
 
 const { user, profile } = useAuth()
@@ -105,13 +121,23 @@ const myId = computed(() => user.value?.id ?? '')
 // Season
 const myRow = computed(() => store.standings.find(p => p.profile_id === myId.value) ?? null)
 const myRank = computed(() => store.rankByProfileId.get(myId.value) ?? 0)
+// This week's matches played, as a count and a bar. Seasons have no planned length, so
+// the bar measures the week, not the season; the season total is shown as a plain number.
+const week = computed(() => {
+  const all = store.currentWeekMatches.filter(m => m.status !== 'bye')
+  const done = all.filter(m => m.status === 'completed').length
+  return { total: all.length, done, pct: all.length ? Math.round((done / all.length) * 100) : 0 }
+})
 const weekLabel = computed(() => {
   const w = store.currentWeek
   if (!w) return 'No week started yet'
-  const all = store.currentWeekMatches.filter(m => m.status !== 'bye')
-  const done = all.filter(m => m.status === 'completed').length
-  return `Week ${w.week_number} · ${done} / ${all.length} matches played`
+  if (!week.value.total) return `Week ${w.week_number} · no matches set yet`
+  return `Week ${w.week_number} · ${week.value.done} of ${week.value.total} matches played`
 })
+const seasonPlayed = computed(() => store.completedMatches.filter(m => m.status !== 'bye').length)
+
+// Form: wins in a row this season (shown from two up)
+const streak = computed(() => winStreak(store.matches, myId.value))
 
 // This week, from this player's side of each match
 const ORDER: Record<string, number> = { in_progress: 0, pending: 1, completed: 2 }
@@ -134,11 +160,20 @@ const myMatches = computed(() => {
         const won = mineScore > theirScore
         chip = `${won ? 'Won' : 'Lost'} ${mineScore}–${theirScore}`; chipClass = won ? 'chip-won' : 'chip-lost'
       }
+      // The line under the opponent: who you partner, whether it is a challenge, and for a
+      // one-on-one that is still to play, how you have done against them this season.
+      const singles = !m.player_a2_id && !m.player_b2_id
+      const oppId = onA ? m.player_b_id : m.player_a_id
+      const upcoming = m.status === 'pending' || m.status === 'in_progress'
+      const meta = [
+        partner ? `with ${nameOf(partner)}` : '',
+        m.phase === 'challenge' ? 'Challenge match' : '',
+        singles && upcoming && oppId ? headToHeadText(headToHead(store.matches, id, oppId)) : '',
+      ].filter(Boolean).join(' · ')
       return {
         id: m.id,
         opponents: other.filter(Boolean).map(p => nameOf(p)).join(' & ') || 'TBD',
-        partner: partner ? nameOf(partner) : '',
-        challenge: m.phase === 'challenge',
+        meta,
         chip, chipClass,
       }
     })
@@ -162,6 +197,10 @@ const lp = computed(() => levelProgress(me.value?.xp ?? 0, sport.value))
 .card-link { display: inline-block; margin-top: 0.75rem; font-size: 0.85rem; color: var(--ball); }
 .empty { font-size: 0.9rem; line-height: 1.55; margin: 0; }
 
+.week-track { height: 6px; border-radius: 999px; background: var(--table); border: 1px solid var(--line); overflow: hidden; margin-bottom: 0.9rem; }
+.week-fill { height: 100%; background: var(--net); border-radius: 999px; transition: width 0.3s; }
+.streak { margin: 0.75rem 0 0; font-size: 0.9rem; font-weight: 600; color: var(--ball); }
+.card-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--table); }
 .stat { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; padding: 0.8rem 0.25rem; }
 .stat + .stat { border-left: 1px solid var(--line); }

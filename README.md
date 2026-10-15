@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.7.6**
+> Current version: **v0.0.7.7**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -689,6 +689,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Left out on purpose:** a "top of the table" preview for visitors. A brand-new visitor has no league selected yet, so there is nothing to show; it would need a decision about which league the public sees.
 - **Changed/new:** `src/views/HomeView.vue` (now only chooses between the two), `src/components/home/HomeDashboard.vue`, `src/components/home/HomeWelcome.vue`.
 - **Tests:** browser checks at 320, 375 and 1280px for both homes: the greeting, rank/points/record, a status on every match, the level card, the quick actions, no visitor page for a signed-in player, the visitor buttons on one row, a second column on desktop, no sideways scroll and no page errors. I broke the page on purpose (showed the visitor page to players) and the checks failed. JS 18, database 17, browser 349 checks pass. Not covered: a real phone, and real data (the browser tests use fake data).
+
+### v0.0.7.7 — Home: this week's progress, win streaks and head-to-head
+
+> Three small additions to the player's Home page, all worked out from matches the page already loads. Frontend only: no migration, no Edge Function changes.
+
+- **Progress bar:** a bar on the season card showing how many of this week's matches have been played ("Week 2 · 5 of 6 matches played"), with the season total beside "Full standings" ("8 matches this season"). **It measures the week, not the season,** because seasons have no planned length to measure against. A true season bar would need a planned number of weeks chosen when a season is created; say if you want that.
+- **Win streak:** "🔥 3-win streak" appears under your record once you have won two or more in a row, counting back from your latest finished match in the season. A loss ends it and it disappears. Round robin, doubles and challenge matches all count; matches not yet played do not break it.
+- **Head-to-head:** under each match still to play against one opponent, a line says how you have done against them this season: "You lead 1–0 this season", "You trail 0–1", "Level 1–1" or "First meeting this season". One-on-one matches only: doubles results are not counted, and doubles rows show your partner instead. Finished matches show no head-to-head.
+- **Changed/new:** `src/lib/form.ts` (the streak and head-to-head rules, as small pure functions), `src/components/home/HomeDashboard.vue`.
+- **Tests:** the rules are worked out by hand in `tests/js/form.test.mjs` (order of results does not matter; unfinished, tied and other people's matches are ignored; both sides; doubles excluded). Browser checks at 320, 375 and 1280px against fake data (a new `streak` switch in the test harness adds two recent wins): the bar's percentage and label, the season total, the three-win streak, no streak at a run of one, the head-to-head line on the upcoming match, none on finished ones. I broke the streak and head-to-head rules on purpose and the tests failed. JS 24, database 17, browser 376 checks pass. Not covered: a real phone, and real league data.
 
 ## Quick start
 

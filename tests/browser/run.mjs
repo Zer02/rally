@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending })
+  }, { anon, noladder, pending, streak })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -343,6 +343,37 @@ try {
     ok(await p.locator('.steps li').count() === 3, `${T}: three short steps explain how it works`)
     const tops = await p.$$eval('.welcome-cta a', els => els.map(e => Math.round(e.getBoundingClientRect().top)))
     ok(width > 600 ? true : tops[0] === tops[1], `${T}: the two buttons share a row on a phone ${tops}`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+
+  // ── 13. Home: week progress bar, win streak, head to head (v0.0.7.7) ──
+  section('home: week progress bar, win streak, head to head')
+  {
+    // Default fixtures: this week (week 2) has 3 matches, all played; the signed-in player's results run
+    // ... L W L W L W (oldest to newest), so the streak is only 1 and must not be shown.
+    const p = await open('/', { width: 375 })
+    ok(await p.locator('[data-test="week-progress"]').getAttribute('aria-valuenow') === '100', 'bar: 3 of 3 played is 100%')
+    ok(/Week 2 · 3 of 3 matches played/.test(await p.locator('[data-test="season-card"]').innerText()), 'week label says 3 of 3 played')
+    ok(/6 matches this season/.test(await p.locator('[data-test="season-card"]').innerText()), 'season total is shown as a number')
+    ok(await p.locator('[data-test="streak"]').count() === 0, 'a streak of 1 is not shown')
+    const metas = await p.$$eval('[data-test="week-card"] .match-meta', els => els.map(e => e.textContent.trim()))
+    ok(metas.includes('Challenge match'), `a challenge match is labelled as one ${JSON.stringify(metas)}`)
+    ok(!metas.some(t => /this season/.test(t)), 'finished matches show no head to head')
+    await close(p)
+  }
+  for (const width of [320, 375, 1280]) {
+    const T = `@${width}`
+    // pending: an unreported match against a player you beat 6-2 earlier in singles (their doubles match does not count).
+    // streak: two more recent wins, so the run is three. Week 2 then has 6 matches, 5 played.
+    const p = await open('/', { width, pending: true, streak: true })
+    ok(await p.locator('[data-test="week-progress"]').getAttribute('aria-valuenow') === '83', `${T}: bar: 5 of 6 played is 83%`)
+    ok(/Week 2 · 5 of 6 matches played/.test(await p.locator('[data-test="season-card"]').innerText()), `${T}: week label says 5 of 6 played`)
+    ok(/8 matches this season/.test(await p.locator('[data-test="season-card"]').innerText()), `${T}: season total counts the new wins`)
+    ok((await p.locator('[data-test="streak"]').innerText({ timeout: 3000 }).catch(() => '')).includes('3-win streak'), `${T}: a three-win streak is shown`)
+    const row = (await p.locator('[data-test="week-card"] .match-row', { hasText: 'To play' }).innerText({ timeout: 3000 }).catch(() => '')).replace(/\s+/g, ' ')
+    ok(/You lead 1–0 this season/.test(row), `${T}: the upcoming match shows your record against that player (${row})`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
     ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
     await close(p)

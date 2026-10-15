@@ -2,13 +2,15 @@
 // runs against fixtures.ts with no network. Filters are mostly ignored: it
 // returns every row of the table, which is plenty for checking layout.
 // Test switches (set in localStorage by the test): 'anon' = signed out,
-// 'noladder' = no ladder matches, 'pending' = one unreported round robin match.
+// 'noladder' = no ladder matches, 'pending' = one unreported round robin match,
+// 'streak' = two more recent wins for the signed-in user.
 // RPC calls are recorded on window.__rpc.
-import { TABLES, USER, PENDING } from './fixtures'
+import { TABLES, USER, PENDING, STREAK_WINS } from './fixtures'
 const flag = (k: string) => localStorage.getItem(k) === '1'
 function builder(table: string) {
   let rows = (table === 'matches' && flag('noladder') ? [] : TABLES[table] ?? []).slice()
   if (table === 'tournament_matches' && flag('pending')) rows.push(PENDING)
+  if (table === 'tournament_matches' && flag('streak')) rows.push(...STREAK_WINS)
   const b: any = new Proxy({}, { get(_t, prop: string) {
     if (prop === 'then') return (res: any) => res({ data: rows, error: null, count: rows.length })
     if (prop === 'single' || prop === 'maybeSingle') return () => Promise.resolve({ data: rows[0] ?? null, error: null })
