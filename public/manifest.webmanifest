@@ -6,7 +6,7 @@
   "start_url": "/leaderboard",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0e1117",
+  "background_color": "#000000",
   "theme_color": "#0e1117",
   "lang": "en",
   "icons": [
