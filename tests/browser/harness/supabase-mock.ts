@@ -4,10 +4,10 @@
 // Test switches (set in localStorage by the test): 'anon' = signed out,
 // 'noladder' = no ladder matches, 'pending' = one unreported round robin match,
 // 'streak' = two more recent wins for the signed-in user, 'nonmember' = signed in as a new account that
-// has not joined a league, 'ghost' = an accepted ladder challenge against someone who has not joined, 'crowd' = 24 more players in the league.
+// has not joined a league, 'ghost' = an accepted ladder challenge against someone who has not joined, 'crowd' = 24 more players in the league, 'above' / 'farabove' = a player rated 70 / 150 above the signed-in user.
 // RPC calls are recorded on window.__rpc, inserts on window.__inserts, updates on window.__updates.
 // Inserting a players row (joining a league) really adds it, so the page can move on afterwards.
-import { TABLES, USER, PENDING, STREAK_WINS, NEWCOMER, NEWCOMER_PROFILE, GHOST_MATCH, CROWD_PROFILES, CROWD_PLAYERS } from './fixtures'
+import { TABLES, USER, PENDING, STREAK_WINS, NEWCOMER, NEWCOMER_PROFILE, GHOST_MATCH, CROWD_PROFILES, CROWD_PLAYERS, ABOVE, FARABOVE } from './fixtures'
 const flag = (k: string) => localStorage.getItem(k) === '1'
 function builder(table: string) {
   let rows = (table === 'matches' && flag('noladder') ? [] : TABLES[table] ?? []).slice()
@@ -16,6 +16,10 @@ function builder(table: string) {
   if (table === 'profiles' && flag('nonmember')) rows.push(NEWCOMER_PROFILE)
   if (table === 'matches' && flag('ghost')) rows.push(GHOST_MATCH)
   if (table === 'players' && flag('crowd')) rows.push(...CROWD_PLAYERS)
+  if (table === 'players' && flag('above')) rows.push(ABOVE.pl)
+  if (table === 'players' && flag('farabove')) rows.push(FARABOVE.pl)
+  if (table === 'profiles' && flag('above')) rows.push(ABOVE.pr)
+  if (table === 'profiles' && flag('farabove')) rows.push(FARABOVE.pr)
   if (table === 'profiles' && flag('crowd')) rows.push(...CROWD_PROFILES)
   const b: any = new Proxy({}, { get(_t, prop: string) {
     if (prop === 'then') return (res: any) => res({ data: rows, error: null, count: rows.length })

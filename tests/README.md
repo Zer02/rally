@@ -36,6 +36,7 @@ tests run the real app against made-up data.
   sets already played to 6 under the new loss scale (points and Play XP).
 - Who may create a challenge, run as the database's own `authenticated` role so row-level security applies as in production (`tests/db/permissions.test.mjs`): first on the old rules to show that someone who never joined a league could challenge and be challenged, then after v0.0.7.9 that only league members can, that nobody can challenge on another person's behalf, and that the league admin route is not a loophole.
 - Who may write to `players` and `elo_history` (`tests/db/players-permissions.test.mjs`), as `authenticated` and `anon`: first on the old rules to show that you could enrol someone else, pick your own rating, edit your own rating and write fake history, then after v0.0.8.0 that none of that works (not even for a league admin), that joining still works and starts at the defaults, and that reporting a result, creating a league and starting a season still do.
+- The rating-aware weekly quests (`tests/db/quests-rating.test.mjs`, `tests/js/quests.test.mjs`): thresholds, the rating at the time, ladder and round robin, the at-the-top rule, and that the older quests are unchanged by v0.0.8.3.
 
 ## Running the database tests
 

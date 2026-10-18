@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending, streak, nonmember, ghost, crowd })
+  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -538,6 +538,34 @@ try {
     await close(p)
     p = await open('/challenge?opponent=00000000-0000-0000-0000-000000000003', { width: 375 })
     ok(await p.locator('.send-bar .send-name').innerText() === 'Cat', 'a link from a player page (?opponent=) opens with that player picked')
+    await close(p)
+  }
+
+  section('progress: the rating-aware weekly quests')
+  for (const [width, label, opts, want, hide] of [
+    [375, 'top of the league (default)', {},
+      ['Fair Fight or Mentor', 'Be the Challenger', 'Show up', 'Double header'], ['Punch Up', 'Reach']],
+    [375, 'one player 70 above', { above: true },
+      ['Punch Up', 'Be the Challenger', 'Show up', 'Double header'], ['Reach', 'Fair Fight or Mentor']],
+    [375, 'one player 150 above', { above: true, farabove: true },
+      ['Punch Up', 'Reach', 'Be the Challenger', 'Show up', 'Double header'], ['Fair Fight or Mentor']],
+    [1280, 'one player 150 above, desktop', { farabove: true },
+      ['Punch Up', 'Reach', 'Be the Challenger'], ['Fair Fight or Mentor']],
+  ]) {
+    const p = await open('/progress', { width, ...opts })
+    await p.waitForSelector('.quest', { timeout: 8000 })
+    const titles = await p.$$eval('.quest .quest-title', e => e.map(x => x.textContent.trim()))
+    for (const w of want) ok(titles.includes(w), `${label}: shows "${w}" (${titles.join(', ')})`)
+    for (const h of hide) ok(!titles.includes(h), `${label}: does not show "${h}"`)
+    const xps = await p.$$eval('.quest', e => Object.fromEntries(e.map(q => [q.querySelector('.quest-title').textContent.trim(), q.querySelector('.quest-xp').textContent.trim()])))
+    if (titles.includes('Punch Up')) ok(xps['Punch Up'] === '+25 XP', `${label}: Punch Up pays 25 (${xps['Punch Up']})`)
+    if (titles.includes('Fair Fight or Mentor')) ok(xps['Fair Fight or Mentor'] === '+25 XP', `${label}: Fair Fight or Mentor pays 25`)
+    if (titles.includes('Reach')) ok(xps['Reach'] === '+40 XP', `${label}: Reach pays 40 (${xps['Reach']})`)
+    ok(xps['Be the Challenger'] === '+20 XP', `${label}: Be the Challenger pays 20 (${xps['Be the Challenger']})`)
+    const desc = await p.locator('.quest', { hasText: titles.includes('Punch Up') ? 'Punch Up' : 'Fair Fight' }).locator('.quest-desc').innerText()
+    ok(titles.includes('Punch Up') ? /rated above you/.test(desc) : /within 100 points/.test(desc) && /below you/.test(desc), `${label}: wording matches (${desc})`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${label}: nothing sticks out sideways`)
+    ok(p.errs.length === 0, `${label}: no page errors ${p.errs}`)
     await close(p)
   }
 } finally {

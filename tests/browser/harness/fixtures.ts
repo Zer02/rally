@@ -53,6 +53,9 @@ const history = Array.from({ length: 12 }, (_, k) => ({ rating: 1000 + k * 12, r
 const rrHist = [T, 'tp1'].map((tid, k) => ({ tournament_id: tid, match_id: 'tm' + k, rating: 1050 + k * 20, delta: 8, recorded_at: day(k * 30), tournament: { id: tid, league_id: L, name: tournaments[k].name, status: k ? 'completed' : 'round_robin', completed_at: tournaments[k].completed_at } }))
 const quests = [
   { id: 'q1', key: 'weekly_show_up', cadence: 'weekly', title: 'Show up', description: 'Play a match this week', criteria_type: 'play_matches', target_count: 1, xp_reward: 15, active: true, sort_order: 1 },
+  { id: 'q3', key: 'weekly_punch_up', cadence: 'weekly', title: 'Punch Up', description: 'Play someone rated above you - win or lose', criteria_type: 'play_higher', target_count: 1, xp_reward: 25, active: true, sort_order: 3 },
+  { id: 'q4', key: 'weekly_reach', cadence: 'weekly', title: 'Reach', description: 'Play someone rated 100+ above you - win or lose', criteria_type: 'play_much_higher', target_count: 1, xp_reward: 40, active: true, sort_order: 4 },
+  { id: 'q5', key: 'weekly_challenger', cadence: 'weekly', title: 'Be the Challenger', description: 'Send a challenge that gets played', criteria_type: 'send_challenge', target_count: 1, xp_reward: 20, active: true, sort_order: 5 },
   { id: 'q2', key: 'weekly_double_header', cadence: 'weekly', title: 'Double header', description: 'Play 2 matches this week against different opponents', criteria_type: 'play_matches', target_count: 2, xp_reward: 30, active: true, sort_order: 2 },
 ]
 export const TABLES: Record<string, any[]> = {
@@ -78,3 +81,14 @@ export const CROWD_PROFILES = Array.from({ length: 24 }, (_, i) => ({ id: `00000
   display_name: `Crowd Player ${i + 1}`, unit: '', avatar_url: null, is_admin: false, is_placeholder: false, invited_email: null, invited_at: null }))
 export const CROWD_PLAYERS = CROWD_PROFILES.map((pr, i) => ({ id: 'plc' + i, profile_id: pr.id, league_id: L, rating: 900 - i * 10, uncertainty: 150, streak: 0,
   season_wins: 1, season_losses: 1, career_wins: 3, career_losses: 3, last_played: day(i + 1), rr_titles: 0, rr_best_finish: null, rr_seasons_played: 1, xp: 100, profile: pr, league }))
+
+// Players rated ABOVE the signed-in user (1180), for the quest screen. 'above' adds one 70 points up
+// (Punch Up applies, Reach does not); 'farabove' adds one 150 up (Reach applies too).
+const mkAbove = (n: number, rating: number) => {
+  const pr = { id: `00000000-0000-0000-0000-0000000002${String(n).padStart(2, '0')}`, username: `above${n}`, display_name: `Above Player ${n}`, unit: '', avatar_url: null,
+    is_admin: false, is_placeholder: false, invited_email: null, invited_at: null }
+  return { pr, pl: { id: 'pla' + n, profile_id: pr.id, league_id: L, rating, uncertainty: 100, streak: 0, season_wins: 4, season_losses: 1, career_wins: 20, career_losses: 5,
+    last_played: day(2), rr_titles: 0, rr_best_finish: null, rr_seasons_played: 1, xp: 300, profile: pr, league } }
+}
+export const ABOVE = mkAbove(1, 1250)
+export const FARABOVE = mkAbove(2, 1330)

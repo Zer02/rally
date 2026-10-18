@@ -1,9 +1,10 @@
-// src/stores/progress.ts — v0.0.5.1
+// src/stores/progress.ts — v0.0.8.3
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/composables/useAuth'
 import { useLeagueStore } from './leagues'
+import { questForPlayer } from '@/lib/quests'
 import type { QuestTemplate, PlayerQuestProgress } from '@/types'
 
 export interface QuestView {
@@ -51,7 +52,7 @@ export const useProgressStore = defineStore('progress', () => {
     weekStart.setUTCHours(0, 0, 0, 0)
     weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7)) // Monday, matches date_trunc('week')
 
-    const [tplRes, progRes, seasonRes, playRes] = await Promise.all([
+    const [tplRes, progRes, seasonRes, playRes, ratingRes] = await Promise.all([
       supabase.from('quest_templates').select('*').eq('active', true),
       supabase.from('player_quest_progress').select('*')
         .eq('league_id', leagueId).eq('profile_id', user.value.id),
@@ -61,6 +62,8 @@ export const useProgressStore = defineStore('progress', () => {
       supabase.from('player_weekly_play_xp').select('matches_counted, xp_awarded')
         .eq('league_id', leagueId).eq('profile_id', user.value.id)
         .eq('week_start', weekStart.toISOString()).maybeSingle(),
+      // everyone's ladder rating, to show the rating-aware quests the way they apply to this player
+      supabase.from('players').select('profile_id, rating').eq('league_id', leagueId),
     ])
     playXpWeek.value = {
       matches: playRes.data?.matches_counted ?? 0,
@@ -77,6 +80,9 @@ export const useProgressStore = defineStore('progress', () => {
     const rows      = (progRes.data ?? []) as PlayerQuestProgress[]
     const activeSeasonStart = seasonRes.data?.[0]?.created_at ?? null
     const now = Date.now()
+    const ratings = (ratingRes.data ?? []) as { profile_id: string; rating: number }[]
+    const myRating = ratings.find(r => r.profile_id === user.value!.id)?.rating ?? null
+    const otherRatings = ratings.filter(r => r.profile_id !== user.value!.id).map(r => r.rating)
 
     // Latest period per template. Weekly/monthly rows are only "current"
     // if their period hasn't ended; seasonal rows only if they belong to
@@ -84,7 +90,11 @@ export const useProgressStore = defineStore('progress', () => {
     // 'infinity' while the season runs, so it can't be used to tell).
     const CADENCE_ORDER = { weekly: 0, monthly: 1, seasonal: 2 } as const
     const views: QuestView[] = []
-    for (const t of templates) {
+    for (const base of templates) {
+      // v0.0.8.3: Reach is hidden when nobody is far enough above you, and Punch Up reads as
+      // "Fair Fight or Mentor" when you are at the top (the database applies the same rule).
+      const t = myRating === null ? base : questForPlayer(base, myRating, otherRatings)
+      if (!t) continue
       const mine = rows
         .filter(r => r.quest_template_id === t.id)
         .sort((a, b) => b.period_start.localeCompare(a.period_start))

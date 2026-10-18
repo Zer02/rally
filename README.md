@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.2**
+> Current version: **v0.0.8.3**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -761,6 +761,26 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Tests:** a new `crowd` switch adds 24 players so the list is several screens tall. At 375, 320 and 1280 pixels the checks cover: nothing before a pick, the whole bar on screen with no scrolling after tapping the first player, above the tab bar, correct name and points and quality, still on screen after scrolling and picking from the middle, not hiding the last player at the end, Send challenge creates a pending match with the picked player and shows the confirmation, tapping again clears, the keyboard works, and the `?opponent=` cases. I broke it on purpose three ways: made the bar not stick (the bar landed at 2458px on a 667px screen, the original problem, and 10 checks failed), removed the phone offset (bar behind the tab bar), and sent the challenge to the wrong player. Each was caught.
 - **Results:** JS 25, database 45, browser 492 checks pass, and the production build is clean.
 - **Not covered:** how it feels on a real phone (keyboard pop-up, rubber-band scrolling, the iPhone home indicator). Please try Challenge on your phone.
+
+### v0.0.8.3 — Weekly quests that reward playing stronger opponents
+
+> Three new weekly quests nudge people to challenge better players without making it about winning: a quest counts when the match is played, win or lose. Ratings are the ladder rating (Elo), never round robin points, and round robin matches count as well as ladder matches. Needs a migration and a frontend deploy.
+
+- **The quests (every player sees all of them every week):**
+  - **Punch Up, +25 XP:** play someone rated 25 or more above you.
+  - **Reach, +40 XP:** play someone rated 100 or more above you.
+  - **Be the Challenger, +20 XP:** send a challenge that gets played, either a ladder challenge or a round robin week's challenge match. Assigned round robin pairings do not count, since nobody chose them.
+- **At the top:** if nobody in the league is rated 25 or more above you, Punch Up reads as **Fair Fight or Mentor** and counts a close match (within 100 points) or anyone below you, so either kind counts. Reach is hidden while nobody is 100 or more above you. In a brand-new league where everyone is on 1000, everybody is "at the top", so any match counts until ratings spread out.
+- **The rating that counts is the rating at the time of the match.** The database reads each player's ladder rating back from `elo_history` as it stood when the match was played, so later swings in ratings cannot change credit already earned. I first planned to store pre-match ratings on each match, which would have meant rewriting `finalize_match`; reading the history instead changes no match function and also works on matches already played.
+- **Round robin:** singles and doubles count, judged by ladder rating. For doubles, the other pair's average is compared with your own rating. Each opponent (or opposing pair) counts once per week per quest.
+- **Changed (database):** `supabase-migration-v0.0.8.3.sql` adds `ladder_rating_at()` and `quest_match_facts()` (both internal, not callable from the app), three `quest_templates` rows, an index on `elo_history`, and a new `sync_quest_progress()`. The new function is the live v0.0.6.4 version with three rules added and nothing else touched (I checked that the live function text matches 6.4 exactly before patching). The migration refuses to run on anything older than 6.4.
+- **Changed (app):** `src/lib/quests.ts` (new) decides how a quest reads for the viewer; `src/stores/progress.ts` uses it; `src/types/index.ts` now defines `QuestTemplate` and `PlayerQuestProgress`, which the progress store imported but the types file never had (the build only strips types, so it never complained).
+- **XP pace:** the three new quests add at most 85 XP a week (25 + 40 + 20) on top of the existing weekly quests, or 60 for someone who cannot earn Reach. That is above the pace the level curve was tuned for, so levels will come faster for active players. Say if you want the numbers trimmed or the level thresholds retuned.
+- **Known limits:** like the other quests, weekly progress is only worked out for the current week, when someone opens /progress. "At the top" uses ratings as they are when the screen syncs, so a player's quest can flip between Punch Up and Fair Fight or Mentor as the standings change, and credit already earned is kept either way. Doubles partners are not compared with each other.
+- **Manual steps:** back up Supabase, run `supabase-migration-v0.0.8.3.sql` in the SQL Editor (it needs v0.0.6.4 and says so if missing) and read the notice, which should end "v0.0.8.3 OK". Deploy the frontend. Open Progress as a normal player and check the three quests show.
+- **Tests:** `tests/db/quests-rating.test.mjs` (33 checks) covers every threshold edge (24/25, 99/100) win or lose; the rating at the time for you and for them, ladder and round robin, singles and doubles; the match's own result being left out; players with no history counting as 1000; the same opponent counting once; last week and unfinished matches not counting; the at-the-top rule; Be the Challenger for ladder and round robin challenge matches only; round robin judged by ladder rating, not round robin rating; XP paid once; the helper functions being closed to the app; the migration being safe to run twice and refusing without 6.4; and a regression check that every older quest reports exactly what it did before the migration. `tests/js/quests.test.mjs` (7 checks) covers the on-screen rules, and the browser suite has a new Progress section with `above` and `farabove` switches. I sabotaged it 13 ways on purpose (rating read as of today for each of four cases, the match's own result left in, wrong thresholds, ignoring the top rule, counting assigned pairings as challenges, doubles using one opponent, Reach never hidden, a wrong top threshold, the store bypassing the rules). My first run of the time-based cases exposed two gaps in my own tests (nothing checked your own rating at the time, or round robin at the time), which I fixed and re-proved before going on.
+- **Results:** JS 32, database 78, browser 536 checks pass, and the production build is clean.
+- **Not covered:** the real production database (I cannot see what is in it) and how the quest cards feel on a real phone.
 
 ## Quick start
 

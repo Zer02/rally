@@ -167,6 +167,30 @@ export interface TournamentMatch {
   player_b2?: Profile
 }
 
+export interface QuestTemplate {
+  id:            string
+  key:           string
+  cadence:       'weekly' | 'monthly' | 'seasonal'
+  title:         string
+  description:   string
+  criteria_type: string
+  target_count:  number
+  xp_reward:     number
+  active:        boolean
+}
+
+export interface PlayerQuestProgress {
+  id:                string
+  league_id:         string
+  profile_id:        string
+  quest_template_id: string
+  period_start:      string
+  period_end:        string
+  progress_count:    number
+  completed_at:      string | null
+  xp_awarded:        number
+}
+
 export interface Database {
   public: {
     Tables: {
