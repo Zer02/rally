@@ -31,6 +31,19 @@ test('icons: a 192 and a 512 for any use, a 512 maskable, and every file is real
   }
 })
 
+test('tab and iPhone icons (v0.0.8.1): a light ICO with 16/32/48 frames, a 32 PNG, a 180 touch icon', () => {
+  const ico = readFileSync(join(ROOT, 'public', 'favicon.ico'))
+  assert.equal(ico.readUInt16LE(2), 1, 'favicon.ico is not an ICO file')
+  const frames = Array.from({ length: ico.readUInt16LE(4) }, (_, i) => ico[6 + i * 16] || 256).sort((a, b) => a - b)
+  assert.deepEqual(frames, [16, 32, 48], 'the ICO should hold 16, 32 and 48 only; 256px frames make it 100 KB+ and browsers fetch it on every first visit')
+  assert.ok(ico.length < 30_000, `favicon.ico is ${ico.length} bytes`)
+  assert.equal(pngSize('favicon-32.png'), '32x32')
+  assert.equal(pngSize('apple-touch-icon.png'), '180x180')
+  const html = read('index.html')
+  for (const f of ['/favicon.ico', '/favicon-32.png', '/favicon-192.png', '/apple-touch-icon.png'])
+    assert.ok(html.includes(`href="${f}"`) && existsSync(join(ROOT, 'public', f)), `${f} is not linked from index.html or is missing`)
+})
+
 test('start page and shortcuts point at real routes', () => {
   for (const url of [manifest.start_url, ...(manifest.shortcuts ?? []).map(s => s.url)])
     assert.ok(routes.includes(url), `${url} is not a route in src/router/index.ts (routes: ${routes.join(' ')})`)

@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.0**
+> Current version: **v0.0.8.2**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -749,6 +749,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Not changed:** the small logo in the top bar and the default league icon are still the racket drawing (`RacketIcon.vue`), and the page title still has its emoji. Say if you want those to be the rat too.
 - **Tests:** `tests/js/pwa.test.mjs` now checks the tab and iPhone icons (ICO holds only 16/32/48 and stays light, 32px and 180px files are the sizes they claim, and `index.html` links them all). I put the 111 KB ICO back on purpose and the check failed.
 - **Manual steps:** deploy the frontend. **Browsers cache tab icons hard**: hard-refresh (Ctrl+Shift+R) or use a private window to see it. **Phones that already installed Rally keep the old icon**: Android updates it by itself after a day or two of use, or remove the app and install again; on iPhone, delete the home-screen icon and use Share, then Add to Home Screen again, because iOS copies the icon at that moment.
+
+### v0.0.8.2 — Challenge: the Send button comes with you
+
+> Picking someone near the top of a long list meant scrolling the whole list to find Send challenge. Now, as soon as you tap a player, a bar with their name, the points at stake and the Send button stays at the bottom of the screen. Frontend only: no migration.
+
+- **The bar:** appears when someone is picked and stays on screen while the list scrolls, above the tab bar on phones. It shows who is picked, points for a win and for a loss, the match-quality label (the quality bar is now a thin strip along its top edge), and Send challenge. At the end of the list it settles under the last player instead of covering them.
+- **The list:** the picked player is marked with a gold edge and a tick. Their win/loss points moved from the row into the bar, so rows no longer change height when tapped. Tapping the picked player again un-picks them and the bar goes. Rows now work from the keyboard (Tab, then Enter or Space).
+- **Links from a player page:** `?opponent=` still opens with that player picked, and an id that is not in this league picks nobody (it used to leave a disabled button).
+- **Changed/new:** `src/views/ChallengeView.vue`, `tests/browser/run.mjs`, `tests/browser/harness/fixtures.ts`, `tests/browser/harness/supabase-mock.ts`.
+- **Tests:** a new `crowd` switch adds 24 players so the list is several screens tall. At 375, 320 and 1280 pixels the checks cover: nothing before a pick, the whole bar on screen with no scrolling after tapping the first player, above the tab bar, correct name and points and quality, still on screen after scrolling and picking from the middle, not hiding the last player at the end, Send challenge creates a pending match with the picked player and shows the confirmation, tapping again clears, the keyboard works, and the `?opponent=` cases. I broke it on purpose three ways: made the bar not stick (the bar landed at 2458px on a 667px screen, the original problem, and 10 checks failed), removed the phone offset (bar behind the tab bar), and sent the challenge to the wrong player. Each was caught.
+- **Results:** JS 25, database 45, browser 492 checks pass, and the production build is clean.
+- **Not covered:** how it feels on a real phone (keyboard pop-up, rubber-band scrolling, the iPhone home indicator). Please try Challenge on your phone.
 
 ## Quick start
 

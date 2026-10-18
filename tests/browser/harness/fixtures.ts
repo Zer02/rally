@@ -71,3 +71,10 @@ export const GHOST_MATCH = { id: 'mghost', league_id: L, challenger_id: ids[0], 
   challenger_score: null, opponent_score: null, quality: null, challenger_delta: null, opponent_delta: null, created_at: day(0.2), completed_at: null,
   challenger: profiles[0], opponent: GHOST_PROFILE, winner: null }
 export const USER = { id: ids[0], email: 'alex@example.com', app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: day(100) }
+
+// A big club: 24 more players, so the Challenge list is several screens tall. Only handed out when a test
+// turns the 'crowd' switch on (see supabase-mock.ts).
+export const CROWD_PROFILES = Array.from({ length: 24 }, (_, i) => ({ id: `00000000-0000-0000-0000-0000000001${String(i).padStart(2, '0')}`, username: `crowd${i}`,
+  display_name: `Crowd Player ${i + 1}`, unit: '', avatar_url: null, is_admin: false, is_placeholder: false, invited_email: null, invited_at: null }))
+export const CROWD_PLAYERS = CROWD_PROFILES.map((pr, i) => ({ id: 'plc' + i, profile_id: pr.id, league_id: L, rating: 900 - i * 10, uncertainty: 150, streak: 0,
+  season_wins: 1, season_losses: 1, career_wins: 3, career_losses: 3, last_played: day(i + 1), rr_titles: 0, rr_best_finish: null, rr_seasons_played: 1, xp: 100, profile: pr, league }))

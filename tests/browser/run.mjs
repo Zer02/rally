@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending, streak, nonmember, ghost })
+  }, { anon, noladder, pending, streak, nonmember, ghost, crowd })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -476,6 +476,68 @@ try {
     await p.locator('.modal-footer .btn-ghost').click({ timeout: 3000 }).catch(() => {})
     ok(await p.locator('.modal-footer').count() === 0, 'Cancel still closes the window')
     ok(p.errs.length === 0, `no uncaught errors ${p.errs}`)
+    await close(p)
+  }
+
+  section('challenge: the send bar stays on screen, however long the list')
+  for (const [width, height] of [[375, 667], [320, 568], [1280, 800]]) {
+    const T = `${width}px`
+    const p = await open('/challenge', { width, crowd: true })
+    await p.setViewportSize({ width, height })
+    const rows = p.locator('.opponent-row'), bar = p.locator('.send-bar')
+    ok(await rows.count() === 29, `${T}: the long list is there (${await rows.count()} players)`)
+    ok(await p.evaluate(() => document.documentElement.scrollHeight) > height * 3, `${T}: the list is several screens tall`)
+    ok(await bar.count() === 0, `${T}: no bar until someone is picked`)
+    // pick someone at the very top of a long list
+    await rows.nth(0).click(); await p.waitForTimeout(150)
+    ok(await bar.count() === 1, `${T}: picking someone shows the send bar`)
+    const box = await bar.boundingBox(), tab = p.locator('.tabbar')
+    ok(box && box.y >= 0 && box.y + box.height <= height, `${T}: the whole bar is inside the screen, with no scrolling (${JSON.stringify(box)})`)
+    ok(await p.evaluate(() => window.scrollY) === 0, `${T}: the page did not have to scroll`)
+    if (width < 700 && await tab.count() && await tab.isVisible()) {
+      const tb = await tab.boundingBox(); ok(box.y + box.height <= tb.y + 0.5, `${T}: the bar sits above the tab bar (${box.y + box.height} vs ${tb.y})`)
+    }
+    const picked = (await rows.nth(0).locator('.opponent-name').innerText()).trim()
+    ok((await bar.locator('.send-name').innerText()).trim() === picked, `${T}: the bar names who was tapped (${picked})`)
+    ok(/Win\s*\+\d+/.test(await bar.innerText()) && /Loss\s*-?\d+/.test(await bar.innerText().then(t => t.replace('\u2212', '-'))), `${T}: the bar shows points for a win and a loss`)
+    ok(await bar.locator('.quality').count() === 1, `${T}: and the match quality`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${T}: nothing sticks out sideways`)
+    // scroll away and pick another from the middle: the bar is still reachable
+    await p.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight / 2)); await p.waitForTimeout(150)
+    const mid = rows.nth(14); await mid.scrollIntoViewIfNeeded()
+    const midName = (await mid.locator('.opponent-name').innerText()).trim()
+    await mid.click(); await p.waitForTimeout(150)
+    const b2 = await bar.boundingBox()
+    ok(b2 && b2.y >= 0 && b2.y + b2.height <= height, `${T}: mid-list, the bar is still on screen`)
+    ok(await p.locator('.opponent-row.selected').count() === 1, `${T}: exactly one player is marked`)
+    ok((await bar.locator('.send-name').innerText()).trim() === (await mid.locator('.opponent-name').innerText()).trim(), `${T}: the bar follows the new pick`)
+    // at the very end of the list the bar settles under it instead of covering the last player
+    await p.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await p.waitForTimeout(150)
+    const last = await rows.nth(28).boundingBox(), b3 = await bar.boundingBox()
+    ok(b3.y >= last.y + last.height - 1, `${T}: at the end of the list the bar does not hide the last player`)
+    // sending goes to the right person
+    await p.evaluate(() => { window.__inserts = [] })
+    await bar.locator('.send-btn').click(); await p.waitForTimeout(300)
+    const ins = await p.evaluate(() => window.__inserts || [])
+    ok(ins.length === 1 && ins[0].table === 'matches' && ins[0].payload.status === 'pending' && /0000000001/.test(ins[0].payload.opponent_id), `${T}: Send challenge challenges the picked player ${JSON.stringify(ins)}`)
+    ok((await p.locator('.flash-success').innerText()).includes(`Challenge sent to ${midName}`) && await bar.count() === 0, `${T}: confirmation shown, bar gone`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    // tapping the picked player again un-picks them; the keyboard works too; a stale ?opponent= shows no bar
+    let p = await open('/challenge', { width: 375, crowd: true })
+    const rows = p.locator('.opponent-row')
+    await rows.nth(2).click(); await rows.nth(2).click(); await p.waitForTimeout(100)
+    ok(await p.locator('.send-bar').count() === 0, 'tapping the same player again clears the pick and the bar')
+    await rows.nth(3).focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(100)
+    ok(await p.locator('.send-bar').count() === 1 && await rows.nth(3).getAttribute('aria-pressed') === 'true', 'the keyboard can pick a player (Enter)')
+    await close(p)
+    p = await open('/challenge?opponent=00000000-0000-0000-0000-0000000000ff', { width: 375 })
+    ok(await p.locator('.send-bar').count() === 0 && await p.locator('.opponent-row').count() === 5, 'an ?opponent= that is not in this league picks nobody')
+    await close(p)
+    p = await open('/challenge?opponent=00000000-0000-0000-0000-000000000003', { width: 375 })
+    ok(await p.locator('.send-bar .send-name').innerText() === 'Cat', 'a link from a player page (?opponent=) opens with that player picked')
     await close(p)
   }
 } finally {
