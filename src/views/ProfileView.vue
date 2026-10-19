@@ -31,8 +31,9 @@
             <button v-if="!changingPassword" class="btn btn-ghost" style="font-size:0.85rem" @click="changingPassword = true">
               {{ profile?.is_placeholder ? 'Set password' : 'Change password' }}
             </button>
-            <RouterLink to="/progress" style="text-decoration:none"><LevelBadge :xp="me.xp ?? 0" /></RouterLink>
+            <RouterLink to="/progress" style="text-decoration:none"><LevelBadge :xp="me.pass_xp ?? 0" /></RouterLink>
             <TierBadge :rating="me.rating" />
+            <span class="muted mono" style="font-size:0.78rem" data-test="lifetime-xp">{{ me.xp ?? 0 }} XP lifetime</span>
           </div>
         </div>
 

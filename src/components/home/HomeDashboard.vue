@@ -76,7 +76,7 @@
     <RouterLink v-if="me" to="/progress" class="card block level-card" data-test="level-card">
       <div class="card-head">
         <h3>Level {{ lp.current.level }} · {{ lp.current.title }}</h3>
-        <span class="muted card-sub mono">{{ me.xp ?? 0 }} XP</span>
+        <span class="muted card-sub mono">{{ me.pass_xp ?? 0 }} XP</span>
       </div>
       <div class="xp-track" role="progressbar" :aria-valuenow="lp.progressPct" aria-valuemin="0" aria-valuemax="100">
         <div class="xp-fill" :style="{ width: lp.progressPct + '%' }" />
@@ -191,7 +191,7 @@ const myMatches = computed(() => {
 
 // Level
 const me = computed(() => playersStore.byId(myId.value))
-const lp = computed(() => levelProgress(me.value?.xp ?? 0, sport.value))
+const lp = computed(() => levelProgress(me.value?.pass_xp ?? 0, sport.value))  // the season pass
 </script>
 
 <style scoped>

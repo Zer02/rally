@@ -20,6 +20,8 @@ function builder(table: string) {
   if (table === 'players' && flag('farabove')) rows.push(FARABOVE.pl)
   if (table === 'profiles' && flag('above')) rows.push(ABOVE.pr)
   if (table === 'profiles' && flag('farabove')) rows.push(FARABOVE.pr)
+  // pass XP (this season) is deliberately not the lifetime XP, so a screen showing the wrong one is caught
+  if (table === 'players') rows = rows.map((r: any) => ({ pass_xp: Math.floor((r.xp ?? 0) * 0.4), ...r }))
   if (table === 'profiles' && flag('crowd')) rows.push(...CROWD_PROFILES)
   const b: any = new Proxy({}, { get(_t, prop: string) {
     if (prop === 'then') return (res: any) => res({ data: rows, error: null, count: rows.length })

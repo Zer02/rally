@@ -568,6 +568,73 @@ try {
     ok(p.errs.length === 0, `${label}: no page errors ${p.errs}`)
     await close(p)
   }
+
+  section('season pass: opens from the level card, and every screen shows the season level')
+  const PASS_AT = [0, 100, 250, 425, 600, 750, 900, 1075, 1250, 1400]
+  const levelFor = xp => PASS_AT.filter(t => xp >= t).length
+  for (const [width, height] of [[375, 667], [320, 568], [1280, 800]]) {
+    const T = `${width}px`
+    const p = await open('/progress', { width })
+    p.setDefaultTimeout(5000)   // a broken pass should fail quickly, not hang
+    await p.setViewportSize({ width, height })
+    await p.waitForSelector('[data-test=level-open]')
+    const pass = Number((await p.locator('.level-xp').innerText()).replace(/\D/g, ''))
+    const life = Number((await p.locator('.level-xp-life').innerText()).replace(/\D/g, ''))
+    ok(life > 0 && pass === Math.floor(life * 0.4), `${T}: the big number is the season's XP (${pass}) and the lifetime total sits beside it (${life})`)
+    const lvl = levelFor(pass)
+    ok(new RegExp(`level ${lvl}\\b`, 'i').test(await p.locator('.level-eyebrow').innerText()), `${T}: the level shown is the season level, ${lvl} (not the lifetime level ${levelFor(life)})`)
+    ok(/repeat\s+games against the same player/.test((await p.locator('.play-xp-rule').innerText()).replace(/\n/g, ' ')), `${T}: the page says repeat games earn less`)
+    ok(await p.locator('[role=dialog]').count() === 0, `${T}: the pass is closed to start with`)
+
+    await p.locator('[data-test=level-open]').click(); await p.waitForTimeout(250)
+    const sheet = p.locator('[role=dialog]')
+    ok(await sheet.count() === 1, `${T}: tapping the level opens the season pass`)
+    ok(await p.locator('.pass-level').count() === 10, `${T}: all ten levels are listed`)
+    ok(await p.locator('.pass-level.current').count() === 1 && await p.locator('.pass-level.current').getAttribute('data-level') === String(lvl), `${T}: your level (${lvl}) is the one marked`)
+    ok(await p.locator('.pass-level.reached').count() === lvl - 1 && await p.locator('.pass-level.locked').count() === 10 - lvl, `${T}: ${lvl - 1} done, ${10 - lvl} still to come`)
+    const xps = await p.$$eval('.pass-level', e => e.map(x => Number(x.querySelector('.pass-xp').textContent.replace(/\D/g, ''))))
+    ok(JSON.stringify(xps) === JSON.stringify(PASS_AT), `${T}: each level shows what it takes (${xps})`)
+    const head = await p.locator('.pass-sub').innerText()
+    ok(head.includes(`${pass} XP this season`) && head.includes(`${life} XP lifetime`), `${T}: the pass shows season and lifetime XP (${head})`)
+    const nextAt = PASS_AT[lvl]   // XP of the next level
+    ok(lvl === 10 || (await p.locator('.pass-level.current .pass-note').innerText()).includes(`${nextAt - pass} XP to`), `${T}: your row says how far to the next level`)
+    ok(lvl === 10 || (await p.locator('.pass-level.locked .pass-note').first().innerText()).includes(`${nextAt - pass} XP to go`), `${T}: locked levels say how many XP to go`)
+    ok(await p.evaluate(() => document.activeElement?.getAttribute('aria-label')) === 'Close the season pass', `${T}: focus starts on the close button`)
+    ok(await p.evaluate(() => getComputedStyle(document.body).overflow) === 'hidden', `${T}: the page behind does not scroll while it is open`)
+    const box = await sheet.boundingBox()
+    ok(box && box.x >= 0 && box.y >= 0 && box.x + box.width <= width + 0.5 && box.y + box.height <= height + 0.5, `${T}: the pass fits the screen ${JSON.stringify(box)}`)
+    const inView = await p.evaluate(() => { const s = document.querySelector('[role=dialog]').getBoundingClientRect(), c = document.querySelector('.pass-level.current').getBoundingClientRect(); return c.top >= s.top - 1 && c.bottom <= s.bottom + 1 })
+    ok(inView, `${T}: your own level is scrolled into view`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${T}: nothing sticks out sideways`)
+
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150)
+    ok(await sheet.count() === 0, `${T}: Escape closes it`)
+    ok(await p.evaluate(() => document.activeElement?.getAttribute('data-test')) === 'level-open', `${T}: focus goes back to the level card`)
+    ok(await p.evaluate(() => getComputedStyle(document.body).overflow) !== 'hidden', `${T}: the page scrolls again`)
+    await p.keyboard.press('Enter'); await p.waitForTimeout(150)
+    ok(await sheet.count() === 1, `${T}: Enter on the level card opens it from the keyboard`)
+    await p.locator('.pass-close').click(); await p.waitForTimeout(150)
+    ok(await sheet.count() === 0, `${T}: the close button closes it`)
+    await p.locator('[data-test=level-open]').click(); await p.waitForTimeout(150)
+    await p.mouse.click(2, 2); await p.waitForTimeout(150)
+    ok(await sheet.count() === 0, `${T}: tapping outside closes it`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    // the other places a level is shown follow the season pass, and the profile keeps the lifetime total
+    let p = await open('/progress', { width: 375 }); await p.waitForSelector('.level-xp')
+    const pass = Number((await p.locator('.level-xp').innerText()).replace(/\D/g, '')), life = Number((await p.locator('.level-xp-life').innerText()).replace(/\D/g, ''))
+    await close(p)
+    p = await open('/', { width: 375 }); await p.waitForSelector('[data-test=level-card]')
+    const home = await p.locator('[data-test=level-card]').innerText()
+    ok(home.includes(`${pass} XP`) && new RegExp(`level ${levelFor(pass)}\\b`, 'i').test(home) && !home.includes(`${life} XP`), `home: the level card shows the season pass (${home.replace(/\n/g, ' ')})`)
+    await close(p)
+    p = await open('/profile', { width: 375 }); await p.waitForSelector('[data-test=lifetime-xp]')
+    ok((await p.locator('[data-test=lifetime-xp]').innerText()).includes(`${life} XP lifetime`), 'profile: lifetime XP is kept on the profile')
+    ok((await p.locator('.level-badge').first().innerText()).includes(`Lv ${levelFor(pass)}`), `profile: the level badge is the season level (${levelFor(pass)})`)
+    await close(p)
+  }
 } finally {
   await browser.close(); await server.close()
 }

@@ -12,7 +12,7 @@ export async function loadLib(name) {
   const outdir = join(ROOT, 'tests', '.tmp')
   mkdirSync(outdir, { recursive: true })
   const outfile = join(outdir, `${name}-${process.pid}.mjs`)
-  await build({ entryPoints: [join(ROOT, `src/lib/${name}.ts`)], outfile, format: 'esm', bundle: true, logLevel: 'silent' })
+  await build({ entryPoints: [join(ROOT, `src/lib/${name}.ts`)], outfile, format: 'esm', bundle: true, logLevel: 'silent', alias: { '@': join(ROOT, 'src') } })
   return import(pathToFileURL(outfile).href)
 }
 

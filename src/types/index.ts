@@ -57,6 +57,8 @@ export interface Player {
   rr_seasons_played: number
   xp?: number              // battle-pass XP (v0.0.5.0); absent before the migration runs
   profile?: Profile
+  xp: number        // lifetime XP, never resets
+  pass_xp: number   // XP earned this round robin season (the pass)
 }
 
 export interface Match {

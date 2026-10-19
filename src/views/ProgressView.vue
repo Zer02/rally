@@ -1,4 +1,4 @@
-<!-- src/views/ProgressView.vue — v0.0.5.1 -->
+<!-- src/views/ProgressView.vue — v0.0.8.4 -->
 <template>
   <main class="page">
     <div class="container">
@@ -18,37 +18,52 @@
           </p>
         </div>
 
-        <!-- Level + XP bar -->
+        <!-- Level + XP bar. Tap the level to see the whole season pass. -->
         <div class="card level-card">
-          <div class="level-top">
-            <div>
-              <p class="level-eyebrow">Level {{ lp.current.level }}</p>
-              <h2 class="level-title">{{ lp.current.title }}</h2>
+          <div
+            class="level-open" role="button" tabindex="0" data-test="level-open"
+            :aria-label="`Level ${lp.current.level}, ${lp.current.title}. Open the season pass`" aria-haspopup="dialog"
+            @click="showPass = true" @keydown.enter.prevent="showPass = true" @keydown.space.prevent="showPass = true"
+          >
+            <div class="level-top">
+              <div>
+                <p class="level-eyebrow">Level {{ lp.current.level }} · season pass</p>
+                <h2 class="level-title">{{ lp.current.title }}</h2>
+              </div>
+              <div class="level-xp-box">
+                <div class="level-xp mono">{{ passXp }} XP</div>
+                <div class="level-xp-life mono">{{ me.xp ?? 0 }} lifetime</div>
+              </div>
             </div>
-            <div class="level-xp mono">{{ me.xp }} XP</div>
-          </div>
 
-          <div class="xp-track" role="progressbar" :aria-valuenow="lp.progressPct" aria-valuemin="0" aria-valuemax="100">
-            <div class="xp-fill" :style="{ width: lp.progressPct + '%' }" />
-          </div>
+            <div class="xp-track" role="progressbar" :aria-valuenow="lp.progressPct" aria-valuemin="0" aria-valuemax="100">
+              <div class="xp-fill" :style="{ width: lp.progressPct + '%' }" />
+            </div>
 
-          <p class="level-next muted">
-            <template v-if="lp.next">
-              {{ lp.xpForLevel - lp.xpIntoLevel }} XP to <strong>{{ lp.next.title }}</strong>
-            </template>
-            <template v-else>You've reached the top level. Legend.</template>
-          </p>
+            <p class="level-next muted">
+              <span>
+                <template v-if="lp.next">
+                  {{ lp.xpForLevel - lp.xpIntoLevel }} XP to <strong>{{ lp.next.title }}</strong>
+                </template>
+                <template v-else>You've reached the top level. Legend.</template>
+              </span>
+              <span class="level-more">See the pass ›</span>
+            </p>
+          </div>
 
           <p class="play-xp muted">
             This week: {{ progress.playXpWeek.matches }} {{ progress.playXpWeek.matches === 1 ? 'match' : 'matches' }}
             played · <strong class="mono">+{{ progress.playXpWeek.xp }} XP</strong>
-            <span v-if="progress.playXpWeek.matches > 5">(after 5 matches each one earns a little less)</span>
+            <span v-if="progress.playXpWeek.matches > 5">(each one after the 5th earns less)</span>
           </p>
           <p class="play-xp-rule muted">
             Round robin matches: a win earns {{ winXp }} XP, and a loss earns 0 to {{ lossMaxXp }} XP, the
-            closer the loss the more. Ladder matches earn 15.
+            closer the loss the more. Ladder matches earn 15. After 5 matches in a week, and for repeat
+            games against the same player, each match earns less.
           </p>
         </div>
+
+        <PassTrack v-if="showPass" :pass-xp="passXp" :lifetime-xp="me.xp ?? 0" @close="showPass = false" />
 
         <div v-if="progress.error" class="flash flash-error" style="margin-bottom:1.5rem">{{ progress.error }}</div>
 
@@ -98,11 +113,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useLeagueStore } from '@/stores/leagues'
 import { usePlayersStore } from '@/stores/players'
 import { useProgressStore, type QuestView } from '@/stores/progress'
+import PassTrack from '@/components/progress/PassTrack.vue'
 import { levelProgress } from '@/lib/xp'
 import { LOSS_MAX_POINTS, WIN_POINTS, XP_PER_POINT, rrMatchXp } from '@/lib/score'
 import { useSport } from '@/composables/useSport'
@@ -115,7 +131,10 @@ const progress     = useProgressStore()
 const loading = computed(() => progress.loading || playersStore.loading)
 const me = computed(() => playersStore.byId(user.value?.id ?? ''))
 const { sport } = useSport()
-const lp = computed(() => levelProgress(me.value?.xp ?? 0, sport.value))
+// the pass is the season's XP; me.xp is the lifetime total
+const passXp = computed(() => me.value?.pass_xp ?? 0)
+const lp = computed(() => levelProgress(passXp.value, sport.value))
+const showPass = ref(false)
 const winXp = rrMatchXp(WIN_POINTS, 0)
 const lossMaxXp = XP_PER_POINT * LOSS_MAX_POINTS
 
@@ -148,7 +167,14 @@ watch(() => leagueStore.currentLeagueId, load)
 .level-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .level-eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ball); margin-bottom: 0.25rem; }
 .level-title { font-family: var(--font-display); font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.1; }
+.level-open { cursor: pointer; border-radius: 12px; margin: -0.35rem -0.5rem 0; padding: 0.35rem 0.5rem 0.5rem; -webkit-tap-highlight-color: transparent; transition: background 0.12s; }
+.level-open:hover { background: rgba(232,200,74,0.05); }
+.level-open:focus-visible { outline: 2px solid var(--ball); outline-offset: 2px; }
+.level-xp-box { text-align: right; }
 .level-xp { color: var(--txt-secondary); font-size: 1rem; }
+.level-xp-life { color: var(--txt-muted, var(--txt-secondary)); font-size: 0.72rem; opacity: 0.8; }
+.level-next { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.level-more { color: var(--ball); font-weight: 600; font-size: 0.82rem; white-space: nowrap; }
 .play-xp { font-size: 0.85rem; margin-top: 0.5rem; }
 .play-xp-rule { font-size: 0.8rem; margin-top: 0.25rem; }
 .xp-track { height: 12px; border-radius: 999px; background: var(--table-light); border: 1px solid var(--line); overflow: hidden; }
