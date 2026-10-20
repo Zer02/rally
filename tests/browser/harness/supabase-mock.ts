@@ -21,6 +21,8 @@ function builder(table: string) {
   if (table === 'profiles' && flag('above')) rows.push(ABOVE.pr)
   if (table === 'profiles' && flag('farabove')) rows.push(FARABOVE.pr)
   // pass XP (this season) is deliberately not the lifetime XP, so a screen showing the wrong one is caught
+  // 'notadmin' = the signed-in user is an ordinary player (not a global admin)
+  if (table === 'profiles' && flag('notadmin')) rows = rows.map((r: any) => ({ ...r, is_admin: false }))
   if (table === 'players') rows = rows.map((r: any) => ({ pass_xp: Math.floor((r.xp ?? 0) * 0.4), ...r }))
   if (table === 'profiles' && flag('crowd')) rows.push(...CROWD_PROFILES)
   const b: any = new Proxy({}, { get(_t, prop: string) {
@@ -38,6 +40,7 @@ function builder(table: string) {
     return (...a: any[]) => {
       if (prop === 'eq' && a[0] === 'id' && table !== 'leagues') { const f = rows.filter(r => r.id === a[1]); if (f.length) rows = f }
       if (prop === 'eq' && a[0] === 'profile_id' && table === 'players') rows = rows.filter(r => r.profile_id === a[1])
+      if (prop === 'eq' && table.startsWith('bracket_') && (a[0] === 'event_id' || a[0] === 'league_id')) rows = rows.filter(r => r[a[0]] === a[1])
       if (prop === 'limit') rows = rows.slice(0, a[0])
       return b
     } } })
@@ -48,6 +51,14 @@ export const supabase: any = {
   from: builder,
   rpc: (name: string, args: any) => {
     ((window as any).__rpc ||= []).push({ name, args })
+    // preview_bracket_seeds: rank the chosen players by ladder rating, like the database does for 'ladder'
+    if (name === 'preview_bracket_seeds') {
+      const chosen = TABLES.players.filter((p: any) => args.p_profile_ids.includes(p.profile_id)).sort((x: any, y: any) => y.rating - x.rating)
+      let size = 2; while (size < chosen.length) size *= 2
+      return Promise.resolve({ data: chosen.map((p: any, i: number) => ({ seed: i + 1, profile_id: p.profile_id, rating: p.rating, bracket_size: size, has_bye: i + 1 <= size - chosen.length })), error: null })
+    }
+    if (name === 'create_bracket_event') return Promise.resolve({ data: 'bk1', error: null })
+    if (name === 'report_bracket_match' && flag('bracketerr')) return Promise.resolve({ data: null, error: { message: 'That result cannot be changed: the winner has already played the next round.' } })
     return Promise.resolve({ data: name === 'remove_tournament_match' ? { summary: 'test match', recalculated: 1, phase: 'round_robin' } : null, error: null })
   },
   channel: () => chan, removeChannel: () => {}, functions: { invoke: () => Promise.resolve({ data: {}, error: null }) },

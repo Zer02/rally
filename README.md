@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.4**
+> Current version: **v0.0.8.5**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -800,6 +800,25 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Results:** JS 43, database 99, browser 611 checks pass, and the production build is clean.
 - **Not covered:** the real production database, and how the pass sheet feels on a real phone (safe areas, rubber-band scrolling).
 
+### v0.0.8.5 — Tournaments: an admin-run knockout bracket, seeded from the rankings
+
+> A one-off knockout event for the club: the admin picks the players and the ranking to seed from (ladder or round robin), previews the draw, and the app builds a bracket with seeds, byes and a champion. Results are entered by the admin only, and tournaments stand alone: they never touch ratings, XP, the battle pass or quests. Needs a migration and a frontend deploy.
+
+- **Where it is:** a **Tournaments** link in the nav (at `/tournaments`) lists the events; tap one for its bracket at `/tournaments/:id`. Everyone can read them, signed in or not. On a phone the link is in the top-right menu (the bottom tab bar is unchanged).
+- **Creating one (admin only):** name, **Seed by** (Ladder rating or Round robin rating), tick the players (All / None to help), **Preview draw**, then **Create tournament**. The preview calls the database and shows the real draw: each seed with the rating it was based on, the bracket size and how many byes. Changing the players or the basis clears an old preview, so you never create something other than what you looked at.
+- **The draw:** single elimination, 2 to 64 players, standard seeding (seed 1 meets the lowest seed, and seeds 1 and 2 can only meet in the final). The bracket is the next power of two and the top seeds get the byes: 11 players make 16 slots and seeds 1 to 5 skip round 1. A bye advances on its own. Seeds are stored when the bracket is made, so a later rating change never redraws it.
+- **Seeding rules:** *Ladder* ranks by the ladder rating. *Round robin* ranks by the round robin rating from the **newest season each player took part in**; players with no round robin history rank after everyone who has some, ordered by ladder rating. Ties break on the other rating, then profile id, so the same inputs always give the same draw.
+- **The bracket screen:** one column per round (Round of 16, Quarterfinals, Semifinals, Final), seeds in brackets, losers struck through in red, the winner of a played match highlighted, byes labelled, an unknown opponent shown as TBD, and a champion banner when the final is done. On a phone the bracket scrolls sideways inside its own box; the page itself does not. Names wrap rather than being cut off. Round headers sit at the top of each column: they cannot stay pinned while you scroll down, because the sideways scroll box stops that.
+- **Results (admin only):** tap a match, enter the score, **Save result**. Scores follow the round robin rule: first to 4 (4-0 to 4-3) or a full set to 6 (6-0 to 6-5), no ties; anything else is refused with the reason, in the app and again in the database. The winner moves into the next round. A result can be **corrected until the match it fed has been played**; after that it is locked (and the page says so). A bye, a match still waiting for a player and a locked match cannot be tapped. The admin can also delete a tournament, after a confirmation.
+- **Stands alone:** a tournament has no effect on ratings, XP, the pass, quests, matches or round robin seasons. It deliberately does **not** use the `tournaments` table, because a row there is a round robin *season*, and creating one would restart the battle pass and the seasonal quests.
+- **Changed (database):** `supabase-migration-v0.0.8.5.sql` adds `bracket_events`, `bracket_entrants` and `bracket_matches` (readable by everyone, writable by nobody directly: no write policy, and insert/update/delete/truncate are revoked from the app). Internal functions nobody can call from the app: `bracket_seed_order`, `bracket_seed_players`, `bracket_place_winner`. League-admin functions (checked inside with `is_league_admin`): `preview_bracket_seeds`, `create_bracket_event`, `report_bracket_match`, `delete_bracket_event`. The migration refuses to run unless the score rule is really in place (it tests `rr_score_is_legal(4,3)` and `(6,5)` rather than only checking the function exists, since it has existed since v0.0.6.3), and without v0.0.8.4. It can be run twice.
+- **Changed (app):** `src/lib/bracket.ts`, `src/stores/brackets.ts`, `src/components/bracket/BracketBoard.vue`, `src/views/TournamentsView.vue`, `src/views/BracketView.vue` (all new); `src/router/index.ts`, `src/components/layout/AppNav.vue`, `src/types/index.ts`.
+- **Manual steps:** back up Supabase, make sure 8.0, 8.3 and 8.4 have run, then run `supabase-migration-v0.0.8.5.sql` and check the notice ends "v0.0.8.5 OK". Deploy the frontend. As an admin, open Tournaments, tick a few players, preview and create one. As an ordinary player, check there is no create panel and nothing to tap.
+- **Tests:** `tests/db/brackets.test.mjs` (23 checks): the seed layout for every size; 11 players making 16 slots with seeds 1 to 5 on byes and the byes advancing; full, smallest (2) and largest (64) fields and the limits; bad input (blank name, a repeated player, a stranger, an unknown seeding) leaving nothing behind; ladder seeding; round robin seeding from the newest season, including a player who is in two seasons with different ratings and players with no history last; tie-breaks; seeds staying put when ratings change; the preview matching the real draw and saving nothing; legal and illegal scores; winners landing in the right side of the right slot; no scoring a bye or a match before its players are known; the champion; corrections and the lock; who may do what (a player, an admin of another league, signed out) and no direct writes or internal calls; a fingerprint of every other table and the pass window unchanged after playing a whole event and running the quest sync; deleting; and the migration being safe to run twice and refusing on a database with the old score rule or without 8.4. `tests/js/bracket.test.mjs` (7 checks) covers the helpers. The browser suite has a new section at 375 and 1280 pixels (and the three new pages are in the every-page fit check at 375, 320 and 1280).
+- **Sabotage check:** I broke the migration 14 ways on purpose (seed layout reversed, one bye too few, byes not advancing, odd and even slots swapped, no correction lock, no admin check when scoring, no score check, an internal function callable by the app, the tables writable by the app, round robin seeding from the oldest season, no second tie-break, no champion, an existence-only prerequisite check, and an event that also creates a season) and the front end 6 ways (players given admin controls, locked matches editable, losers not struck through, scores not checked before sending, a stale preview surviving, wrong round names). Every one was caught. Two caveats: the two permission breaks are stopped by the migration's own built-in self-check rather than by a test, and the front-end "scores not checked" break was caught because it crashed the browser run rather than by a single failing check. My first test data missed the "oldest season" break because no player was in two seasons; I added a test for it. The tests also found a real defect in my first draft: an unknown seeding value reached a table constraint and returned a raw database error instead of a plain message.
+- **Results:** JS 50, database 122, browser 746 checks pass, and the production build is clean.
+- **Not covered:** the real production database, and how the bracket feels to scroll on a real phone. Not built (by design): double elimination, third-place matches, entering results by anyone but an admin, or giving tournaments any effect on ratings.
+
 ## Quick start
 
 ### 1. Supabase setup
@@ -846,16 +865,19 @@ rally/
     │   └── useAuth.ts           # session management
     ├── lib/
     │   ├── supabase.ts          # supabase client
-    │   └── rating.ts            # TrueSkill-lite engine
+    │   ├── rating.ts            # TrueSkill-lite engine
+    │   └── bracket.ts           # knockout tournament helpers
     ├── router/index.ts
     ├── stores/
     │   ├── players.ts
     │   ├── matches.ts
     │   ├── seasons.ts
+    │   ├── brackets.ts          # knockout tournaments
     │   └── leagues.ts
     ├── types/index.ts
     ├── components/
     │   ├── layout/AppNav.vue
+    │   ├── bracket/BracketBoard.vue
     │   ├── ui/
     │   │   ├── TierBadge.vue
     │   │   └── PlayerAvatar.vue
@@ -869,6 +891,8 @@ rally/
         ├── MatchesView.vue
         ├── ChallengeView.vue
         ├── ProfileView.vue
+        ├── TournamentsView.vue   # knockout events + admin create panel
+        ├── BracketView.vue       # one bracket
         └── PlayerView.vue
 ```
 

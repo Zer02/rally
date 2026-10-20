@@ -58,7 +58,36 @@ const quests = [
   { id: 'q5', key: 'weekly_challenger', cadence: 'weekly', title: 'Be the Challenger', description: 'Send a challenge that gets played', criteria_type: 'send_challenge', target_count: 1, xp_reward: 20, active: true, sort_order: 5 },
   { id: 'q2', key: 'weekly_double_header', cadence: 'weekly', title: 'Double header', description: 'Play 2 matches this week against different opponents', criteria_type: 'play_matches', target_count: 2, xp_reward: 30, active: true, sort_order: 2 },
 ]
+// Knockout tournaments (v0.0.8.5). 'bk1' is a six-player event in an eight-slot bracket (seeds 1 and 2 on byes),
+// part way through; 'bk2' is a finished four-player event. Seeds follow the ladder ratings above (player 1 = seed 1).
+const BK1 = 'bk1', BK2 = 'bk2'
+const bkEvents = [
+  { id: BK1, league_id: L, name: 'Autumn Open Championship Knockout', seeding: 'ladder', bracket_size: 8, status: 'in_progress', champion_id: null, created_by: ids[0], created_at: day(3), completed_at: null },
+  { id: BK2, league_id: L, name: 'Spring Cup', seeding: 'round_robin', bracket_size: 4, status: 'completed', champion_id: ids[0], created_by: ids[0], created_at: day(80), completed_at: day(78) },
+]
+const bkEntrants = [
+  ...ids.map((id, i) => ({ event_id: BK1, profile_id: id, seed: i + 1, profile: profiles[i] })),
+  ...ids.slice(0, 4).map((id, i) => ({ event_id: BK2, profile_id: id, seed: i + 1, profile: profiles[i] })),
+]
+const bm = (event_id: string, round: number, slot: number, a: number | null, b: number | null, extra: any = {}) => ({
+  id: `${event_id}-${round}-${slot}`, event_id, round, slot, player_a_id: a == null ? null : ids[a], player_b_id: b == null ? null : ids[b],
+  score_a: null, score_b: null, winner_id: null, status: 'pending', completed_at: null, ...extra })
+const bkMatches = [
+  // bk1: layout 1v8, 4v5, 2v7, 3v6 -> seeds 1 and 2 have byes
+  bm(BK1, 1, 1, 0, null, { status: 'bye', winner_id: ids[0], completed_at: day(3) }),
+  bm(BK1, 1, 2, 3, 4, { status: 'completed', score_a: 4, score_b: 2, winner_id: ids[3], completed_at: day(2) }),
+  bm(BK1, 1, 3, 1, null, { status: 'bye', winner_id: ids[1], completed_at: day(3) }),
+  bm(BK1, 1, 4, 2, 5),
+  bm(BK1, 2, 1, 0, 3),
+  bm(BK1, 2, 2, 1, null),
+  bm(BK1, 3, 1, null, null),
+  // bk2: finished
+  bm(BK2, 1, 1, 0, 3, { status: 'completed', score_a: 4, score_b: 1, winner_id: ids[0], completed_at: day(79) }),
+  bm(BK2, 1, 2, 1, 2, { status: 'completed', score_a: 6, score_b: 3, winner_id: ids[1], completed_at: day(79) }),
+  bm(BK2, 2, 1, 0, 1, { status: 'completed', score_a: 4, score_b: 3, winner_id: ids[0], completed_at: day(78) }),
+]
 export const TABLES: Record<string, any[]> = {
+  bracket_events: bkEvents, bracket_entrants: bkEntrants, bracket_matches: bkMatches,
   profiles, players, leagues: [league], matches: ladder, tournaments, tournament_participants: [...parts(T), ...parts('tp1')], tournament_weeks: weeks,
   tournament_matches: tm, rating_history: history, rr_rating_history: rrHist, quest_templates: quests, player_quest_progress: [], player_weekly_play_xp: [{ matches_counted: 4, xp_awarded: 40 }],
   league_admins: [{ league_id: L, profile_id: ids[0] }], match_removal_log: [], seasons: [], match_games: [],

@@ -209,3 +209,48 @@ export interface Database {
     }
   }
 }
+
+// v0.0.8.5 — knockout tournaments (bracket_events / bracket_entrants / bracket_matches).
+// Separate from Tournament above, which is a round robin SEASON.
+export interface BracketEvent {
+  id:           string
+  league_id:    string
+  name:         string
+  seeding:      'ladder' | 'round_robin'
+  bracket_size: number
+  status:       'in_progress' | 'completed'
+  champion_id:  string | null
+  created_by:   string | null
+  created_at:   string
+  completed_at: string | null
+}
+
+export interface BracketEntrant {
+  event_id:   string
+  profile_id: string
+  seed:       number
+  profile?:   Profile
+}
+
+export interface BracketMatch {
+  id:           string
+  event_id:     string
+  round:        number          // 1 = first round
+  slot:         number          // 1-based position within the round
+  player_a_id:  string | null
+  player_b_id:  string | null
+  score_a:      number | null
+  score_b:      number | null
+  winner_id:    string | null
+  status:       'pending' | 'completed' | 'bye'
+  completed_at: string | null
+}
+
+/** One row of the draw as preview_bracket_seeds returns it. */
+export interface SeedPreviewRow {
+  seed:         number
+  profile_id:   string
+  rating:       number | null   // the rating the seeding used; null = no round robin history
+  bracket_size: number
+  has_bye:      boolean
+}

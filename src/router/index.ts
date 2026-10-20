@@ -49,6 +49,16 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
+    path: "/tournaments",
+    name: "tournaments",
+    component: () => import("@/views/TournamentsView.vue"),
+  },
+  {
+    path: "/tournaments/:id",
+    name: "bracket",
+    component: () => import("@/views/BracketView.vue"),
+  },
+  {
     path: "/tournament",
     name: "tournament",
     component: () => import("@/views/TournamentView.vue"),

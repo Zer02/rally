@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove })
+  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove, notadmin, bracketerr })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -53,7 +53,7 @@ const close = p => p.context().close()
 try {
   // ── 1. Every page fits the screen, and shows no "Unit" ──────────────
   section('every page: no sideways scroll, nothing cut off, no unit, no errors')
-  const PAGES = ['/', '/leaderboard', '/matches', '/profile', '/progress', '/player/00000000-0000-0000-0000-000000000002', '/challenge', '/referee', '/tournament']
+  const PAGES = ['/', '/leaderboard', '/matches', '/profile', '/progress', '/player/00000000-0000-0000-0000-000000000002', '/challenge', '/referee', '/tournament', '/tournaments', '/tournaments/bk1', '/tournaments/bk2']
   for (const width of [375, 320, 1280]) for (const path of PAGES) {
     const p = await open(path, { width }); const tag = `${path} @${width}`
     const r = await p.evaluate(() => {
@@ -633,6 +633,148 @@ try {
     p = await open('/profile', { width: 375 }); await p.waitForSelector('[data-test=lifetime-xp]')
     ok((await p.locator('[data-test=lifetime-xp]').innerText()).includes(`${life} XP lifetime`), 'profile: lifetime XP is kept on the profile')
     ok((await p.locator('.level-badge').first().innerText()).includes(`Lv ${levelFor(pass)}`), `profile: the level badge is the season level (${levelFor(pass)})`)
+    await close(p)
+  }
+
+  // ── 16. Tournaments (v0.0.8.5): list, create panel, bracket, entering and correcting results ──
+  section('tournaments: list and create panel')
+  const rpcs = pg => pg.evaluate(() => window.__rpc || [])
+  const lastRpc = async (pg, name) => (await rpcs(pg)).filter(r => r.name === name).pop()
+  for (const width of [375, 1280]) {
+    const T = `tournaments @${width}`
+    let p = await open('/tournaments', { width })
+    ok(await p.locator('[data-testid=tournament-list] a').count() === 2, `${T}: both events are listed`)
+    const listTxt = await p.locator('[data-testid=tournament-list]').innerText()
+    ok(/Autumn Open Championship Knockout/.test(listTxt) && /in progress/i.test(listTxt) && /finished/i.test(listTxt) && /8-slot knockout/.test(listTxt), `${T}: names, sizes and status show (${listTxt.replace(/\n/g, ' | ')})`)
+    ok(await p.locator('[data-testid=create-panel]').count() === 1, `${T}: an admin sees the create panel`)
+    ok(await p.getByRole('button', { name: 'Preview draw' }).isDisabled() && await p.getByRole('button', { name: 'Create tournament' }).isDisabled(), `${T}: with nobody picked, preview and create are off`)
+    await p.locator('.t-check').first().click()
+    ok(/at least 2/.test(await p.locator('[data-testid=create-panel]').innerText()), `${T}: one player gives the "at least 2" reason`)
+    ok(await p.getByRole('button', { name: 'Preview draw' }).isDisabled(), `${T}: one player is not enough to preview`)
+    await p.getByRole('button', { name: 'All', exact: true }).click()
+    ok(await p.getByRole('button', { name: 'Preview draw' }).isEnabled(), `${T}: six players can be previewed`)
+    ok(await p.getByRole('button', { name: 'Create tournament' }).isDisabled(), `${T}: but create still needs a name`)
+    await p.locator('#t-name').fill('Club Open')
+    await p.getByRole('button', { name: 'Preview draw' }).click(); await p.waitForTimeout(300)
+    const call = await lastRpc(p, 'preview_bracket_seeds')
+    ok(call && call.args.p_seeding === 'ladder' && call.args.p_profile_ids.length === 6 && call.args.p_league_id === '00000000-0000-0000-0000-0000000000aa', `${T}: preview asked for the ladder draw of 6 in this league (${JSON.stringify(call)})`)
+    const prev = await p.locator('[data-testid=preview]').innerText()
+    ok(/8-slot bracket, 2 byes/.test(prev), `${T}: preview says 8 slots and 2 byes (${prev.replace(/\n/g, ' ')})`)
+    const seedNames = await p.$$eval('.t-seeds li', lis => lis.map(l => l.querySelector('.t-seed-name').textContent.trim()))
+    ok(JSON.stringify(seedNames) === JSON.stringify(['Alexandra Rivera-Montgomery', 'Bartholomew Nakamura', 'Cat', 'Dmitri Volkov-Santos', 'Eloise Fairweather', 'Finn']), `${T}: seeds in rating order ${seedNames}`)
+    ok(JSON.stringify(await p.$$eval('.t-seeds li', lis => lis.map(l => !!l.querySelector('.t-seed-bye')))) === JSON.stringify([true, true, false, false, false, false]), `${T}: only seeds 1 and 2 show a bye`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: preview does not overflow`)
+    await p.locator('#t-seeding').selectOption('round_robin'); await p.waitForTimeout(150)
+    ok(await p.locator('[data-testid=preview]').count() === 0, `${T}: changing the seeding basis clears the old preview`)
+    await p.locator('#t-seeding').selectOption('ladder')
+    await p.getByRole('button', { name: 'Create tournament' }).click(); await p.waitForTimeout(500)
+    const made = await lastRpc(p, 'create_bracket_event')
+    ok(made && made.args.p_name === 'Club Open' && made.args.p_seeding === 'ladder' && made.args.p_profile_ids.length === 6, `${T}: create sent the name, basis and six players (${JSON.stringify(made)})`)
+    ok(new URL(p.url()).pathname === '/tournaments/bk1', `${T}: and went to the new bracket (${p.url()})`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    const p = await open('/tournaments', { width: 1280 })
+    const href = await p.locator('.nav-link', { hasText: 'Tournaments' }).getAttribute('href')
+    ok(href === '/tournaments', `desktop nav has a Tournaments link (${href})`)
+    await close(p)
+    const q = await open('/tournaments', { width: 375 })
+    await q.locator('.nav-burger, [aria-label*="enu"]').first().click().catch(() => {}); await q.waitForTimeout(200)
+    ok(await q.locator('.nav-drop-link', { hasText: 'Tournaments' }).count() === 1, 'the phone menu has a Tournaments link')
+    await close(q)
+  }
+
+  section('tournaments: players see the bracket but cannot change it')
+  for (const path of ['/tournaments', '/tournaments/bk1']) {
+    const p = await open(path, { width: 375, notadmin: true })
+    ok(await p.locator('[data-testid=create-panel]').count() === 0, `${path}: no create panel for a player`)
+    ok(await p.locator('.b-match.is-click').count() === 0, `${path}: no match can be tapped`)
+    ok(await p.getByRole('button', { name: /delete tournament/i }).count() === 0, `${path}: no delete button`)
+    ok(await p.locator('[data-testid=score-panel]').count() === 0, `${path}: no score panel`)
+    if (path.endsWith('bk1')) ok(await p.locator('[data-testid=bracket]').count() === 1, 'a player still sees the bracket')
+    await close(p)
+  }
+
+  section('tournaments: the bracket')
+  for (const width of [375, 1280]) {
+    const T = `bracket @${width}`
+    const p = await open('/tournaments/bk1', { width })
+    const titles = await p.$$eval('.b-round-title', hs => hs.map(h => h.textContent.trim()))
+    ok(JSON.stringify(titles) === JSON.stringify(['Quarterfinals', 'Semifinals', 'Final']), `${T}: round headers ${titles}`)
+    ok(await p.locator('.b-round').nth(0).locator('.b-match').count() === 4 && await p.locator('.b-round').nth(2).locator('.b-match').count() === 1, `${T}: 4 / 2 / 1 matches`)
+    const ht = await p.$$eval('.b-round-title', hs => hs.map(h => Math.round(h.getBoundingClientRect().top)))
+    ok(new Set(ht).size === 1, `${T}: round headers line up along the top (${ht})`)
+    ok(/\(1\)\s*Alexandra/.test((await p.locator('[data-match="1-1"]').innerText()).replace(/\n/g, ' ')), `${T}: seeds show in brackets, seed 1 first`)
+    ok(await p.locator('[data-match="1-1"]').innerText().then(t => /bye/i.test(t)), `${T}: the bye is labelled`)
+    ok(await p.locator('.b-row.is-loser').count() === 1 && await p.locator('.b-row.is-winner').count() === 1, `${T}: one loser and one winner so far`)
+    const loser = await p.locator('.b-row.is-loser').evaluate(el => { const n = getComputedStyle(el.querySelector('.b-name')); return { deco: n.textDecorationLine, col: getComputedStyle(el).color, txt: el.innerText.replace(/\n/g, ' ') } })
+    ok(loser.deco === 'line-through' && loser.col === 'rgb(224, 82, 82)' && /Eloise/.test(loser.txt), `${T}: the loser is struck through in red (${JSON.stringify(loser)})`)
+    ok(await p.locator('[data-match="2-2"]').innerText().then(t => /TBD/.test(t)), `${T}: an unknown opponent reads TBD`)
+    ok(await p.locator('[data-testid=champion]').count() === 0, `${T}: no champion yet`)
+    const scroll = await p.evaluate(() => { const s = document.querySelector('.bracket-scroll'); return { sw: s.scrollWidth, cw: s.clientWidth, page: document.documentElement.scrollWidth, iw: innerWidth } })
+    ok(scroll.page <= scroll.iw + 1, `${T}: the page itself does not scroll sideways`)
+    if (width === 375) ok(scroll.sw > scroll.cw, `${T}: the bracket scrolls inside its own box (${scroll.sw} > ${scroll.cw})`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    const p = await open('/tournaments/bk2', { width: 375 })
+    ok(/champion/i.test(await p.locator('[data-testid=champion]').innerText()) && /Alexandra Rivera-Montgomery/.test(await p.locator('[data-testid=champion]').innerText()), 'a finished event shows its champion')
+    ok(await p.locator('.b-row.is-loser').count() === 3, 'three losers struck through in a finished 4-player bracket')
+    ok(await p.locator('.b-match.is-click').count() === 1, 'only the final can still be corrected once it has been played (the semifinals are locked)')
+    ok(/locked/i.test(await p.locator('body').innerText()), 'and the page says why')
+    await close(p)
+  }
+
+  section('tournaments: entering and correcting results')
+  {
+    const p = await open('/tournaments/bk1', { width: 375 })
+    ok(await p.locator('.b-match.is-click').count() === 3, 'three matches can be scored: the open quarterfinal, the corrected one, and the semifinal with both players known')
+    ok(await p.locator('[data-match="1-1"].is-click, [data-match="2-2"].is-click, [data-match="3-1"].is-click').count() === 0, 'a bye, a match waiting for a player and the empty final cannot be tapped')
+    await p.locator('[data-match="1-4"]').click(); await p.waitForTimeout(200)
+    const panel = p.locator('[data-testid=score-panel]')
+    ok(await panel.count() === 1 && /Enter result/.test(await panel.innerText()) && /Cat/.test(await panel.innerText()) && /Finn/.test(await panel.innerText()), 'tapping a match opens the score panel with both names')
+    const [a, b] = [panel.locator('input').nth(0), panel.locator('input').nth(1)]
+    const save = panel.getByRole('button', { name: 'Save result' })
+    for (const [x, y] of [[4, 4], [5, 3], [7, 5]]) {
+      await a.fill(String(x)); await b.fill(String(y)); await save.click(); await p.waitForTimeout(150)
+      ok(await panel.locator('.flash-error').count() === 1, `${x}-${y}: an unfinished score shows a reason`)
+    }
+    await a.fill(''); await b.fill('3'); await save.click(); await p.waitForTimeout(150)
+    ok(/whole numbers/.test(await panel.locator('.flash-error').innerText()), 'an empty box asks for whole numbers')
+    ok(!(await rpcs(p)).some(r => r.name === 'report_bracket_match'), 'none of those reached the database')
+    await a.fill('4'); await b.fill('2'); await save.click(); await p.waitForTimeout(300)
+    const rep = await lastRpc(p, 'report_bracket_match')
+    ok(rep && rep.args.p_match_id === 'bk1-1-4' && rep.args.p_score_a === 4 && rep.args.p_score_b === 2, `a finished score is sent for that match (${JSON.stringify(rep)})`)
+    ok(await panel.count() === 0, 'and the panel closes')
+    await p.locator('[data-match="1-2"]').click(); await p.waitForTimeout(200)
+    ok(/Correct result/.test(await panel.innerText()) && await panel.locator('input').nth(0).inputValue() === '4' && await panel.locator('input').nth(1).inputValue() === '2', 'a played match opens as a correction, pre-filled with its score')
+    await p.getByRole('button', { name: 'Cancel' }).click(); await p.waitForTimeout(100)
+    ok(await panel.count() === 0, 'Cancel closes it without sending anything')
+    ok(p.errs.length === 0, `no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    const p = await open('/tournaments/bk1', { width: 375, bracketerr: true })
+    await p.locator('[data-match="2-1"]').click(); await p.waitForTimeout(150)
+    const panel = p.locator('[data-testid=score-panel]')
+    await panel.locator('input').nth(0).fill('4'); await panel.locator('input').nth(1).fill('1')
+    await panel.getByRole('button', { name: 'Save result' }).click(); await p.waitForTimeout(300)
+    ok(/already played the next round/.test(await panel.locator('.flash-error').innerText()), 'a refusal from the database is shown in the panel, and the panel stays open')
+    await close(p)
+  }
+  {
+    const p = await open('/tournaments/bk1', { width: 375 })
+    await p.getByRole('button', { name: /delete tournament/i }).click(); await p.waitForTimeout(150)
+    ok(/can't be undone/.test(await p.locator('body').innerText()) && !(await rpcs(p)).some(r => r.name === 'delete_bracket_event'), 'delete asks first and sends nothing yet')
+    await p.getByRole('button', { name: 'Keep it' }).click(); await p.waitForTimeout(100)
+    ok(await p.getByRole('button', { name: /delete tournament/i }).count() === 1, '"Keep it" backs out')
+    await p.getByRole('button', { name: /delete tournament/i }).click()
+    await p.getByRole('button', { name: /yes, delete/i }).click(); await p.waitForTimeout(500)
+    const del = await lastRpc(p, 'delete_bracket_event')
+    ok(del && del.args.p_event_id === 'bk1', `confirming deletes that event (${JSON.stringify(del)})`)
+    ok(new URL(p.url()).pathname === '/tournaments', 'and returns to the list')
     await close(p)
   }
 } finally {
