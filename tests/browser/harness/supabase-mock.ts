@@ -7,7 +7,7 @@
 // has not joined a league, 'ghost' = an accepted ladder challenge against someone who has not joined, 'crowd' = 24 more players in the league, 'above' / 'farabove' = a player rated 70 / 150 above the signed-in user.
 // RPC calls are recorded on window.__rpc, inserts on window.__inserts, updates on window.__updates.
 // Inserting a players row (joining a league) really adds it, so the page can move on afterwards.
-import { TABLES, USER, PENDING, STREAK_WINS, NEWCOMER, NEWCOMER_PROFILE, GHOST_MATCH, CROWD_PROFILES, CROWD_PLAYERS, ABOVE, FARABOVE } from './fixtures'
+import { TABLES, USER, PENDING, STREAK_WINS, NEWCOMER, NEWCOMER_PROFILE, GHOST_MATCH, CROWD_PROFILES, CROWD_PLAYERS, ABOVE, FARABOVE, ELO_HOME } from './fixtures'
 const flag = (k: string) => localStorage.getItem(k) === '1'
 function builder(table: string) {
   let rows = (table === 'matches' && flag('noladder') ? [] : TABLES[table] ?? []).slice()
@@ -17,6 +17,14 @@ function builder(table: string) {
   if (table === 'matches' && flag('ghost')) rows.push(GHOST_MATCH)
   if (table === 'players' && flag('crowd')) rows.push(...CROWD_PLAYERS)
   if (table === 'players' && flag('above')) rows.push(ABOVE.pl)
+  if (table === 'elo_history' && flag('elo')) rows = [...ELO_HOME]
+  // 'byeweek' = the newest week also has a bye (a player with no opponent), which is not a match
+  if (table === 'tournament_matches' && flag('byeweek')) rows.push({ id: 'tmBye', tournament_id: TABLES.tournaments[0].id, phase: 'round_robin', round: 3, slot: 9, week_id: 'w2',
+    player_a_id: TABLES.players[5].profile_id, player_b_id: null, player_a2_id: null, player_b2_id: null, format: 'singles', score_a: null, score_b: null,
+    winner_id: null, status: 'bye', reported_by: null, completed_at: null, created_at: new Date().toISOString(), player_a: null, player_b: null, player_a2: null, player_b2: null })
+  // 'pingpong' = the league plays a table sport; 'noleague' = the site has no leagues yet
+  if (table === 'leagues' && flag('pingpong')) rows = rows.map((r: any) => ({ ...r, sport: 'pingpong' }))
+  if (table === 'leagues' && flag('noleague')) rows = []
   if (table === 'players' && flag('farabove')) rows.push(FARABOVE.pl)
   if (table === 'profiles' && flag('above')) rows.push(ABOVE.pr)
   if (table === 'profiles' && flag('farabove')) rows.push(FARABOVE.pr)
@@ -41,6 +49,7 @@ function builder(table: string) {
       if (prop === 'eq' && a[0] === 'id' && table !== 'leagues') { const f = rows.filter(r => r.id === a[1]); if (f.length) rows = f }
       if (prop === 'eq' && a[0] === 'profile_id' && table === 'players') rows = rows.filter(r => r.profile_id === a[1])
       if (prop === 'eq' && table.startsWith('bracket_') && (a[0] === 'event_id' || a[0] === 'league_id')) rows = rows.filter(r => r[a[0]] === a[1])
+      if (prop === 'eq' && a[0] === 'week_id' && table === 'tournament_matches') rows = rows.filter(r => r.week_id === a[1])
       if (prop === 'limit') rows = rows.slice(0, a[0])
       return b
     } } })

@@ -86,6 +86,20 @@ const bkMatches = [
   bm(BK2, 1, 2, 1, 2, { status: 'completed', score_a: 6, score_b: 3, winner_id: ids[1], completed_at: day(79) }),
   bm(BK2, 2, 1, 0, 1, { status: 'completed', score_a: 4, score_b: 3, winner_id: ids[0], completed_at: day(78) }),
 ]
+// Rating history for the home page's "change this week" column (handed out only with the 'elo' switch).
+// Worked out by hand: change = current rating minus the last rating recorded BEFORE the 7-day window.
+//   player 1 (1180): 1100 (30 days ago), 1150 (10 days ago), then 1170, 1180 inside the window -> baseline 1150 -> +30
+//   player 2 (1120): only entries inside the window -> baseline is the starting 1000          -> +120
+//   player 3 (1060): 1090 (20 days ago)                                                        -> -30
+//   player 4 (1000): none                                                                      -> 0
+//   player 5 (940):  940 (9 days ago)                                                          -> 0
+export const ELO_HOME = [
+  { profile_id: ids[0], rating: 1100, recorded_at: day(30) }, { profile_id: ids[0], rating: 1150, recorded_at: day(10) },
+  { profile_id: ids[0], rating: 1170, recorded_at: day(3) },  { profile_id: ids[0], rating: 1180, recorded_at: day(1) },
+  { profile_id: ids[1], rating: 1120, recorded_at: day(2) },
+  { profile_id: ids[2], rating: 1090, recorded_at: day(20) },
+  { profile_id: ids[4], rating: 940,  recorded_at: day(9) },
+]
 export const TABLES: Record<string, any[]> = {
   bracket_events: bkEvents, bracket_entrants: bkEntrants, bracket_matches: bkMatches,
   profiles, players, leagues: [league], matches: ladder, tournaments, tournament_participants: [...parts(T), ...parts('tp1')], tournament_weeks: weeks,

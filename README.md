@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.5**
+> Current version: **v0.0.8.6**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -819,6 +819,24 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Results:** JS 50, database 122, browser 746 checks pass, and the production build is clean.
 - **Not covered:** the real production database, and how the bracket feels to scroll on a real phone. Not built (by design): double elimination, third-place matches, entering results by anyone but an admin, or giving tournaments any effect on ratings.
 
+### v0.0.8.6 — A new look: the home page and the shared style, from the mockups
+
+> The app now looks like the two mockups you sent: deep navy surfaces, warmer gold, a serif headline with a gold italic second line, and a home page built from a hero, the league's numbers, the top of the ladder and the round robin's week. Everything on it is real data. Frontend only: no migration. Apply v0.0.8.5 first (this release's README and tests build on it).
+
+- **Home page for visitors:** a hero (headline, one line of pitch, *Join the league* and *View standings*) beside an illustration; a strip of **Players / Matches / Day streak**; **The ladder** (top five) beside **This week's round robin**; a row of what Rally does ("Play more. Climb together.") and the closing line "More play. Less work." On a phone everything stacks, the buttons are full width and the illustration sits under them.
+- **The words follow the sport:** a table sport gets "Every table has a story. Make yours count." and the table illustration; a court sport gets "Track every rally. Own the court." and the court. A visitor with no league remembered gets the site's only league, so the right sport shows; if the site has several leagues and none is picked, or none yet, the pitch shows on its own and the numbers and cards are left out rather than shown empty.
+- **Home page for signed-in players:** the same numbers strip under the greeting and the same ladder card below the season, level and this-week cards, in the new style. Their own season, week and level cards are unchanged.
+- **Real data only.** Players: everyone on the league's ladder. Matches: every finished ladder and round robin match, with "↑ N this week" for the last 7 days (shown only when above zero). Day streak: days in a row, ending today, on which the league played at least one match (still alive if only yesterday had one). Ladder: the top five by rating; **Change** is today's rating minus the last rating recorded before the past 7 days, or minus the starting 1000 for a player with no earlier history. Round robin card: the running season's name, its latest week, how many players have a match that week and how many of its matches are played (byes are not matches); with no season it says so.
+- **The illustration is drawn in code** (a skyline at dusk, a map pin, the court or table, a ball), uses the theme colours and fades into the page. No photos are shipped.
+- **Shared look (every page):** new colour values for the background, cards, lines, text and gold (red and green are unchanged so wins and losses still read the same); slightly rounder corners; the primary button is bolder and the ghost button brightens to gold on hover; headings can carry a gold italic second line; a new small gold-caps card title (`.card-title`); the nav logo is a gold ring with a larger wordmark; pages are up to 1040px wide instead of 900px. The browser theme colour and the installed app's theme colour follow the new navy (an app already installed on a phone may need re-installing to pick up the theme colour).
+- **Not built from the mockups, on purpose:** scheduled sessions ("Sat, Jun 28, 10:00 AM", "8 / 12 spots remaining", a location) and the **Join session** button, because Rally does not store a schedule, spots or places; "vs last 7 days" changes for players and streak (only matches have one); and photographs. Each other page keeps its own layout and gets the new colours and components only.
+- **Changed:** `src/assets/main.css`, `src/components/layout/AppNav.vue`, `src/components/layout/BottomTabBar.vue`, `src/components/home/HomeWelcome.vue` (rewritten), `src/components/home/HomeDashboard.vue`, `src/views/HomeView.vue`, `index.html`, `public/manifest.webmanifest`. **New:** `src/lib/homeStats.ts`, `src/composables/useHomeData.ts`, `src/components/ui/AppIcon.vue`, `src/components/home/HeroArt.vue`, `HomeStatStrip.vue`, `HomeLadderCard.vue`, `HomeSeasonCard.vue`, `HomeFeatures.vue`.
+- **Manual steps:** none beyond deploying the frontend. (v0.0.8.5's migration is still needed for Tournaments.)
+- **Tests:** `tests/js/homestats.test.mjs` (8 checks, expected values worked out by hand: streaks including "alive from yesterday", gaps, month boundaries and invalid dates; the 7-day edge; rating change from the last rating before the window; names and initials; sport wording). The browser suite has a new home section at 375 and 1280 pixels for visitors and players, with expected numbers derived from the fixtures independently of the app code: the headline, eyebrow and illustration per sport; players 6, matches 12 (12 this week), streak 6; the five ladder rows with their changes, both with a hand-worked rating history and with none; the Change heading lining up with its numbers (measured by where the text ends); the round robin week (a bye does not count); an unfinished match not counted; no league gives the pitch alone; ladder beside the week on a wide screen; no sideways scroll. Two older checks changed on purpose: the visitor page now has four feature items instead of three steps and its buttons stack full width on a phone, and the theme colour is the new navy.
+- **Sabotage check:** I broke the new code 7 ways on purpose (a streak that ignores "alive from yesterday", a rating change that ignores history, the Change heading no longer aligned, unfinished matches counted, the visitor's sport not taken from the only league, the wrong illustration for table sports, byes counted in the week) and every one is caught. My first versions of two checks missed their breakage: the alignment check compared cell boxes (which always line up) instead of where the text sits, and no fixture had a bye in the newest week. Both are fixed. Looking at the real page also showed a hard rectangular edge on the illustration, broken row lines in the ladder and a misaligned column heading; all fixed.
+- **Results:** JS 58, database 122, browser 792 checks pass, and the production build is clean.
+- **Not covered:** how it looks on a real phone and in Safari (I checked in headless Chromium at 375, 320 and 1280 pixels), and the other pages' layouts, which only changed colour. Next steps if you want to take the look further: per-page layouts, icons on the bottom tab bar, and photos if you send some.
+
 ## Quick start
 
 ### 1. Supabase setup
@@ -866,7 +884,8 @@ rally/
     ├── lib/
     │   ├── supabase.ts          # supabase client
     │   ├── rating.ts            # TrueSkill-lite engine
-    │   └── bracket.ts           # knockout tournament helpers
+    │   ├── bracket.ts           # knockout tournament helpers
+    │   └── homeStats.ts         # home page numbers (streak, change, wording)
     ├── router/index.ts
     ├── stores/
     │   ├── players.ts
@@ -878,6 +897,7 @@ rally/
     ├── components/
     │   ├── layout/AppNav.vue
     │   ├── bracket/BracketBoard.vue
+    │   ├── home/                # HomeWelcome, HomeDashboard, HeroArt, stat strip, ladder, season, features
     │   ├── ui/
     │   │   ├── TierBadge.vue
     │   │   └── PlayerAvatar.vue

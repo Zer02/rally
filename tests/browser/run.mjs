@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, elo = false, pingpong = false, noleague = false, byeweek = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove, notadmin, bracketerr })
+  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove, notadmin, bracketerr, elo, pingpong, noleague, byeweek })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -239,7 +239,7 @@ try {
   {
     const p = await open('/', { width: 375 })
     ok(await p.evaluate(() => document.querySelector('link[rel="manifest"]')?.getAttribute('href')) === '/manifest.webmanifest', 'the page links the manifest')
-    ok(await p.evaluate(() => document.querySelector('meta[name="theme-color"]')?.getAttribute('content')) === '#0e1117', 'theme colour is set')
+    ok(await p.evaluate(() => document.querySelector('meta[name="theme-color"]')?.getAttribute('content')) === '#070d17', 'theme colour is set (the new navy, v0.0.8.6)')
     const man = await p.evaluate(async () => { const r = await fetch('/manifest.webmanifest'); return { ok: r.ok, json: await r.json() } })
     ok(man.ok && man.json.display === 'standalone' && man.json.icons.length >= 3, 'the manifest is served and says standalone with icons')
     for (const ic of man.json.icons) {
@@ -340,9 +340,9 @@ try {
     const p = await open('/', { width, anon: true })
     ok(await p.locator('.welcome').count() === 1 && await p.locator('[data-test="season-card"]').count() === 0, `${T}: a visitor sees the welcome, not the dashboard`)
     ok(await p.locator('.welcome-cta a', { hasText: 'Join the league' }).count() === 1 && await p.locator('.welcome-cta a', { hasText: 'View standings' }).count() === 1, `${T}: visitor has Join the league and View standings`)
-    ok(await p.locator('.steps li').count() === 3, `${T}: three short steps explain how it works`)
-    const tops = await p.$$eval('.welcome-cta a', els => els.map(e => Math.round(e.getBoundingClientRect().top)))
-    ok(width > 600 ? true : tops[0] === tops[1], `${T}: the two buttons share a row on a phone ${tops}`)
+    ok(await p.locator('.steps li').count() === 4, `${T}: four short items say what Rally does`)
+    const boxes = await p.$$eval('.welcome-cta a', els => els.map(e => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), w: Math.round(r.width) } }))
+    ok(width > 800 ? boxes[0].top === boxes[1].top : (boxes[1].top > boxes[0].top && boxes.every(b => b.w >= width * 0.7)), `${T}: buttons share a row on a wide screen and stack full width on a phone ${JSON.stringify(boxes)}`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
     ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
     await close(p)
@@ -775,6 +775,96 @@ try {
     const del = await lastRpc(p, 'delete_bracket_event')
     ok(del && del.args.p_event_id === 'bk1', `confirming deletes that event (${JSON.stringify(del)})`)
     ok(new URL(p.url()).pathname === '/tournaments', 'and returns to the list')
+    await close(p)
+  }
+
+  // ── 17. Home redesign (v0.0.8.6): hero, league numbers, ladder, round robin week, features ──
+  // Expected numbers are worked out from the fixtures by hand (see fixtures.ts): 6 players; 12 matches finished,
+  // two on each of the last 6 days, so 12 in the last week and a 6-day streak (alive from yesterday);
+  // the newest week has 3 matches, all played, by 4 players.
+  section('home: new look, visitor and player')
+  const norm = t => t.replace(/\s+/g, ' ').trim()
+  for (const width of [375, 1280]) {
+    const T = `visitor @${width}`
+    const p = await open('/', { width, anon: true, elo: true })
+    await p.waitForSelector('[data-test="stat-strip"]', { timeout: 4000 }).catch(() => {})
+    const h1 = norm(await p.locator('h1').innerText())
+    ok(h1 === 'Track every rally. Own the court.', `${T}: tennis headline (${h1})`)
+    ok(/tennis/i.test(await p.locator('.welcome .eyebrow').first().innerText()), `${T}: eyebrow names the sport`)
+    ok(await p.locator('svg.hero-art').getAttribute('aria-label') === 'A tennis court', `${T}: tennis court illustration`)
+    const art = await p.locator('svg.hero-art').boundingBox()
+    ok(art.x >= 0 && art.x + art.width <= width + 1 && art.height > 80, `${T}: the illustration sits inside the screen (${JSON.stringify(art)})`)
+    const stat = id => p.locator(`[data-test="${id}"]`).innerText()
+    ok(await stat('stat-players') === '6' && await stat('stat-matches') === '12' && await stat('stat-streak') === '6', `${T}: players 6, matches 12, day streak 6`)
+    ok(/12 this week/.test(await stat('stat-week')), `${T}: 12 matches this week`)
+    const rows = await p.$$eval('[data-test="ladder-card"] tbody tr', trs => trs.map(tr => [...tr.querySelectorAll('td')].map(td => td.innerText.replace(/\s+/g, ' ').trim())))
+    const flat = rows.map(r => [r[0], r[1].replace(/^[A-Z]{1,2}\s/, ''), r[2], r[3]].join('|'))
+    ok(JSON.stringify(flat) === JSON.stringify(['1|Alexandra R.|1,180|▲ +30', '2|Bartholomew N.|1,120|▲ +120', '3|Cat|1,060|▼ -30', '4|Dmitri V.|1,000|–', '5|Eloise F.|940|–']), `${T}: ladder rows with the change since the last rating before this week (${JSON.stringify(flat)})`)
+    // compare where the TEXT ends, not the cell boxes (cell boxes line up whatever the alignment is)
+    const align = await p.evaluate(() => {
+      const textRight = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().right }
+      const th = textRight(document.querySelector('[data-test="ladder-card"] th.num:last-child'))
+      const td = [...document.querySelectorAll('[data-test="ladder-card"] tbody tr td:last-child')].map(textRight)
+      return { th, td }
+    })
+    ok(align.td.every(r => Math.abs(r - align.th) < 2.5), `${T}: the Change heading lines up with its numbers (${JSON.stringify(align)})`)
+    const season = norm(await p.locator('[data-test="season-summary"]').innerText())
+    ok(/Autumn Season 2026 · Week 2/.test(season) && /4 players this week/.test(season) && /3 of 3 matches played/.test(season), `${T}: round robin week shows real numbers (${season})`)
+    ok(await p.locator('[data-test="season-summary"] a.btn', { hasText: 'Open round robin' }).count() === 1, `${T}: and a button into the round robin`)
+    ok(await p.locator('.steps li').count() === 4 && /More play\. Less work\./.test(await p.locator('.steps').innerText()), `${T}: features row and tagline`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    if (width === 1280) {
+      const pos = await p.evaluate(() => ['[data-test="ladder-card"]', '[data-test="season-summary"]'].map(s => Math.round(document.querySelector(s).getBoundingClientRect().left)))
+      ok(pos[1] > pos[0] + 300, `${T}: ladder and round robin week sit side by side (${pos})`)
+    }
+    await close(p)
+  }
+  {
+    // a bye in the newest week is not a match: the week still reads 3 of 3 played by 4 players
+    const p = await open('/', { width: 1280, anon: true, byeweek: true })
+    await p.waitForSelector('[data-test="season-summary"]', { timeout: 4000 }).catch(() => {})
+    const t = norm(await p.locator('[data-test="season-summary"]').innerText())
+    ok(/3 of 3 matches played/.test(t) && /4 players this week/.test(t), `a bye is not counted as a match or a player (${t})`)
+    await close(p)
+  }
+  {
+    // a match that was never finished (the 'pending' switch adds one) must not count towards the totals
+    const p = await open('/', { width: 1280, anon: true, pending: true })
+    await p.waitForSelector('[data-test="stat-strip"]', { timeout: 4000 }).catch(() => {})
+    ok(await p.locator('[data-test="stat-matches"]').innerText() === '12' && await p.locator('[data-test="stat-streak"]').innerText() === '6', 'an unfinished match is not counted (still 12 matches, 6-day streak)')
+    await close(p)
+  }
+  {
+    // no rating history in the data at all: everyone's change is measured from the starting 1000
+    const p = await open('/', { width: 1280, anon: true })
+    await p.waitForSelector('[data-test="ladder-card"] tbody tr', { timeout: 4000 }).catch(() => {})
+    const ch = await p.$$eval('[data-test="ladder-card"] tbody tr td:last-child', els => els.map(e => e.innerText.replace(/\s+/g, ' ').trim()))
+    ok(JSON.stringify(ch) === JSON.stringify(['▲ +180', '▲ +120', '▲ +60', '–', '▼ -60']), `with no history, change is the rating minus 1000 (${JSON.stringify(ch)})`)
+    await close(p)
+  }
+  {
+    const p = await open('/', { width: 1280, anon: true, pingpong: true })
+    ok(norm(await p.locator('h1').innerText()) === 'Every table has a story. Make yours count.', 'a table sport gets the table headline')
+    ok(/your building\. your league\./i.test(await p.locator('.welcome .eyebrow').first().innerText()), 'and its eyebrow')
+    ok(await p.locator('svg.hero-art').getAttribute('aria-label') === 'A ping pong table', 'and the table illustration')
+    await close(p)
+    const q = await open('/', { width: 375, anon: true, noleague: true })
+    await q.waitForTimeout(500)
+    ok(await q.locator('h1').count() === 1 && await q.locator('.welcome-cta a').count() === 2, 'with no league yet the pitch still shows')
+    ok(await q.locator('[data-test="stat-strip"]').count() === 0 && await q.locator('[data-test="ladder-card"]').count() === 0 && await q.locator('[data-test="season-summary"]').count() === 0, 'and the numbers and cards are left out rather than shown empty')
+    ok(q.errs.length === 0, `no page errors ${q.errs}`)
+    await close(q)
+  }
+  for (const width of [375, 1280]) {
+    const T = `player @${width}`
+    const p = await open('/', { width, elo: true })
+    await p.waitForSelector('[data-test="ladder-card"] tbody tr', { timeout: 4000 }).catch(() => {})
+    ok(await p.locator('[data-test="stat-strip"]').count() === 1 && await p.locator('[data-test="stat-players"]').innerText() === '6', `${T}: the signed-in home shows the league numbers too`)
+    ok(await p.locator('[data-test="ladder-card"] tbody tr').count() === 5, `${T}: and the top of the ladder`)
+    ok(await p.locator('.welcome').count() === 0, `${T}: not the visitor page`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
     await close(p)
   }
 } finally {

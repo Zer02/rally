@@ -3,7 +3,7 @@
      matches, level), visitors see a short welcome (HomeWelcome). Nothing is shown while
      the session is still being worked out, so a signed-in player never sees the visitor page flash by. -->
 <template>
-  <main class="page">
+  <main class="page home">
     <div class="container">
       <HomeDashboard v-if="isAuthed" />
       <HomeWelcome v-else-if="!loading" />

@@ -11,6 +11,8 @@
 
   <JoinLeagueCard />
 
+  <HomeStatStrip v-if="leagueId && homeLoaded" class="home-strip" :players="players" :matches="matches" :matches-week="matchesWeek" :streak="dayStreak" />
+
   <p v-if="leagueStore.membershipKnown && !leagueStore.isMember" class="muted not-member-hint">
     Your season, matches and level will show up here once you've joined.
   </p>
@@ -87,6 +89,8 @@
       </p>
     </RouterLink>
 
+    <HomeLadderCard v-if="homeLoaded" class="ladder-card" :rows="ladder" />
+
     <!-- The two things players do most (the rest is in the tab bar) -->
     <div class="actions">
       <RouterLink to="/challenge" class="btn btn-primary">Challenge someone</RouterLink>
@@ -104,6 +108,9 @@ import { useTournamentsStore } from '@/stores/tournaments'
 import { usePlayersStore } from '@/stores/players'
 import { useLeagueStore } from '@/stores/leagues'
 import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
+import HomeStatStrip from '@/components/home/HomeStatStrip.vue'
+import HomeLadderCard from '@/components/home/HomeLadderCard.vue'
+import { useHomeData } from '@/composables/useHomeData'
 import { levelProgress } from '@/lib/xp'
 import { winStreak, headToHead, headToHeadText } from '@/lib/form'
 import type { Profile, TournamentMatch } from '@/types'
@@ -113,6 +120,9 @@ const { sport, leagueName } = useSport()
 const store = useTournamentsStore()
 const playersStore = usePlayersStore()
 const leagueStore = useLeagueStore()
+
+// The league's numbers and the top of the ladder, the same as a visitor sees on the welcome page.
+const { leagueId, loaded: homeLoaded, players, matches, matchesWeek, streak: dayStreak, ladder } = useHomeData()
 
 const ready = ref(false)
 async function load() {
@@ -196,6 +206,8 @@ const lp = computed(() => levelProgress(me.value?.pass_xp ?? 0, sport.value))  /
 
 <style scoped>
 .hello { padding: 0.5rem 0 1.25rem; }
+.home-strip { margin-bottom: 1.25rem; }
+.card-head h3 { color: var(--ball); font-size: 0.78rem; letter-spacing: 0.12em; }
 .hello h1 { margin-top: 0.5rem; }
 .loading { padding: 1rem 0; }
 .not-member-hint { font-size: 0.9rem; padding: 0.25rem 0 1rem; }
@@ -241,11 +253,12 @@ const lp = computed(() => levelProgress(me.value?.pass_xp ?? 0, sport.value))  /
 
 /* Wide screens: this week's matches get the right-hand column, the rest stacks on the left. */
 @media (min-width: 900px) {
-  .dash { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.25rem; align-items: start; max-width: 920px; }
+  .dash { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.25rem; align-items: start; }
   .dash .block { margin-bottom: 0; }
   .season-card { grid-column: 1; grid-row: 1; }
   .level-card  { grid-column: 1; grid-row: 2; }
   .week-card   { grid-column: 2; grid-row: 1 / span 2; }
+  .ladder-card { grid-column: 1 / -1; grid-row: 3; }
   .actions     { grid-column: 1 / -1; max-width: 26rem; }
 }
 @media (min-width: 700px) and (max-width: 899px) {

@@ -4,29 +4,31 @@
 ===================================================== */
 
 :root {
-  --table:        #0e1117;
-  --table-mid:    #171c25;
-  --table-light:  #1e2531;
-  --line:         #2d3540;
+  /* v0.0.8.6: deep navy surfaces and a warmer gold, from the new home-page mockups.
+     --ace and --net keep their old values: red and green still have to read as loss and win. */
+  --table:        #070d17;
+  --table-mid:    #0c1524;
+  --table-light:  #121d30;
+  --line:         #1d2a3f;
 
-  --ball:         #e8c84a;   /* ping pong ball yellow */
+  --ball:         #f2c94c;   /* gold */
   --ace:          #e05252;   /* loss / alert */
   --net:          #4caf8a;   /* win / success */
-  --sky:          #60a5fa;   /* info */
+  --sky:          #6aa8ff;   /* info */
 
-  --txt-primary:  #e8edf4;
-  --txt-secondary:#8b949e;
-  --txt-muted:    #4a5260;
+  --txt-primary:  #eef2f8;
+  --txt-secondary:#9fb0c6;
+  --txt-muted:    #66768d;
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 16px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
 
   --font-display: 'DM Serif Display', Georgia, serif;
   --font-body:    'Outfit', sans-serif;
   --font-mono:    'DM Mono', monospace;
 
-  --shadow: 0 1px 3px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+  --shadow: 0 1px 3px rgba(0,0,0,0.5), 0 6px 20px rgba(0,0,0,0.28);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,11 +60,12 @@ a { color: inherit; text-decoration: none; }
 }
 
 h1 { font-family: var(--font-display); font-size: clamp(1.8rem,4vw,3rem); line-height: 1.1; letter-spacing: -0.02em; }
+h1 em, h2 em { font-style: italic; color: var(--ball); }
 h2 { font-family: var(--font-display); font-size: clamp(1.3rem,3vw,1.8rem); line-height: 1.2; }
 h3 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--txt-muted); }
 
 /* ── Layout ── */
-.container { max-width: 900px; margin: 0 auto; padding: 0 1.25rem; }
+.container { max-width: 1040px; margin: 0 auto; padding: 0 1.25rem; }
 /* Vertical padding only: TournamentView puts .page and .container on the
    same element, and a padding shorthand here (which comes after .container)
    zeroed .container's side padding, leaving its content flush to the edge. */
@@ -70,6 +73,9 @@ h3 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transfor
 
 /* ── Cards ── */
 .card { background: var(--table-mid); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow); }
+
+/* Small gold caps title for a card ("THE LADDER"), v0.0.8.6 */
+.card-title { font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ball); }
 
 /* ── Buttons ── */
 .btn {
@@ -79,10 +85,10 @@ h3 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transfor
   cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
   white-space: nowrap; text-decoration: none;
 }
-.btn-primary  { background: var(--ball); color: #0e1117; border-color: var(--ball); }
-.btn-primary:hover { background: #f0d260; }
-.btn-ghost    { background: transparent; color: var(--txt-secondary); border-color: var(--line); }
-.btn-ghost:hover  { color: var(--txt-primary); border-color: var(--txt-secondary); }
+.btn-primary  { background: var(--ball); color: var(--table); border-color: var(--ball); font-weight: 600; }
+.btn-primary:hover { background: #f7d767; }
+.btn-ghost    { background: transparent; color: var(--txt-primary); border-color: #2a3a52; }
+.btn-ghost:hover  { color: var(--ball); border-color: var(--ball); }
 .btn-danger   { background: transparent; color: var(--ace); border-color: var(--ace); }
 .btn-danger:hover { background: rgba(224,82,82,0.1); }
 .btn-sm       { padding: 0.35rem 0.75rem; font-size: 0.8rem; }

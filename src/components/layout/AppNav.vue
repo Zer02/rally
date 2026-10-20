@@ -335,7 +335,7 @@ async function handleUpdateLeague() {
 <style scoped>
 .nav {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(14,17,23,0.88);
+  background: rgba(7,13,23,0.9);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
@@ -346,9 +346,9 @@ async function handleUpdateLeague() {
 .nav-brand { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
 .nav-logo {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.45rem;
   color: var(--ball);
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
@@ -356,9 +356,9 @@ async function handleUpdateLeague() {
 .league-switcher { position: relative; }
 .league-icon-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px;
-  font-size: 1.2rem; line-height: 1;
-  background: var(--table-mid); border: 1px solid var(--line);
+  width: 38px; height: 38px;
+  font-size: 1.2rem; line-height: 1; color: var(--ball);
+  background: var(--table); border: 1.5px solid rgba(242,201,76,0.55);
   border-radius: 50%; cursor: pointer;
   transition: border-color 0.15s, transform 0.15s;
 }

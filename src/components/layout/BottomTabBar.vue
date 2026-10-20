@@ -93,7 +93,7 @@ onBeforeUnmount(() => {
 @media (max-width: 700px) {
   .tabbar {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
-    background: rgba(14,17,23,0.94); backdrop-filter: blur(14px);
+    background: rgba(7,13,23,0.94); backdrop-filter: blur(14px);
     border-top: 1px solid var(--line);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
