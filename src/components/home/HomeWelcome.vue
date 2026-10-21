@@ -16,7 +16,7 @@
           <RouterLink to="/leaderboard" class="btn btn-ghost">View standings</RouterLink>
         </div>
       </div>
-      <HeroArt :variant="copy.art" class="hero-img" />
+      <div class="hero-img"><HeroArt :variant="copy.art" /></div>
     </section>
 
     <template v-if="leagueId && loaded">
@@ -58,19 +58,25 @@ const copy = computed(() => heroCopy(shownSport.value))
 </script>
 
 <style scoped>
-.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1rem; align-items: center; padding: 0.5rem 0 1.75rem; }
+.hero { position: relative; isolation: isolate; display: block; margin: 0 calc(50% - 50vw); padding: 0.5rem calc(50vw - 50%) 2.25rem; min-height: 28rem; overflow: hidden; }
+.hero-copy { position: relative; z-index: 1; max-width: 33rem; padding-top: 0.5rem; }
 .hero h1 { margin: 0.5rem 0 1rem; font-size: clamp(2.2rem, 5.2vw, 3.4rem); }
 .hero-sub { font-size: 1.05rem; color: var(--txt-secondary); line-height: 1.65; margin-bottom: 1.6rem; max-width: 30rem; }
 .welcome-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .welcome-cta .btn { font-size: 1rem; padding: 0.75rem 1.5rem; justify-content: center; }
-.hero-img { min-width: 0; }
+/* the scene fills the right of the hero edge to edge and fades into the page on its left and bottom */
+.hero-img { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; width: 66%; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 42%), linear-gradient(to top, transparent 0%, #000 12%);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent 0%, #000 42%), linear-gradient(to top, transparent 0%, #000 12%); mask-composite: intersect; }
 .panels { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1.25rem; margin-top: 1.25rem; align-items: stretch; }
 
 @media (max-width: 800px) {
-  .hero { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; padding-bottom: 1.25rem; }
-  .hero-img { order: 2; max-width: 30rem; margin: 0 auto; }
+  .hero { padding-bottom: 0; min-height: 0; }
+  .hero-copy { max-width: none; }
   .welcome-cta { flex-direction: column; }
   .welcome-cta .btn { width: 100%; }
+  .hero-img { position: relative; width: auto; height: 17rem; margin: 1.25rem calc(50vw - 50%) 0 calc(50vw - 50%) ; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);
+    -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 18%); mask-image: linear-gradient(to top, transparent 0%, #000 18%); }
   .panels { grid-template-columns: minmax(0, 1fr); }
 }
 </style>

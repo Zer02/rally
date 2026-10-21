@@ -2,7 +2,7 @@
 <template>
   <section class="card panel" data-test="ladder-card">
     <header class="panel-head">
-      <h2 class="card-title">The ladder</h2>
+      <h2 class="card-title title-icon"><AppIcon name="trophy" :size="22" />The ladder</h2>
       <RouterLink to="/leaderboard" class="panel-link">View all <AppIcon name="arrow" :size="14" /></RouterLink>
     </header>
     <p class="panel-sub">Live rankings for your league.</p>
@@ -42,7 +42,8 @@ const colour = (rank: number) => COLOURS[(rank - 1) % COLOURS.length]
 
 <style scoped>
 .panel { padding: 1.25rem 1.4rem; min-width: 0; }
-.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.title-icon { display: inline-flex; align-items: center; gap: 0.6rem; }
 .panel-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; color: var(--txt-primary); }
 .panel-link:hover { color: var(--ball); }
 .panel-sub { font-size: 0.85rem; color: var(--txt-secondary); margin: 0.2rem 0 0.9rem; }
