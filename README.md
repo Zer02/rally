@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.6**
+> Current version: **v0.0.8.7**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -838,6 +838,16 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Results:** JS 58, database 122, browser 792 checks pass, and the production build is clean.
 - **Not covered:** how it looks on a real phone and in Safari (I checked in headless Chromium at 375, 320 and 1280 pixels), and the other pages' layouts, which only changed colour. Next steps if you want to take the look further: per-page layouts, icons on the bottom tab bar, and photos if you send some.
 
+### v0.0.8.7 — The home page uses your pictures
+
+> The drawn scene from v0.0.8.6 is replaced by the two pictures you sent (the dusk tennis court and the outdoor ping pong table). Frontend only: no migration. Apply v0.0.8.5 and v0.0.8.6 first, or just unzip this over a repo at v0.0.8.5: it carries every v0.0.8.6 file too.
+
+- **Hero:** the visitor home page now shows your tennis picture for court sports and your ping pong picture for table sports, running to the right edge of the screen and fading into the page on its left so the headline and buttons stay clear. Each picture has its own crop so its subject (the racket and ball, or the paddles and ball) never sits under the text, on a wide screen or a phone. The round robin card shows a strip of the same picture. The pictures were cut out of the image you sent (`Urban_Sports_Courts_at_Dusk.png`) and are in `public/hero/` (`tennis.jpg` 1228×454 and `table.jpg` 1228×417, about 150 KB and 110 KB). Other court sports (pickleball, padel and so on) get the tennis picture.
+- **Removed:** `src/components/home/HeroArt.vue` (the drawn scene). The dusk banner at the foot of the page is still drawn.
+- **Changed:** `src/components/home/HomeWelcome.vue`, `src/components/home/HomeSeasonCard.vue`. **New:** `public/hero/tennis.jpg`, `public/hero/table.jpg`. **Manual steps:** `git rm src/components/home/HeroArt.vue` if the unzip leaves it in your repo, then deploy the frontend. To change a picture later, replace the file in `public/hero/` with one of the same size.
+- **Tests:** the browser suite now checks that each picture loads at its real size and that the right one shows for the sport (the earlier checks on the drawn scene became checks on the picture).
+- **Results:** JS 58, database 122, browser 795 checks pass, and the production build is clean. Looked at in headless Chromium at 375 and 1280 pixels for both sports; not on a real phone or in Safari.
+
 ## Quick start
 
 ### 1. Supabase setup
@@ -898,7 +908,7 @@ rally/
     ├── components/
     │   ├── layout/AppNav.vue
     │   ├── bracket/BracketBoard.vue
-    │   ├── home/                # HomeWelcome, HomeDashboard, HeroArt, stat strip, ladder, season, features
+    │   ├── home/                # HomeWelcome, HomeDashboard, DuskBanner, stat strip, ladder, season, features
     │   ├── ui/
     │   │   ├── TierBadge.vue
     │   │   └── PlayerAvatar.vue

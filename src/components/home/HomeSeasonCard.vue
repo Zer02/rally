@@ -12,16 +12,15 @@
       <li><AppIcon name="list" :size="20" /><span data-test="season-played">{{ season.played }} of {{ season.total }} matches played</span></li>
     </ul>
     <p v-else class="muted empty">No season is running yet. When your league starts one, its week shows up here.</p>
-    <div class="strip"><HeroArt variant="court" decorative /></div>
+    <div class="strip"><img :src="strip" alt="" width="1228" height="454" loading="lazy" decoding="async" /></div>
     <RouterLink to="/tournament" class="btn btn-primary cta">{{ season ? 'Open round robin' : 'See round robin' }}</RouterLink>
   </section>
 </template>
 
 <script setup lang="ts">
 import AppIcon from '@/components/ui/AppIcon.vue'
-import HeroArt from './HeroArt.vue'
 import type { SeasonSummary } from '@/composables/useHomeData'
-defineProps<{ season: SeasonSummary | null }>()
+defineProps<{ season: SeasonSummary | null; strip: string }>()
 </script>
 
 <style scoped>
@@ -36,5 +35,6 @@ defineProps<{ season: SeasonSummary | null }>()
 .empty { font-size: 0.9rem; margin: 0 0 1.25rem; line-height: 1.55; }
 .title-icon { display: inline-flex; align-items: center; gap: 0.6rem; }
 .strip { height: 7.5rem; margin: 0 0 1rem; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--line); margin-top: auto; }
+.strip img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 62%; }
 .cta { margin-top: 0; justify-content: center; padding: 0.8rem 1rem; font-size: 0.95rem; }
 </style>
