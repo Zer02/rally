@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.7**
+> Current version: **v0.0.8.8**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -847,6 +847,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Changed:** `src/components/home/HomeWelcome.vue`, `src/components/home/HomeSeasonCard.vue`. **New:** `public/hero/tennis.jpg`, `public/hero/table.jpg`. **Manual steps:** `git rm src/components/home/HeroArt.vue` if the unzip leaves it in your repo, then deploy the frontend. To change a picture later, replace the file in `public/hero/` with one of the same size.
 - **Tests:** the browser suite now checks that each picture loads at its real size and that the right one shows for the sport (the earlier checks on the drawn scene became checks on the picture).
 - **Results:** JS 58, database 122, browser 795 checks pass, and the production build is clean. Looked at in headless Chromium at 375 and 1280 pixels for both sports; not on a real phone or in Safari.
+
+### v0.0.8.8 — Anyone can look at any league, no account needed
+
+> A visitor who hasn't signed up can now switch between leagues (and so between sports) and look at every board: the ladder, the round robin standings, matches, player pages, tournaments and brackets. Joining a league still needs an account, and the menu now says so instead of failing with "Must be logged in to join a league". Frontend only: no migration.
+
+- **The cause:** the league menu only knew the leagues you have *joined*, and a visitor has joined none, so there was nothing to switch to; the only action it offered, Join, needs an account.
+- **The league menu now:** lists every league with its sport beside the name. Tapping one shows that league's boards (a visitor, or a player looking at a league they haven't joined). A signed-in player also sees a small **Join** button on leagues they are not in, and their own leagues under "Your leagues" with the others under "Other leagues". A visitor sees no Join buttons, and a line under the list: "Anyone can look. Sign in to join a league and play."
+- **A league is always on show:** the first time someone visits with nothing chosen (or the league they had chosen no longer exists), the first league is shown, instead of an empty page. The choice is remembered on that device and survives a reload. A signed-in member still lands in their own league. The home page, its picture and wording, the top-bar icon and the page headings all follow the league that is showing.
+- **Round Robin is open to look at:** `/tournament` no longer sends a visitor to the sign-in screen, so the home page's "Open round robin" button and the Round Robin tab on a phone work for visitors. None of the admin controls (start a season, start a week, finalize, player accounts) show for a visitor, and the database refuses those actions from anyone who isn't a league admin (checked below).
+- **Changed:** `src/stores/leagues.ts`, `src/components/layout/AppNav.vue`, `src/router/index.ts`. The message when a signed-out person tries to join is now "Sign in to join a league".
+- **Manual steps:** none beyond deploying the frontend.
+- **Tests:** `tests/db/visitor.test.mjs` (4 checks): a signed-out visitor reads the same rows as anyone from every table behind the leagues, boards, round robin and brackets; cannot change any of them (a delete and an update on each, plus inserts); is refused all 16 round robin, season, match and bracket actions with nothing changing; and a signed-in player who isn't an admin is refused the same actions. The browser suite has a new section at 375 and 1280 pixels: a visitor with nothing remembered gets the first league and it is remembered; the menu lists every league with its sport, marks the one on show, has no Join buttons and shows the sign-in line, and fits the screen; choosing another league changes the leaderboard heading, the top-bar icon and the saved choice, survives a reload, and the home page then shows that sport's wording and picture; the Round Robin page opens for a visitor with no admin controls (from the address, from the home page button and from the phone tab); and a signed-in player sees "Your leagues" and "Other leagues" with a Join button only on the league they are not in, and can look at it without joining.
+- **Sabotage check:** I broke the database 4 ways (visitors losing read access to players or tournaments, visitors able to update leagues, an admin check removed from `finalize_tournament`) and the app 7 ways (no default league, Join shown to visitors, Round Robin login-only again, the sign-in line removed, the league list hidden from visitors, the sport label dropped, the top-bar icon not following the league). All are caught. Three of those were caught because the browser run crashed on a missing element rather than through a clean failure count.
+- **Found while checking, not changed:** a signed-out visitor can call `sync_quest_progress` (the function that recomputes quest and XP numbers from real matches). It is safe: it only recalculates from existing matches, doing it twice changes nothing, and it cannot be used to forge anything. It was already like that. If you want it tidied, a one-line migration (`revoke execute ... from anon`) would stop visitors calling it.
+- **Results:** JS 58, database 126, browser 846 checks pass, and the production build is clean.
 
 ## Quick start
 

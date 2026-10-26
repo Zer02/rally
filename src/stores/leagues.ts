@@ -1,4 +1,4 @@
-// src/stores/leagues.ts — v0.0.5.6
+// src/stores/leagues.ts — v0.0.8.8
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -30,8 +30,13 @@ export const useLeagueStore = defineStore('leagues', () => {
 
   const currentLeagueId = ref<string | null>(localStorage.getItem(STORAGE_KEY))
 
+  // v0.0.8.8: the league being looked at. A league you belong to wins; otherwise any league that exists
+  // (so a visitor, or a player browsing a league they have not joined, sees that league's name and sport);
+  // otherwise the first league you belong to.
   const currentLeague = computed(() =>
-    myLeagues.value.find(l => l.id === currentLeagueId.value) ?? myLeagues.value[0] ?? null
+    myLeagues.value.find(l => l.id === currentLeagueId.value)
+      ?? allLeagues.value.find(l => l.id === currentLeagueId.value)
+      ?? myLeagues.value[0] ?? null
   )
 
   const isMember = computed(() =>
@@ -110,12 +115,22 @@ export const useLeagueStore = defineStore('leagues', () => {
       .from('leagues')
       .select('*')
       .order('name')
-    if (!err) allLeagues.value = (data ?? []) as League[]
+    if (err) return
+    allLeagues.value = (data ?? []) as League[]
+
+    // v0.0.8.8: anyone can look at any league without an account, so there is always one on show. When nothing
+    // valid is picked (a first visit, or a saved league that no longer exists) and the person has no league of
+    // their own to fall back on, show the first one. Signed-in members are placed in their own league by
+    // fetchMyLeagues, which runs after this and takes over if the choice made here is not theirs.
+    const picked = allLeagues.value.some(l => l.id === currentLeagueId.value)
+    if (!picked && allLeagues.value.length && myLeagues.value.length === 0) {
+      setCurrentLeague(allLeagues.value[0].id)
+    }
   }
 
   async function joinLeague(leagueId: string) {
     const { user } = useAuth()
-    if (!user.value?.id) throw new Error('Must be logged in to join a league')
+    if (!user.value?.id) throw new Error('Sign in to join a league')
 
     const { error: err } = await supabase
       .from('players')

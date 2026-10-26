@@ -62,7 +62,8 @@ const routes = [
     path: "/tournament",
     name: "tournament",
     component: () => import("@/views/TournamentView.vue"),
-    meta: { requiresAuth: true },
+    // v0.0.8.8: readable without an account, like the leaderboard. Every control on the page that changes
+    // anything is behind the admin role, and the database refuses the same changes from anyone else.
   },
 ];
 

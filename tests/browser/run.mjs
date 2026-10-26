@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, elo = false, pingpong = false, noleague = false, byeweek = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, elo = false, pingpong = false, noleague = false, byeweek = false, twoleagues = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove, notadmin, bracketerr, elo, pingpong, noleague, byeweek })
+  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove, notadmin, bracketerr, elo, pingpong, noleague, byeweek, twoleagues })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -871,6 +871,84 @@ try {
     ok(await p.locator('.welcome').count() === 0, `${T}: not the visitor page`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
     ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+
+  // ── 18. Anyone can look at any league (v0.0.8.8): the switcher for visitors, and the Round Robin page ──
+  section('visitors: switch league and sport without an account')
+  const LEAGUE2 = '00000000-0000-0000-0000-0000000000a9'
+  const savedLeague = pg => pg.evaluate(() => localStorage.getItem('rally.currentLeagueId'))
+  const eyebrow = pg => pg.locator('.eyebrow').first().innerText().then(t => t.trim())
+  const openMenu = async pg => { await pg.locator('.league-icon-btn').click(); await pg.waitForSelector('.league-menu', { timeout: 3000 }) }
+  for (const width of [375, 1280]) {
+    const T = `visitor @${width}`
+    const p = await open('/leaderboard', { width, anon: true, twoleagues: true })
+    await p.waitForFunction(() => document.querySelector('.eyebrow')?.textContent.trim().length > 0, null, { timeout: 4000 }).catch(() => {})
+    ok(/riverside tennis club/i.test(await eyebrow(p)), `${T}: with no league remembered, the first league is shown (${await eyebrow(p)})`)
+    ok(await savedLeague(p) === '00000000-0000-0000-0000-0000000000aa', `${T}: and it is remembered`)
+    await openMenu(p)
+    const rows = await p.$$eval('[data-test="league-list"] .league-menu-row', rs => rs.map(r => r.innerText.replace(/\s+/g, ' ').trim()))
+    ok(rows.length === 2 && /Riverside Tennis Club\s+Tennis/i.test(rows[0]) && /Building 2 Ping Pong\s+Ping Pong/i.test(rows[1]), `${T}: every league is listed with its sport (${JSON.stringify(rows)})`)
+    ok(await p.locator('.league-join-btn').count() === 0, `${T}: a visitor sees no Join buttons`)
+    ok(/anyone can look/i.test(await p.locator('[data-test="league-signin-hint"]').innerText()) && await p.locator('[data-test="league-signin-hint"] a[href="/login"]').count() === 1, `${T}: and is told to sign in to join, with a link`)
+    ok(await p.locator('.league-menu-row.active').count() === 1 && /Riverside/.test(await p.locator('.league-menu-row.active').innerText()), `${T}: the league on show is marked`)
+    ok(!/logged in/i.test(await p.locator('.league-menu').innerText()), `${T}: no "must be logged in" message`)
+    const box = await p.locator('.league-menu').boundingBox()
+    ok(box.x >= 0 && box.x + box.width <= width + 1, `${T}: the menu fits the screen (${JSON.stringify(box)})`)
+    await p.locator(`[data-league="${LEAGUE2}"]`).click(); await p.waitForTimeout(300)
+    ok(await p.locator('.league-menu').count() === 0, `${T}: choosing a league closes the menu`)
+    ok(/building 2 ping pong/i.test(await eyebrow(p)), `${T}: the leaderboard now shows the other league (${await eyebrow(p)})`)
+    ok((await p.locator('.league-icon-btn').innerText()).includes('🏓'), `${T}: the icon in the top bar is the chosen league's`)
+    ok(await savedLeague(p) === LEAGUE2, `${T}: the choice is remembered`)
+    await p.reload(); await p.waitForFunction(() => document.querySelector('.eyebrow')?.textContent.trim().length > 0, null, { timeout: 4000 }).catch(() => {})
+    ok(/building 2 ping pong/i.test(await eyebrow(p)), `${T}: and survives a reload (${await eyebrow(p)})`)
+    await p.goto(new URL('/', p.url()).href); await p.waitForSelector('h1', { timeout: 4000 })
+    const h1 = (await p.locator('h1').first().innerText()).replace(/\s+/g, ' ').trim()
+    ok(h1 === 'Every table has a story. Make yours count.', `${T}: the home page follows the sport of the league (${h1})`)
+    ok(await p.locator('img.hero-art').getAttribute('alt') === 'A ping pong table', `${T}: with that sport's picture`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+
+  section('visitors: the Round Robin page is open to look at')
+  for (const width of [375, 1280]) {
+    const T = `round robin as visitor @${width}`
+    const p = await open('/tournament', { width, anon: true })
+    await p.waitForSelector('h1', { timeout: 4000 }).catch(() => {})
+    ok(new URL(p.url()).pathname === '/tournament', `${T}: no redirect to sign in (${p.url()})`)
+    const text = await p.locator('body').innerText()
+    ok(/round robin/i.test(await p.locator('h1').first().innerText()), `${T}: the page shows`)
+    ok(!/start a season|player accounts|finalize|start a week/i.test(text), `${T}: with none of the admin controls`)
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    const p = await open('/', { width: 375, anon: true })
+    await p.waitForSelector('[data-test="season-summary"]', { timeout: 4000 }).catch(() => {})
+    await p.locator('[data-test="season-summary"] a.btn', { hasText: 'Open round robin' }).click(); await p.waitForTimeout(500)
+    ok(new URL(p.url()).pathname === '/tournament', `a visitor can follow "Open round robin" from the home page (${p.url()})`)
+    await p.goto(new URL('/', p.url()).href); await p.waitForSelector('.tabbar', { timeout: 4000 })
+    const tab = p.locator('.tabbar .tab[href="/tournament"]')
+    ok(await tab.count() === 1, 'the Round Robin tab is in the bar for visitors')
+    await tab.click(); await p.waitForTimeout(500)
+    ok(new URL(p.url()).pathname === '/tournament', `and the tab opens the page instead of the sign-in screen (${p.url()})`)
+    await close(p)
+  }
+
+  section('players: the same menu, with Join for leagues not yet joined')
+  {
+    const p = await open('/leaderboard', { width: 1280, twoleagues: true })
+    await p.waitForFunction(() => document.querySelector('.eyebrow')?.textContent.trim().length > 0, null, { timeout: 4000 }).catch(() => {})
+    await openMenu(p)
+    const sections = await p.$$eval('.league-menu-label', ls => ls.map(l => l.textContent.trim()))
+    ok(sections.includes('Your leagues') && sections.includes('Other leagues'), `a player sees "Your leagues" and "Other leagues" (${sections})`)
+    ok(await p.locator('.league-join-btn').count() === 1 && await p.locator('[data-test="league-signin-hint"]').count() === 0, 'one Join button (for the league not joined) and no sign-in hint')
+    ok(await p.locator('.league-menu-row', { hasText: 'Building 2' }).locator('.league-join-btn').count() === 1, 'and it is on the other league')
+    await p.locator(`[data-league="${LEAGUE2}"]`).click(); await p.waitForTimeout(300)
+    ok(/building 2 ping pong/i.test(await eyebrow(p)), `a player can look at a league without joining it (${await eyebrow(p)})`)
+    ok((await p.locator('.league-icon-btn').innerText()).includes('🏓'), 'and the top bar icon follows it')
+    ok(p.errs.length === 0, `no page errors ${p.errs}`)
     await close(p)
   }
 } finally {

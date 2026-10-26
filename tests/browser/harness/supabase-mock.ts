@@ -25,6 +25,8 @@ function builder(table: string) {
   // 'pingpong' = the league plays a table sport; 'noleague' = the site has no leagues yet
   if (table === 'leagues' && flag('pingpong')) rows = rows.map((r: any) => ({ ...r, sport: 'pingpong' }))
   if (table === 'leagues' && flag('noleague')) rows = []
+  // 'twoleagues' = the site has a second league (a ping pong one) to switch to
+  if (table === 'leagues' && flag('twoleagues')) rows = [...rows, { id: '00000000-0000-0000-0000-0000000000a9', name: 'Building 2 Ping Pong', sport: 'pingpong', icon: '🏓', court_count: 1, created_at: new Date().toISOString() }]
   if (table === 'players' && flag('farabove')) rows.push(FARABOVE.pl)
   if (table === 'profiles' && flag('above')) rows.push(ABOVE.pr)
   if (table === 'profiles' && flag('farabove')) rows.push(FARABOVE.pr)

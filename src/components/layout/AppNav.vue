@@ -26,7 +26,7 @@
                   <span class="league-menu-icon">
                     <span v-if="hasCustomIcon(l.icon)">{{ l.icon }}</span>
                     <RacketIcon v-else :size="15" />
-                  </span>{{ l.name }}
+                  </span>{{ l.name }}<span class="league-menu-sport">{{ sportLabel(l.sport) }}</span>
                 </button>
               </div>
 
@@ -52,20 +52,27 @@
                 </form>
               </div>
 
-              <div v-if="leagueStore.joinableLeagues.length" class="league-menu-section">
-                <p class="league-menu-label">Join a league</p>
-                <button
+              <!-- Every other league. Anyone can open one to look at its boards; only a signed-in player can join. -->
+              <div v-if="leagueStore.joinableLeagues.length" class="league-menu-section" data-test="league-list">
+                <p class="league-menu-label">{{ leagueStore.myLeagues.length ? 'Other leagues' : 'Leagues' }}</p>
+                <div
                   v-for="l in leagueStore.joinableLeagues" :key="l.id"
-                  class="league-menu-item"
-                  :disabled="joining === l.id"
-                  @click="handleJoin(l.id)"
+                  class="league-menu-row" :class="{ active: l.id === leagueStore.currentLeagueId }"
                 >
-                  <span class="league-menu-icon">
-                    <span v-if="hasCustomIcon(l.icon)">{{ l.icon }}</span>
-                    <RacketIcon v-else :size="15" />
-                  </span>{{ l.name }}
-                  <span v-if="joining === l.id" class="spinner" style="width:12px;height:12px;border-width:2px;margin-left:auto" />
-                </button>
+                  <button class="league-menu-item" :data-league="l.id" @click="selectLeague(l.id)">
+                    <span class="league-menu-icon">
+                      <span v-if="hasCustomIcon(l.icon)">{{ l.icon }}</span>
+                      <RacketIcon v-else :size="15" />
+                    </span>{{ l.name }}<span class="league-menu-sport">{{ sportLabel(l.sport) }}</span>
+                  </button>
+                  <button v-if="isAuthed" class="league-join-btn" :disabled="joining === l.id" @click="handleJoin(l.id)">
+                    <span v-if="joining === l.id" class="spinner" style="width:11px;height:11px;border-width:2px" />
+                    <span v-else>Join</span>
+                  </button>
+                </div>
+                <p v-if="!isAuthed" class="league-menu-hint" data-test="league-signin-hint">
+                  Anyone can look. <RouterLink to="/login">Sign in</RouterLink> to join a league and play.
+                </p>
               </div>
 
               <div v-if="isAuthed" class="league-menu-section">
@@ -262,6 +269,8 @@ function handleOutsideClick(e: MouseEvent) {
   }
 }
 
+const sportLabel = (sport: string) => getSport(sport).label
+
 function selectLeague(id: string) {
   leagueStore.setCurrentLeague(id)
   leagueMenuOpen.value = false
@@ -354,6 +363,14 @@ async function handleUpdateLeague() {
 
 /* ── League switcher ─────────────────────────────────────────── */
 .league-switcher { position: relative; }
+.league-menu-row { display: flex; align-items: center; gap: 0.25rem; }
+.league-menu-row .league-menu-item { flex: 1; min-width: 0; }
+.league-menu-row.active .league-menu-item { color: var(--ball); }
+.league-menu-sport { margin-left: auto; padding-left: 0.6rem; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--txt-muted); white-space: nowrap; }
+.league-join-btn { flex: 0 0 auto; font: inherit; font-size: 0.72rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--ball); background: transparent; color: var(--ball); cursor: pointer; }
+.league-join-btn:hover:not(:disabled) { background: var(--ball); color: var(--table); }
+.league-menu-hint { font-size: 0.78rem; color: var(--txt-secondary); padding: 0.5rem 0.75rem 0.25rem; line-height: 1.5; }
+.league-menu-hint a { color: var(--ball); }
 .league-icon-btn {
   display: flex; align-items: center; justify-content: center;
   width: 38px; height: 38px;
@@ -366,7 +383,7 @@ async function handleUpdateLeague() {
 
 .league-menu {
   position: absolute; top: calc(100% + 8px); left: 0;
-  width: 240px; max-width: calc(100vw - 2rem);
+  width: 280px; max-width: calc(100vw - 2rem);
   background: var(--table-mid); border: 1px solid var(--line);
   border-radius: var(--radius-md);
   box-shadow: 0 12px 28px rgba(0,0,0,0.45);
