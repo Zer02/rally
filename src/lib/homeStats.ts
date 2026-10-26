@@ -90,19 +90,23 @@ export function initials(name: string): string {
 /** "1842" -> "1,842". */
 export const formatRating = (n: number): string => Math.round(n).toLocaleString('en-US')
 
-/** The hero's eyebrow, headline and one-line pitch for a sport: table sports get the table wording. */
+/**
+ * The hero's eyebrow, headline and one-line pitch for a sport. Table sports get the table wording, which never
+ * mentions a building or neighbors; the court sports keep the original wording.
+ */
 export function heroCopy(sport: Pick<SportInfo, 'surface' | 'label'>): { eyebrow: string; line1: string; line2: string; sub: string; art: 'table' | 'court' } {
+  const known = !!sport.label && sport.label !== 'League'
   if (sport.surface === 'table') {
     return {
-      eyebrow: 'Your building. Your league.',
+      eyebrow: known ? sport.label : 'Your league. Your game.',
       line1: 'Every table has a story.', line2: 'Make yours count.',
-      sub: 'Challenge your neighbors, track your rating, and turn casual games into a living league.',
+      sub: 'Challenge other players, track your rating, and turn casual games into a living league.',
       art: 'table',
     }
   }
   return {
     // a league whose sport is not known yet shows the general line rather than a bare "League"
-    eyebrow: sport.label && sport.label !== 'League' ? sport.label : 'Your building. Your league.',
+    eyebrow: known ? sport.label : 'Your league. Your game.',
     line1: 'Track every rally.', line2: 'Own the court.',
     sub: 'Live ratings for everyone in the building. Challenge neighbors, log scores, climb the leaderboard.',
     art: 'court',

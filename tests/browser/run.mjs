@@ -814,7 +814,7 @@ try {
     const season = norm(await p.locator('[data-test="season-summary"]').innerText())
     ok(/Autumn Season 2026 · Week 2/.test(season) && /4 players this week/.test(season) && /3 of 3 matches played/.test(season), `${T}: round robin week shows real numbers (${season})`)
     ok(await p.locator('[data-test="season-summary"] a.btn', { hasText: 'Open round robin' }).count() === 1, `${T}: and a button into the round robin`)
-    ok(await p.locator('.steps li').count() === 4 && /More play\. Less work\./.test(await p.locator('.steps').innerText()), `${T}: features row and tagline`)
+    ok(await p.locator('.steps li').count() === 4 && /More play\. Less work\./.test(await p.locator('[data-test="dusk"]').innerText()), `${T}: features row, and the tagline in the closing banner`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${T}: no sideways scroll`)
     ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
     if (width === 1280) {
@@ -849,7 +849,10 @@ try {
   {
     const p = await open('/', { width: 1280, anon: true, pingpong: true })
     ok(norm(await p.locator('h1').innerText()) === 'Every table has a story. Make yours count.', 'a table sport gets the table headline')
-    ok(/your building\. your league\./i.test(await p.locator('.welcome .eyebrow').first().innerText()), 'and its eyebrow')
+    ok(/^ping pong$/i.test(await p.locator('.welcome .eyebrow').first().innerText()), 'and its eyebrow names the sport')
+    const tableText = await p.locator('body').innerText()
+    ok(!/building|neighbo/i.test(tableText), `nothing on the table tennis page mentions a building or neighbors (${(tableText.match(/.{0,30}(building|neighbo).{0,30}/i) || [''])[0]})`)
+    ok(/challenge other players, track your rating/i.test(await p.locator('.hero-sub').innerText()) && /^challenge players$/i.test(await p.locator('.steps li h3').first().innerText()), 'with the table wording in the pitch and the first feature')
     ok(await p.locator('img.hero-art').getAttribute('alt') === 'A ping pong table', 'and the table picture')
     await p.waitForFunction(() => { const i = document.querySelector('img.hero-art'); return i && i.complete }, null, { timeout: 5000 }).catch(() => {})
     const tpic = await p.evaluate(() => { const i = document.querySelector('img.hero-art'); return { w: i.naturalWidth, h: i.naturalHeight, src: i.getAttribute('src') } })
@@ -949,6 +952,45 @@ try {
     ok(/building 2 ping pong/i.test(await eyebrow(p)), `a player can look at a league without joining it (${await eyebrow(p)})`)
     ok((await p.locator('.league-icon-btn').innerText()).includes('🏓'), 'and the top bar icon follows it')
     ok(p.errs.length === 0, `no page errors ${p.errs}`)
+    await close(p)
+  }
+
+  // ── 19. The closing banner is tied to the bottom of the page, and court wording is unchanged (v0.0.8.9) ──
+  section('visitor home: the slogan band ends the page, no empty space below it')
+  const bandGap = pg => pg.evaluate(() => {
+    const d = document.querySelector('[data-test="dusk"]').getBoundingClientRect(), pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0
+    const line = document.querySelector('.dusk-line em').getBoundingClientRect()
+    return { gap: Math.round((document.documentElement.scrollHeight - pad) - (d.bottom + scrollY)), h: Math.round(d.height), inside: line.top >= d.top - 0.5 && line.bottom <= d.bottom + 0.5, wide: Math.round(d.width), iw: innerWidth, sw: document.documentElement.scrollWidth }
+  })
+  for (const [width, height] of [[375, 800], [320, 568], [1280, 800], [1280, 1500], [1920, 1200]]) {
+    for (const sportFlags of [{}, { pingpong: true }]) {
+      const T = `band @${width}x${height}${sportFlags.pingpong ? ' table' : ' tennis'}`
+      const p = await open('/', { width, anon: true, elo: true, ...sportFlags })
+      await p.setViewportSize({ width, height }); await p.waitForSelector('[data-test="dusk"]', { timeout: 4000 }); await p.waitForTimeout(400)
+      const g = await bandGap(p)
+      ok(Math.abs(g.gap) <= 1.5, `${T}: the page ends on the banner, no empty space under it (gap ${g.gap}px)`)
+      ok(g.inside, `${T}: the slogan sits inside the banner`)
+      ok(g.sw <= g.iw && g.wide >= g.iw - 1, `${T}: the banner spans the whole width and nothing scrolls sideways (${g.wide} of ${g.iw})`)
+      // the page itself is about 1420px tall at these widths, so only a window taller than that has spare height to fill
+      if (height >= 1500) ok(g.h > 160, `${T}: on a tall screen the banner takes the spare height (${g.h}px) instead of leaving a gap`)
+      ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+      await close(p)
+    }
+  }
+  {
+    // a page with little on it no longer scrolls just because of a minimum height of a whole screen
+    const p = await open('/login', { width: 1280, anon: true })
+    await p.setViewportSize({ width: 1280, height: 900 }); await p.waitForTimeout(500)
+    const fit = await p.evaluate(() => ({ sh: document.documentElement.scrollHeight, ih: innerHeight }))
+    ok(fit.sh <= fit.ih + 1, `the sign-in page does not scroll when it fits (${fit.sh} in ${fit.ih})`)
+    await close(p)
+  }
+  {
+    // the court sports keep the original wording from the mockup
+    const p = await open('/', { width: 1280, anon: true })
+    await p.waitForSelector('.steps li', { timeout: 4000 })
+    ok(/^challenge neighbors$/i.test(await p.locator('.steps li h3').first().innerText()), 'tennis keeps "Challenge neighbors"')
+    ok(/in the building\. challenge neighbors/i.test(await p.locator('.hero-sub').innerText()), 'and its pitch')
     await close(p)
   }
 } finally {

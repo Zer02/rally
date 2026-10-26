@@ -69,7 +69,7 @@ h3 { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transfor
 /* Vertical padding only: TournamentView puts .page and .container on the
    same element, and a padding shorthand here (which comes after .container)
    zeroed .container's side padding, leaving its content flush to the edge. */
-.page      { padding-top: 2rem; padding-bottom: 6rem; min-height: 100vh; }
+.page      { padding-top: 2rem; padding-bottom: 6rem; }   /* v0.0.8.9: no min-height here any more; #app fills the window and main grows to fit */
 
 /* ── Cards ── */
 .card { background: var(--table-mid); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow); }
@@ -220,6 +220,18 @@ select.input { cursor: pointer; }
    card's own overflow:hidden clipping/cutting off the last column(s). */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+/* v0.0.8.9: the app fills the window, so a page can end flush with the bottom of the screen instead of leaving
+   an empty strip under its last element. On a phone the bottom tab bar's room is taken off. */
+#app { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+@media (max-width: 700px) {
+  body.has-tabbar #app { min-height: calc(100vh - 3.5rem - env(safe-area-inset-bottom, 0px)); min-height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom, 0px)); }
+}
+#app > nav { flex: none; }
+/* width: 100% matters: a page whose <main> also carries .container has automatic side margins, and in a column flex
+   layout an item with automatic margins shrinks to its content instead of stretching, which made wide content
+   (the tournament bracket) push the whole page sideways. 100% with the container's max-width keeps it centred. */
+#app > main { flex: 1 0 auto; width: 100%; min-width: 0; }
+
 @media (max-width: 600px) {
   .page { padding-top: 1rem; padding-bottom: 5rem; }
   .page-header { padding-bottom: 1rem; margin-bottom: 1.25rem; }
@@ -250,6 +262,7 @@ select.input { cursor: pointer; }
   .table-stack-match thead, .table-stack-season thead { display: none; }
   .table-stack-match, .table-stack-season { min-width: 0; display: block; }
   .table-stack-match tbody, .table-stack-season tbody { display: block; }
+
   .table-stack-match tr, .table-stack-season tr {
     display: grid; align-items: center; column-gap: 0.75rem; row-gap: 0.15rem;
     padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--line);

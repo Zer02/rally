@@ -3,7 +3,7 @@
      matches, level), visitors see a short welcome (HomeWelcome). Nothing is shown while
      the session is still being worked out, so a signed-in player never sees the visitor page flash by. -->
 <template>
-  <main class="page home">
+  <main class="page home" :class="{ 'home-visitor': !isAuthed }">
     <div class="container">
       <HomeDashboard v-if="isAuthed" />
       <HomeWelcome v-else-if="!loading" />
@@ -18,3 +18,9 @@ import HomeWelcome from '@/components/home/HomeWelcome.vue'
 
 const { isAuthed, loading } = useAuth()
 </script>
+
+<style scoped>
+/* The visitor page runs down to the bottom of the screen: its closing banner takes whatever height is left. */
+.home-visitor { display: flex; flex-direction: column; padding-bottom: 0; }
+.home-visitor > .container { flex: 1; display: flex; flex-direction: column; width: 100%; }
+</style>

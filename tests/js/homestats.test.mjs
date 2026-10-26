@@ -70,8 +70,21 @@ test('names: short form, initials and the thousands separator', () => {
 
 test('hero wording follows the sport: table sports get the table line, a court sport its own, unknown gets the general eyebrow', () => {
   const t = h.heroCopy({ surface: 'table', label: 'Ping Pong' })
-  assert.deepEqual([t.line1, t.line2, t.art, t.eyebrow], ['Every table has a story.', 'Make yours count.', 'table', 'Your building. Your league.'])
+  assert.deepEqual([t.line1, t.line2, t.art, t.eyebrow], ['Every table has a story.', 'Make yours count.', 'table', 'Ping Pong'])
   const c = h.heroCopy({ surface: 'court', label: 'Tennis' })
   assert.deepEqual([c.line1, c.line2, c.art, c.eyebrow], ['Track every rally.', 'Own the court.', 'court', 'Tennis'])
-  assert.equal(h.heroCopy({ surface: 'court', label: 'League' }).eyebrow, 'Your building. Your league.')
+  assert.equal(h.heroCopy({ surface: 'court', label: 'League' }).eyebrow, 'Your league. Your game.')
+  assert.equal(h.heroCopy({ surface: 'table', label: 'League' }).eyebrow, 'Your league. Your game.')
+})
+
+test('table tennis wording never mentions a building or neighbors, and neither does the general fallback', () => {
+  const words = /building|neighbo/i
+  for (const label of ['Ping Pong', 'League']) {
+    const t = h.heroCopy({ surface: 'table', label })
+    for (const [k, v] of Object.entries(t)) assert.doesNotMatch(String(v), words, `table copy, ${label}, ${k}: ${v}`)
+  }
+  assert.doesNotMatch(h.heroCopy({ surface: 'court', label: 'League' }).eyebrow, words, 'unknown-sport eyebrow')
+  assert.equal(h.heroCopy({ surface: 'table', label: 'Ping Pong' }).sub, 'Challenge other players, track your rating, and turn casual games into a living league.')
+  // the court sports keep the original wording from the mockup
+  assert.match(h.heroCopy({ surface: 'court', label: 'Tennis' }).sub, /in the building\. Challenge neighbors/)
 })

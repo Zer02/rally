@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.8**
+> Current version: **v0.0.8.9**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -862,6 +862,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Sabotage check:** I broke the database 4 ways (visitors losing read access to players or tournaments, visitors able to update leagues, an admin check removed from `finalize_tournament`) and the app 7 ways (no default league, Join shown to visitors, Round Robin login-only again, the sign-in line removed, the league list hidden from visitors, the sport label dropped, the top-bar icon not following the league). All are caught. Three of those were caught because the browser run crashed on a missing element rather than through a clean failure count.
 - **Found while checking, not changed:** a signed-out visitor can call `sync_quest_progress` (the function that recomputes quest and XP numbers from real matches). It is safe: it only recalculates from existing matches, doing it twice changes nothing, and it cannot be used to forge anything. It was already like that. If you want it tidied, a one-line migration (`revoke execute ... from anon`) would stop visitors calling it.
 - **Results:** JS 58, database 126, browser 846 checks pass, and the production build is clean.
+
+### v0.0.8.9 — The slogan is tied to the bottom of the page, and table tennis loses building and neighbors
+
+> The closing "More play. Less work." band now ends the visitor home page: no empty strip under it, on a phone, a laptop or a tall monitor. And the table tennis wording no longer mentions a building or neighbors. Frontend only: no migration.
+
+- **The empty space:** it came from a global rule, `.page { min-height: 100vh }`, which made every page a whole window tall *plus* the top bar, so every page scrolled a little and had dead space under its last element. That rule is gone. The app now fills the window instead (`#app` is a full-height column, and the page grows to fit), so a page can end flush with the bottom. On a phone the bottom tab bar's room is taken off, so the band ends directly above the tab bar.
+- **The band:** it takes whatever height the page has left. The scene itself (fence, trees, the slogan) is a fixed 9rem strip pinned to the bottom, and any extra height above it is the page's own navy sky fading into the amber, so a taller window just shows more sky. When the page is taller than the window, the band is simply the last thing on the page with nothing under it.
+- **Table tennis wording:** the eyebrow is now the sport's name ("PING PONG") instead of "Your building. Your league."; the pitch reads "Challenge other players, track your rating, and turn casual games into a living league."; and the first feature reads "Challenge players" instead of "Challenge neighbors". Nothing on the table tennis home page now mentions a building or neighbors. The fallback eyebrow for a league whose sport isn't known yet is "Your league. Your game." for every sport.
+- **Court sports keep the mockup wording:** tennis, pickleball, padel, badminton and squash still say "Live ratings for everyone in the building. Challenge neighbors..." and "Challenge neighbors", because that is the text in your tennis mockup. It is one line each in `src/lib/homeStats.ts` and `src/components/home/HomeFeatures.vue` if you want those neutral too.
+- **A regression this caused, caught and fixed:** making the app a full-height column made the tournament bracket pages scroll sideways on a phone (ten failures in the every-page fit checks). Those pages put both `page` and `container` on one `<main>`, and a container's automatic side margins make a flex item shrink to its content instead of stretching, so the wide bracket stretched the whole page. `#app > main` now has `width: 100%` (still capped by the container's maximum width and centred), which fixes every page built that way. The home-page checks alone could not have shown this; the every-page checks did.
+- **Changed:** `src/assets/main.css`, `src/views/HomeView.vue`, `src/components/home/HomeWelcome.vue`, `src/components/home/HomeFeatures.vue`, `src/components/home/DuskBanner.vue`, `src/lib/homeStats.ts`.
+- **Manual steps:** none beyond deploying the frontend.
+- **Tests:** a JS check that no table tennis wording (or the fallback eyebrow) contains "building" or "neighbo", and that the court wording is unchanged. A new browser section checks, for tennis and table tennis at 375x800, 320x568, 1280x800, 1280x1500 and 1920x1200, that the page ends exactly on the banner (no gap), the slogan sits inside it, it spans the full width with no sideways scroll, and on a tall window it takes the spare height; that a short page (sign-in) no longer scrolls just because of a minimum height; and that the table tennis page text contains neither word while tennis keeps its wording.
+- **Sabotage check:** I broke it 8 ways on purpose (the app not filling the window, the old page minimum height coming back, the band not growing, bottom padding returning under the band, the fill rule applying only on small screens, and three wording regressions) and every one is caught. While building this I made that fifth mistake for real: my first version of the rule landed inside a phone-only media query, so it worked on phones and silently did nothing on a laptop; measuring a tall window caught it. My first banner test also expected a band to grow on a 1200px-tall window, which was wrong (the page is about 1420px tall, so there is no spare height); I corrected the test, not the page.
+- **Results:** JS 59, database 126, browser 893 checks pass, and the production build is clean.
 
 ## Quick start
 

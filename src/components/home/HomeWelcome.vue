@@ -29,7 +29,9 @@
       </div>
     </template>
 
-    <HomeFeatures class="steps" />
+    <HomeFeatures class="steps" :table="copy.art === 'table'" />
+
+    <DuskBanner />
   </div>
 </template>
 
@@ -45,6 +47,7 @@ import HomeStatStrip from './HomeStatStrip.vue'
 import HomeLadderCard from './HomeLadderCard.vue'
 import HomeSeasonCard from './HomeSeasonCard.vue'
 import HomeFeatures from './HomeFeatures.vue'
+import DuskBanner from './DuskBanner.vue'
 
 const { sport } = useSport()
 const { leagueId, loaded, players, matches, matchesWeek, streak, ladder, season } = useHomeData()
@@ -65,6 +68,8 @@ const scene = computed(() => copy.value.art === 'table'
 </script>
 
 <style scoped>
+.welcome { flex: 1; display: flex; flex-direction: column; }
+.welcome > :not(.dusk) { flex: none; }
 .hero { position: relative; isolation: isolate; display: block; margin: 0 calc(50% - 50vw); padding: 0.5rem calc(50vw - 50%) 2.25rem; min-height: 28rem; overflow: hidden; }
 .hero-copy { position: relative; z-index: 1; max-width: 33rem; padding-top: 0.5rem; }
 .hero h1 { margin: 0.5rem 0 1rem; font-size: clamp(2.2rem, 5.2vw, 3.4rem); }
