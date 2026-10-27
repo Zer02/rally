@@ -29,7 +29,7 @@
       </div>
     </template>
 
-    <HomeFeatures class="steps" :table="copy.art === 'table'" />
+    <HomeFeatures class="steps" />
 
     <DuskBanner />
   </div>

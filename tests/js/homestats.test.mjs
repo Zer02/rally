@@ -77,14 +77,11 @@ test('hero wording follows the sport: table sports get the table line, a court s
   assert.equal(h.heroCopy({ surface: 'table', label: 'League' }).eyebrow, 'Your league. Your game.')
 })
 
-test('table tennis wording never mentions a building or neighbors, and neither does the general fallback', () => {
+test('no sport\'s wording mentions a building or neighbors, and the court pitch reads as intended', () => {
   const words = /building|neighbo/i
-  for (const label of ['Ping Pong', 'League']) {
-    const t = h.heroCopy({ surface: 'table', label })
-    for (const [k, v] of Object.entries(t)) assert.doesNotMatch(String(v), words, `table copy, ${label}, ${k}: ${v}`)
+  for (const surface of ['table', 'court']) for (const label of ['Ping Pong', 'Tennis', 'League']) {
+    for (const [k, v] of Object.entries(h.heroCopy({ surface, label }))) assert.doesNotMatch(String(v), words, `${surface} ${label} ${k}: ${v}`)
   }
-  assert.doesNotMatch(h.heroCopy({ surface: 'court', label: 'League' }).eyebrow, words, 'unknown-sport eyebrow')
   assert.equal(h.heroCopy({ surface: 'table', label: 'Ping Pong' }).sub, 'Challenge other players, track your rating, and turn casual games into a living league.')
-  // the court sports keep the original wording from the mockup
-  assert.match(h.heroCopy({ surface: 'court', label: 'Tennis' }).sub, /in the building\. Challenge neighbors/)
+  assert.equal(h.heroCopy({ surface: 'court', label: 'Tennis' }).sub, 'Live ratings for everyone in your league. Challenge other players, log scores, climb the leaderboard.')
 })

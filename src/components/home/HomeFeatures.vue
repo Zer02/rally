@@ -12,16 +12,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import AppIcon, { type IconName } from '@/components/ui/AppIcon.vue'
-const props = defineProps<{ table?: boolean }>()
-// Table tennis wording does not talk about a building or neighbors; the court sports keep the original line.
-const FEATURES = computed<{ icon: IconName; title: string; text: string }[]>(() => [
-  { icon: 'racket', title: props.table ? 'Challenge players' : 'Challenge neighbors', text: 'Pick anyone in your league and set up a match.' },
+const FEATURES: { icon: IconName; title: string; text: string }[] = [
+  { icon: 'racket', title: 'Challenge players', text: 'Pick anyone in your league and set up a match.' },
   { icon: 'chart', title: 'Track your progress', text: 'See ratings, match history and climb the leaderboard.' },
   { icon: 'calendar', title: 'Join round robins', text: 'Weekly and seasonal events for all skill levels.' },
   { icon: 'users', title: 'Build your community', text: 'More courts. More matches. More people.' },
-])
+]
 </script>
 
 <style scoped>

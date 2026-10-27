@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.8.9**
+> Current version: **v0.0.9.0**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -863,7 +863,7 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Found while checking, not changed:** a signed-out visitor can call `sync_quest_progress` (the function that recomputes quest and XP numbers from real matches). It is safe: it only recalculates from existing matches, doing it twice changes nothing, and it cannot be used to forge anything. It was already like that. If you want it tidied, a one-line migration (`revoke execute ... from anon`) would stop visitors calling it.
 - **Results:** JS 58, database 126, browser 846 checks pass, and the production build is clean.
 
-### v0.0.8.9 — The slogan is tied to the bottom of the page, and table tennis loses building and neighbors
+### v0.0.8.9 — The slogan is tied to the bottom of the page, and table tennis loses "building" and "neighbors"
 
 > The closing "More play. Less work." band now ends the visitor home page: no empty strip under it, on a phone, a laptop or a tall monitor. And the table tennis wording no longer mentions a building or neighbors. Frontend only: no migration.
 
@@ -877,6 +877,18 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Tests:** a JS check that no table tennis wording (or the fallback eyebrow) contains "building" or "neighbo", and that the court wording is unchanged. A new browser section checks, for tennis and table tennis at 375x800, 320x568, 1280x800, 1280x1500 and 1920x1200, that the page ends exactly on the banner (no gap), the slogan sits inside it, it spans the full width with no sideways scroll, and on a tall window it takes the spare height; that a short page (sign-in) no longer scrolls just because of a minimum height; and that the table tennis page text contains neither word while tennis keeps its wording.
 - **Sabotage check:** I broke it 8 ways on purpose (the app not filling the window, the old page minimum height coming back, the band not growing, bottom padding returning under the band, the fill rule applying only on small screens, and three wording regressions) and every one is caught. While building this I made that fifth mistake for real: my first version of the rule landed inside a phone-only media query, so it worked on phones and silently did nothing on a laptop; measuring a tall window caught it. My first banner test also expected a band to grow on a 1200px-tall window, which was wrong (the page is about 1420px tall, so there is no spare height); I corrected the test, not the page.
 - **Results:** JS 59, database 126, browser 893 checks pass, and the production build is clean.
+
+### v0.0.9.0 — No more "building" or "neighbors" anywhere on the home page
+
+> The tennis home page said "Live ratings for everyone in the building. Challenge neighbors" and the first feature said "Challenge neighbors". Both are reworded, for every sport. Frontend only: no migration.
+
+- **Pitch:** court sports now read "Live ratings for everyone in your league. Challenge other players, log scores, climb the leaderboard." (table tennis already read "Challenge other players, track your rating, and turn casual games into a living league.").
+- **First feature:** "Challenge players" for every sport (it was "Challenge neighbors" for court sports and, since v0.0.8.9, "Challenge players" for table tennis).
+- **Where else it appeared:** nowhere in the app: a search of every screen and component found these two lines only. (The word also appears in test data, such as a league named "Building 2 Ping Pong" in the test fixtures, which no one sees.)
+- **Changed:** `src/lib/homeStats.ts`, `src/components/home/HomeFeatures.vue` (the table-only switch is gone), `src/components/home/HomeWelcome.vue`.
+- **Manual steps:** none beyond deploying the frontend.
+- **Tests:** a JS check that no sport's wording (table or court, known or unknown league) contains "building" or "neighbo", and that both pitches read exactly as above; the browser suite now checks the tennis home page text for both words and the new first feature and pitch, as it already did for table tennis.
+- **Results:** JS 59, database 126, browser 894 checks pass, and the production build is clean.
 
 ## Quick start
 

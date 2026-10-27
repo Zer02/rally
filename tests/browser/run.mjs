@@ -956,7 +956,7 @@ try {
   }
 
   // ── 19. The closing banner is tied to the bottom of the page, and court wording is unchanged (v0.0.8.9) ──
-  section('visitor home: the slogan band ends the page, no empty space below it')
+  section('visitor home: the slogan band ends the page, no empty space below it; no building or neighbors wording')
   const bandGap = pg => pg.evaluate(() => {
     const d = document.querySelector('[data-test="dusk"]').getBoundingClientRect(), pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0
     const line = document.querySelector('.dusk-line em').getBoundingClientRect()
@@ -986,12 +986,14 @@ try {
     await close(p)
   }
   {
-    // the court sports keep the original wording from the mockup
-    const p = await open('/', { width: 1280, anon: true })
-    await p.waitForSelector('.steps li', { timeout: 4000 })
-    ok(/^challenge neighbors$/i.test(await p.locator('.steps li h3').first().innerText()), 'tennis keeps "Challenge neighbors"')
-    ok(/in the building\. challenge neighbors/i.test(await p.locator('.hero-sub').innerText()), 'and its pitch')
-    await close(p)
+    // tennis reads the same way: no building, no neighbors
+    const p0 = await open('/', { width: 1280, anon: true })
+    await p0.waitForSelector('.steps li', { timeout: 4000 })
+    const tennisText = await p0.locator('body').innerText()
+    ok(!/building|neighbo/i.test(tennisText), `nothing on the tennis home page mentions a building or neighbors (${(tennisText.match(/.{0,30}(building|neighbo).{0,30}/i) || [''])[0]})`)
+    ok(/^challenge players$/i.test(await p0.locator('.steps li h3').first().innerText()), 'the first feature reads "Challenge players"')
+    ok(/live ratings for everyone in your league\. challenge other players/i.test(await p0.locator('.hero-sub').innerText()), 'and the pitch reads "Live ratings for everyone in your league"')
+    await close(p0)
   }
 } finally {
   await browser.close(); await server.close()
