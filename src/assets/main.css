@@ -203,6 +203,15 @@ select.input { cursor: pointer; }
 
 /* ── Page header ── */
 .page-header { padding: 0.5rem 0 1.25rem; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; }
+
+/* v0.0.9.1: a header with a picture behind it (the signed-in home greeting, the profile header). Full width, so it breaks out
+   of the page's centred column and puts the column's padding back inside; its words sit above the picture (see SceneBackdrop). */
+.scene-header { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; justify-content: center;
+  min-height: 12.5rem; margin: 0 calc(50% - 50vw) 1.25rem; padding: 1.25rem calc(50vw - 50%); }
+.page-header.scene-header { padding: 1.25rem calc(50vw - 50%); border-bottom: 0; margin-bottom: 1.25rem; }
+.scene-header > :not(.scene-backdrop) { position: relative; z-index: 1; }
+.scene-header h1, .scene-header .eyebrow, .scene-header .muted { text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7); }
+.scene-header .btn-ghost { background: rgba(7, 13, 23, 0.62); }
 .eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ball); margin-bottom: 0.4rem; }
 
 /* ── Spinner ── */
@@ -235,6 +244,7 @@ select.input { cursor: pointer; }
 @media (max-width: 600px) {
   .page { padding-top: 1rem; padding-bottom: 5rem; }
   .page-header { padding-bottom: 1rem; margin-bottom: 1.25rem; }
+  .scene-header, .page-header.scene-header { min-height: 10rem; }
   .stat-value { font-size: 1.1rem; }
 
   /* auto-fit was leaving 2 orphaned empty grid cells (rendered as a solid

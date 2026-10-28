@@ -228,8 +228,11 @@ try {
   section('home page spacing under the top bar')
   for (const width of [375, 1280]) {
     const p = await open('/', { width })
-    const gap = await p.evaluate(() => Math.round(document.querySelector('.eyebrow').getBoundingClientRect().top - document.querySelector('nav, header').getBoundingClientRect().bottom))
-    ok(gap > 0 && gap <= 48, `@${width}: gap from the top bar to the first heading is ${gap}px (was 96px+)`)
+    // v0.0.9.1: the signed-in greeting sits inside a picture band, so measure to the top of the band (the heading is inside it)
+    const gap = await p.evaluate(() => Math.round((document.querySelector('[data-test="home-scene"]') ?? document.querySelector('.eyebrow')).getBoundingClientRect().top - document.querySelector('nav, header').getBoundingClientRect().bottom))
+    ok(gap > 0 && gap <= 48, `@${width}: gap from the top bar to the first heading (or the picture band it sits in) is ${gap}px (was 96px+)`)
+    const inBand = await p.evaluate(() => { const b = document.querySelector('[data-test="home-scene"]')?.getBoundingClientRect(), g = document.querySelector('[data-test="home-scene"] h1')?.getBoundingClientRect(); return !!b && !!g && g.top >= b.top && g.bottom <= b.bottom })
+    ok(inBand, `@${width}: the greeting sits inside the picture band`)
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `@${width}: no sideways scroll`)
     await close(p)
   }
@@ -994,6 +997,61 @@ try {
     ok(/^challenge players$/i.test(await p0.locator('.steps li h3').first().innerText()), 'the first feature reads "Challenge players"')
     ok(/live ratings for everyone in your league\. challenge other players/i.test(await p0.locator('.hero-sub').innerText()), 'and the pitch reads "Live ratings for everyone in your league"')
     await close(p0)
+  }
+
+  // ── 18. The picture behind the signed-in greeting and the profile header (v0.0.9.1) ──────────────────────
+  // Real picture sizes (read from the JPEG headers by the JS suite): tennis 1228x454, table 1228x417.
+  section('signed-in home and profile: the picture banner, tennis and table, phone and desktop')
+  for (const [name, flags, file, w, h, art] of [['tennis', {}, '/hero/tennis.jpg', 1228, 454, 'court'], ['table', { pingpong: true }, '/hero/table.jpg', 1228, 417, 'table']])
+  for (const width of [375, 1280]) for (const [path, scene] of [['/', 'home-scene'], ['/profile', 'profile-scene']]) {
+    const T = `${name} ${path === '/' ? 'home' : 'profile'} @${width}`
+    const p = await open(path, { width, ...flags })
+    await p.waitForSelector(`[data-test="${scene}"]`, { timeout: 5000 }).catch(() => {})
+    await p.waitForFunction(() => { const i = document.querySelector('.scene-backdrop img'); return i && i.complete && i.naturalWidth > 0 }, null, { timeout: 5000 }).catch(() => {})
+    const bd = await p.evaluate(() => { const b = document.querySelector('.scene-backdrop'), i = b?.querySelector('img'); return b ? { n: document.querySelectorAll('.scene-backdrop').length, aria: b.getAttribute('aria-hidden'), alt: i.getAttribute('alt'), src: i.getAttribute('src'), nw: i.naturalWidth, nh: i.naturalHeight, aw: +i.getAttribute('width'), ah: +i.getAttribute('height'), art: b.dataset.art } : null })
+    ok(bd && bd.n === 1, `${T}: exactly one picture behind the header (${JSON.stringify(bd)})`)
+    ok(bd && bd.src === file && bd.nw === w && bd.nh === h, `${T}: the ${name} picture loads at its real size (${JSON.stringify(bd)})`)
+    ok(bd && bd.aw === bd.nw && bd.ah === bd.nh, `${T}: the size the page declares is the file's real size, so nothing jumps when it loads (${bd?.aw}x${bd?.ah} vs ${bd?.nw}x${bd?.nh})`)
+    ok(bd && bd.art === art, `${T}: the picture follows the league's sport (${bd?.art})`)
+    ok(bd && bd.aria === 'true' && bd.alt === '', `${T}: it is hidden from screen readers (aria-hidden ${bd?.aria}, alt "${bd?.alt}")`)
+    const g = await p.evaluate(sel => { const e = document.querySelector(`[data-test="${sel}"]`).getBoundingClientRect(); return { x: Math.round(e.left), w: Math.round(e.width), h: Math.round(e.height), cw: document.documentElement.clientWidth, sw: document.documentElement.scrollWidth } }, scene)
+    ok(Math.abs(g.x) <= 1 && Math.abs(g.w - g.cw) <= 1, `${T}: the header runs the full width (${JSON.stringify(g)})`)
+    ok(g.h >= (width < 600 ? 160 : 200) - 1, `${T}: the header is tall enough to show the picture (${g.h}px)`)
+    ok(g.sw <= g.cw, `${T}: no sideways scroll`)
+    // the backdrop is click-through, so make it take clicks first; then whatever is at a point proves what is on top there
+    await p.addStyleTag({ content: '.scene-backdrop, .scene-backdrop * { pointer-events: auto !important }' })
+    const top = await p.evaluate(sel => {
+      const root = document.querySelector(`[data-test="${sel}"]`)
+      const centre = el => { const r = document.createRange(); r.selectNodeContents(el); const b = r.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2] }
+      const probe = el => { const [x, y] = centre(el); const hit = document.elementFromPoint(x, y); return !!hit && el.contains(hit) }
+      const out = { h1: probe(root.querySelector('h1')), eyebrow: probe(root.querySelector('.eyebrow')) }
+      out.backdropIsHit = (() => { const b = root.querySelector('.scene-backdrop').getBoundingClientRect(); const hit = document.elementFromPoint(b.right - 4, b.top + 4); return !!hit && hit.closest('.scene-backdrop') !== null })()
+      return out
+    }, scene)
+    ok(top.h1 && top.eyebrow, `${T}: the heading and the line above it sit on top of the picture (${JSON.stringify(top)})`)
+    ok(top.backdropIsHit, `${T}: (check of the check) the picture really is hit at the bright right corner once made clickable`)
+    if (path === '/profile') {
+      const bt = await p.evaluate(() => {
+        const root = document.querySelector('[data-test="profile-scene"]'), nameBottom = root.querySelector('h1').getBoundingClientRect().bottom
+        return [...root.querySelectorAll('button')].map(b => { const r = b.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          return { t: b.innerText.trim(), w: Math.round(r.width), h: Math.round(r.height), inside: r.left >= 0 && r.right <= innerWidth, below: r.top >= nameBottom - 1, hit: !!hit && b.contains(hit) } })
+      })
+      ok(bt.length === 2 && bt.every(b => b.h >= 32 && b.w >= 60 && b.inside && b.hit), `${T}: the profile buttons can be tapped (${JSON.stringify(bt)})`)
+      ok(bt.every(b => b.below), `${T}: the buttons sit under the name (${JSON.stringify(bt)})`)
+      if (width >= 1000) {
+        const aw = await p.evaluate(() => Math.round(document.querySelector('[data-test="profile-actions"]').getBoundingClientRect().width))
+        ok(aw <= 34 * 16 + 1, `${T}: the buttons stay on the dark left of the picture (${aw}px wide)`)
+      }
+    }
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    // a signed-out visitor still gets the original hero (one picture, the hero one) and nothing from the banner
+    const p = await open('/', { width: 1280, anon: true })
+    await p.waitForSelector('img.hero-art', { timeout: 4000 }).catch(() => {})
+    ok(await p.locator('.scene-backdrop').count() === 0 && await p.locator('img.hero-art').count() === 1, 'visitor home: the hero is unchanged and has no banner backdrop')
+    await close(p)
   }
 } finally {
   await browser.close(); await server.close()

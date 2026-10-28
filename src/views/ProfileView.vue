@@ -1,4 +1,4 @@
-<!-- src/views/ProfileView.vue — v0.0.5.8 -->
+<!-- src/views/ProfileView.vue — v0.0.9.1: the header is a picture banner, with the buttons under the name -->
 <template>
   <main class="page">
     <div class="container">
@@ -16,15 +16,16 @@
       </div>
 
       <template v-else>
-        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-          <div style="display:flex;align-items:center;gap:1rem;min-width:0">
+        <div class="page-header scene-header profile-banner" data-test="profile-scene">
+          <SceneBackdrop :art="art" />
+          <div class="profile-id">
             <PlayerAvatar :name="myName" :size="56" />
-            <div style="min-width:0">
+            <div class="profile-name">
               <p class="eyebrow">Your profile</p>
-              <h1 style="font-size:clamp(1.4rem,3vw,2rem)">{{ myName }}</h1>
+              <h1>{{ myName }}</h1>
             </div>
           </div>
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem 0.75rem">
+          <div class="profile-actions" data-test="profile-actions">
             <button v-if="!editingProfile" class="btn btn-ghost" style="font-size:0.85rem" @click="startEditProfile">
               Edit profile
             </button>
@@ -148,6 +149,9 @@ import LevelBadge from '@/components/ui/LevelBadge.vue'
 import PlayerAvatar from '@/components/ui/PlayerAvatar.vue'
 import RatingChart from '@/components/ui/RatingChart.vue'
 import RoundRobinProfile from '@/components/profile/RoundRobinProfile.vue'
+import SceneBackdrop from '@/components/ui/SceneBackdrop.vue'
+import { useSport } from '@/composables/useSport'
+import { heroCopy } from '@/lib/homeStats'
 import ChangePasswordForm from '@/components/auth/ChangePasswordForm.vue'
 import InstallAppCard from '@/components/ui/InstallAppCard.vue'
 import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
@@ -159,6 +163,9 @@ const seasonsStore    = useSeasonsStore()
 const leagueStore     = useLeagueStore()
 const { user, profile, updateProfile } = useAuth()
 const route = useRoute()
+// the picture behind the header follows the league's sport
+const { sport } = useSport()
+const art = computed(() => heroCopy(sport.value).art)
 // Opened straight from the "set a password" bar (?password=1) or the button.
 const changingPassword = ref(route.query.password === '1')
 
@@ -274,3 +281,11 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 </script>
+
+<style scoped>
+.profile-id { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+.profile-name { min-width: 0; }
+.profile-name h1 { font-size: clamp(1.4rem, 3vw, 2rem); }
+/* under the name, and kept to the left where the picture is darkest, so nothing sits on the brightest part */
+.profile-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin-top: 0.9rem; max-width: 34rem; }
+</style>

@@ -85,3 +85,43 @@ test('no sport\'s wording mentions a building or neighbors, and the court pitch 
   assert.equal(h.heroCopy({ surface: 'table', label: 'Ping Pong' }).sub, 'Challenge other players, track your rating, and turn casual games into a living league.')
   assert.equal(h.heroCopy({ surface: 'court', label: 'Tennis' }).sub, 'Live ratings for everyone in your league. Challenge other players, log scores, climb the leaderboard.')
 })
+
+// ── v0.0.9.1: the pictures behind the home page and the profile header ──────────────────────────────────────
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+
+/** A JPEG's real width and height, read from its start-of-frame header (not from anything we declared). */
+function jpegSize(buf) {
+  assert.equal(buf[0], 0xff); assert.equal(buf[1], 0xd8, 'not a JPEG (no start-of-image marker)')
+  let i = 2
+  while (i < buf.length) {
+    assert.equal(buf[i], 0xff, `bad marker at byte ${i}`)
+    const marker = buf[i + 1], len = buf.readUInt16BE(i + 2)
+    // SOF0..SOF15 carry the size, except DHT (c4), JPG (c8) and DAC (cc)
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) }
+    i += 2 + len
+  }
+  throw new Error('no size found in the JPEG')
+}
+const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public')
+
+test('heroScene: the declared picture sizes equal the real files', () => {
+  for (const art of ['court', 'table']) {
+    const sc = h.heroScene(art)
+    assert.equal(sc.art, art)
+    const real = jpegSize(readFileSync(join(PUBLIC, sc.src.replace(/^\//, ''))))
+    assert.deepEqual({ width: sc.width, height: sc.height }, real, `${art}: ${sc.src} is ${real.width}x${real.height} but heroScene says ${sc.width}x${sc.height}`)
+  }
+})
+
+test('heroScene: files and banner crops are written down once and match the design', () => {
+  const c = h.heroScene('court'), t = h.heroScene('table')
+  assert.deepEqual([c.src, c.banner, c.bannerNarrow], ['/hero/tennis.jpg', '100% 78%', '80% 78%'])
+  assert.deepEqual([t.src, t.banner, t.bannerNarrow], ['/hero/table.jpg', '30% 86%', '38% 84%'])
+  // the visitor hero keeps the crops it always had
+  assert.deepEqual([c.wide, c.narrow, c.block], ['100% 50%', '78% 50%', '72%'])
+  assert.deepEqual([t.wide, t.narrow, t.block], ['20% 82%', '40% 50%', '60%'])
+  // every sport's art resolves to one of the two
+  for (const surface of ['court', 'table']) assert.equal(h.heroScene(h.heroCopy({ surface, label: 'X' }).art).art, surface === 'table' ? 'table' : 'court')
+})

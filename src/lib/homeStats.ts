@@ -1,4 +1,4 @@
-// src/lib/homeStats.ts — v0.0.8.6
+// src/lib/homeStats.ts — v0.0.9.1
 //
 // Small pure helpers behind the home page's numbers. They only describe data the app already
 // has (completed matches, rating history, names); nothing here is invented or scheduled.
@@ -111,4 +111,35 @@ export function heroCopy(sport: Pick<SportInfo, 'surface' | 'label'>): { eyebrow
     sub: 'Live ratings for everyone in your league. Challenge other players, log scores, climb the leaderboard.',
     art: 'court',
   }
+}
+
+/** One of the two pictures behind the home page and the profile header, with how to crop it. */
+export interface HeroScene {
+  art: 'table' | 'court'
+  src: string
+  alt: string
+  /** the picture file's real size in pixels (a test reads the JPEG headers and checks these) */
+  width: number
+  height: number
+  /** the visitor hero: which part to keep (object-position) on a wide screen and on a phone, and how wide the block is */
+  wide: string
+  narrow: string
+  block: string
+  /** the narrow banner behind a signed-in greeting and the profile header: which part to keep on a wide screen and on a phone */
+  banner: string
+  bannerNarrow: string
+}
+
+const SCENES: Record<'table' | 'court', HeroScene> = {
+  // the dusk tennis court: the racket and skyline are on the right
+  court: { art: 'court', src: '/hero/tennis.jpg', alt: 'A tennis court', width: 1228, height: 454,
+    wide: '100% 50%', narrow: '78% 50%', block: '72%', banner: '100% 78%', bannerNarrow: '80% 78%' },
+  // the outdoor ping pong table: the paddles and ball are on the left
+  table: { art: 'table', src: '/hero/table.jpg', alt: 'A ping pong table', width: 1228, height: 417,
+    wide: '20% 82%', narrow: '40% 50%', block: '60%', banner: '30% 86%', bannerNarrow: '38% 84%' },
+}
+
+/** The picture (file, size and crops) for a sport's art, as `heroCopy` names it. The one place these are written down. */
+export function heroScene(art: 'table' | 'court'): HeroScene {
+  return art === 'table' ? SCENES.table : SCENES.court
 }

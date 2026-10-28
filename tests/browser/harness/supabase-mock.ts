@@ -24,6 +24,8 @@ function builder(table: string) {
     winner_id: null, status: 'bye', reported_by: null, completed_at: null, created_at: new Date().toISOString(), player_a: null, player_b: null, player_a2: null, player_b2: null })
   // 'pingpong' = the league plays a table sport; 'noleague' = the site has no leagues yet
   if (table === 'leagues' && flag('pingpong')) rows = rows.map((r: any) => ({ ...r, sport: 'pingpong' }))
+  // a signed-in player's record carries its league too, and that is where the signed-in home and profile read the sport
+  if (table === 'players' && flag('pingpong')) rows = rows.map((r: any) => ({ ...r, league: r.league ? { ...r.league, sport: 'pingpong' } : r.league }))
   if (table === 'leagues' && flag('noleague')) rows = []
   // 'twoleagues' = the site has a second league (a ping pong one) to switch to
   if (table === 'leagues' && flag('twoleagues')) rows = [...rows, { id: '00000000-0000-0000-0000-0000000000a9', name: 'Building 2 Ping Pong', sport: 'pingpong', icon: '🏓', court_count: 1, created_at: new Date().toISOString() }]

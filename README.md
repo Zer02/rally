@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.9.0**
+> Current version: **v0.0.9.1**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -889,6 +889,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Manual steps:** none beyond deploying the frontend.
 - **Tests:** a JS check that no sport's wording (table or court, known or unknown league) contains "building" or "neighbo", and that both pitches read exactly as above; the browser suite now checks the tennis home page text for both words and the new first feature and pitch, as it already did for table tennis.
 - **Results:** JS 59, database 126, browser 894 checks pass, and the production build is clean.
+
+### v0.0.9.1 — The home picture now sits behind your greeting and your profile header
+
+> The dusk tennis court (or the outdoor ping pong table) that a visitor sees on the home page now also runs behind the "Hi, name" greeting when you are signed in, and behind your profile header. The picture follows the league's sport. Frontend only: no migration.
+
+- **Home (signed in):** the greeting is now a full-width picture banner, with the league name and "Hi, name" over the darker left side. Its old width limit on mid-size screens is gone, so the banner runs edge to edge.
+- **Profile:** the header is the same banner. The buttons (Edit profile, Change password) and the level, tier and XP badges moved *under* the name and stay in the left half, so nothing sits over the brightest part of the picture. On a phone the dark fade reaches further across so the buttons stay readable.
+- **How it is built:** a small `SceneBackdrop` component (the picture, hidden from screen readers, never takes a tap) and one shared `.scene-header` style in `main.css` (full width, 12.5rem tall, 10rem on a phone, a soft shadow under the header text). A dark fade covers the left and clears to the right, and a second fade at the bottom blends the picture into the page.
+- **One place for the pictures:** the files, their pixel sizes and their crops are now in one function, `heroScene(art)` in `src/lib/homeStats.ts`, and the visitor home reads from it too (its look is unchanged). Banner crops: court `100% 78%` (phone `80% 78%`), table `30% 86%` (phone `38% 84%`).
+- **Changed:** `src/lib/homeStats.ts`, `src/components/home/HomeDashboard.vue`, `src/components/home/HomeWelcome.vue`, `src/views/ProfileView.vue`, `src/assets/main.css`. **New:** `src/components/ui/SceneBackdrop.vue`.
+- **Manual steps:** none beyond deploying the frontend. (The two pictures in `public/hero/` must be in git and deployed, as since v0.0.8.7; open `/hero/tennis.jpg` on the live site to check.)
+- **Tests:** a JS check reads the real width and height from each JPEG's header and compares them with what `heroScene` declares, plus the crops. A new browser section covers home and profile, tennis and table, at 375 and 1280: the picture loads at its real size and the page declares that size, it follows the league's sport, it is hidden from screen readers, the header is full width and tall enough, the heading sits on top of the picture (the click-through picture is made clickable first, and the check also confirms the picture really is hit at its bright corner), the profile buttons are tappable on a phone and sit under the name, and there are no page errors. The old "home page spacing under the top bar" check now measures to the top of the picture band when there is one (the greeting is inside it). The test mock's `pingpong` switch now also applies to the league inside each signed-in player's record, which is where the signed-in pages read the sport.
+- **Sabotage check:** I broke it 8 ways on purpose (the picture not hidden from screen readers, the picture stacked above the heading, a wrong declared picture size, a header that is not full width, the minimum height only applying on a phone, the profile buttons moved back over the picture, the picture ignoring the sport, and the test mock not switching the signed-in league) and every one fails a check. The wrong declared size is caught by both the JS and the browser suite.
+- **Looked at, not just tested:** I opened the real home and profile pages in tennis and table tennis at 375 and 1280 pixels and looked at them. The long name "Alexandra Rivera-Montgomery" wraps cleanly on a phone.
+- **Results:** JS 61, database 126 (0 skipped), browser 995 checks pass, and the production build is clean.
 
 ## Quick start
 

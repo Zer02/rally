@@ -1,10 +1,11 @@
 <!--
-  HomeDashboard — v0.0.7.6. A signed-in player's day on one screen: where they stand in the
+  HomeDashboard — v0.0.7.6 (greeting is a picture banner since v0.0.9.1). A signed-in player's day on one screen: where they stand in the
   season, their matches this week, their level, and the two things they do most.
   Everything here is read from stores the other pages already use; nothing new on the server.
 -->
 <template>
-  <section class="hello">
+  <section class="hello scene-header" data-test="home-scene">
+    <SceneBackdrop :art="art" />
     <p class="eyebrow">{{ leagueName }}</p>
     <h1>Hi, {{ firstName }}</h1>
   </section>
@@ -110,13 +111,17 @@ import { useLeagueStore } from '@/stores/leagues'
 import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
 import HomeStatStrip from '@/components/home/HomeStatStrip.vue'
 import HomeLadderCard from '@/components/home/HomeLadderCard.vue'
+import SceneBackdrop from '@/components/ui/SceneBackdrop.vue'
 import { useHomeData } from '@/composables/useHomeData'
+import { heroCopy } from '@/lib/homeStats'
 import { levelProgress } from '@/lib/xp'
 import { winStreak, headToHead, headToHeadText } from '@/lib/form'
 import type { Profile, TournamentMatch } from '@/types'
 
 const { user, profile } = useAuth()
 const { sport, leagueName } = useSport()
+// the picture behind the greeting follows the league's sport: the court for court sports, the table for table sports
+const art = computed(() => heroCopy(sport.value).art)
 const store = useTournamentsStore()
 const playersStore = usePlayersStore()
 const leagueStore = useLeagueStore()
@@ -205,7 +210,7 @@ const lp = computed(() => levelProgress(me.value?.pass_xp ?? 0, sport.value))  /
 </script>
 
 <style scoped>
-.hello { padding: 0.5rem 0 1.25rem; }
+.hello { margin-bottom: 1.25rem; }   /* the banner itself is .scene-header (main.css); no width limit, it runs edge to edge */
 .home-strip { margin-bottom: 1.25rem; }
 .card-head h3 { color: var(--ball); font-size: 0.78rem; letter-spacing: 0.12em; }
 .hello h1 { margin-top: 0.5rem; }
@@ -262,6 +267,6 @@ const lp = computed(() => levelProgress(me.value?.pass_xp ?? 0, sport.value))  /
   .actions     { grid-column: 1 / -1; max-width: 26rem; }
 }
 @media (min-width: 700px) and (max-width: 899px) {
-  .hello, .dash { max-width: 620px; }
+  .dash { max-width: 620px; }
 }
 </style>

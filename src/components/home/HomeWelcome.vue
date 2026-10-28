@@ -1,5 +1,5 @@
 <!--
-  HomeWelcome — v0.0.8.6. What a visitor (not signed in) sees, in the style of the new mockups: a hero with the
+  HomeWelcome — v0.0.8.6 (picture from heroScene since v0.0.9.1). What a visitor (not signed in) sees, in the style of the new mockups: a hero with the
   pitch, two buttons and an illustration; the league's numbers; the top of the ladder beside the round robin's
   week; and a row of what Rally does. Numbers come from tables anyone can read, so a visitor sees the same as a
   member. When no league is known yet, the numbers and cards are left out and the pitch stands on its own.
@@ -17,7 +17,7 @@
         </div>
       </div>
       <div class="hero-img" :style="{ '--pos-wide': scene.wide, '--pos-narrow': scene.narrow, '--block': scene.block }">
-        <img class="hero-art" :src="scene.src" :alt="scene.alt" :width="1228" :height="scene.height" fetchpriority="high" decoding="async" />
+        <img class="hero-art" :src="scene.src" :alt="scene.alt" :width="scene.width" :height="scene.height" fetchpriority="high" decoding="async" />
       </div>
     </section>
 
@@ -41,7 +41,7 @@ import { useSport } from '@/composables/useSport'
 import { useLeagueStore } from '@/stores/leagues'
 import { getSport } from '@/lib/sports'
 import { useHomeData } from '@/composables/useHomeData'
-import { heroCopy } from '@/lib/homeStats'
+import { heroCopy, heroScene } from '@/lib/homeStats'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import HomeStatStrip from './HomeStatStrip.vue'
 import HomeLadderCard from './HomeLadderCard.vue'
@@ -60,11 +60,8 @@ const shownSport = computed(() => {
 })
 const copy = computed(() => heroCopy(shownSport.value))
 // The hero picture: a dusk tennis court for court sports, an outdoor ping pong table for table sports.
-const scene = computed(() => copy.value.art === 'table'
-  // `wide` and `narrow` say which part of the picture to keep when it is cropped (the paddles and ball for the table,
-  // the racket and skyline for the court), on a wide screen and on a phone
-  ? { src: '/hero/table.jpg', alt: 'A ping pong table', height: 417, wide: '20% 82%', block: '60%', narrow: '40% 50%' }
-  : { src: '/hero/tennis.jpg', alt: 'A tennis court', height: 454, wide: '100% 50%', block: '72%', narrow: '78% 50%' })
+// The files, their sizes and their crops live in heroScene, which the signed-in home and the profile header share.
+const scene = computed(() => heroScene(copy.value.art))
 </script>
 
 <style scoped>
