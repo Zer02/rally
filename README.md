@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.9.1**
+> Current version: **v0.0.9.2**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -904,6 +904,21 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Sabotage check:** I broke it 8 ways on purpose (the picture not hidden from screen readers, the picture stacked above the heading, a wrong declared picture size, a header that is not full width, the minimum height only applying on a phone, the profile buttons moved back over the picture, the picture ignoring the sport, and the test mock not switching the signed-in league) and every one fails a check. The wrong declared size is caught by both the JS and the browser suite.
 - **Looked at, not just tested:** I opened the real home and profile pages in tennis and table tennis at 375 and 1280 pixels and looked at them. The long name "Alexandra Rivera-Montgomery" wraps cleanly on a phone.
 - **Results:** JS 61, database 126 (0 skipped), browser 995 checks pass, and the production build is clean.
+
+### v0.0.9.2 — Round robin standings under the ladder on a tennis league's home page
+
+> On the home page of a **tennis** league, a new "Round robin standings" card now sits directly under the ladder, for visitors and signed-in players alike. The ladder itself is unchanged. Table tennis (and every other sport) keeps the ladder alone. Frontend only: no migration.
+
+- **The card:** the top five of the current season, ranked the way the Leaderboard page ranks them (round robin points, then wins, then total games won), with each player's points and win–loss record. "View all" goes to the Leaderboard. The line under the title names the season. When nobody is enrolled yet it says "Standings appear once the first week of the season starts" instead of showing an empty table.
+- **Where it sits:** visitors see it under the ladder in the left column (the round robin week card stays on the right). Signed-in players see it full width right under the full-width ladder, above the two buttons. On a phone everything stacks: ladder, then standings, then the week card.
+- **Tennis only:** the check is the league's sport being tennis (`showsRoundRobinBoard` in `src/lib/homeStats.ts`). Pickleball, padel, squash, badminton and table tennis do not get the card. To include more sports it is a one-line change there.
+- **Data:** `useHomeData` also reads the current season's participants (one extra query, only when a season is running), asks for that season only and guards against any other season's rows. Ranking is the pure function `roundRobinTop` in `homeStats.ts`.
+- **Changed:** `src/lib/homeStats.ts`, `src/composables/useHomeData.ts`, `src/components/home/HomeWelcome.vue`, `src/components/home/HomeDashboard.vue`. **New:** `src/components/home/HomeRoundRobinCard.vue`.
+- **Manual steps:** none beyond deploying the frontend. This zip also contains everything from v0.0.9.1, so applying it alone over v0.0.9.0 is enough (applying 9.1 first and then this is fine too).
+- **Tests:** JS: `roundRobinTop` with out-of-order input, ties on points, wins and games won, null values, the limit, and that the input is not reordered; `showsRoundRobinBoard` for tennis and the other sports. Browser: tennis visitor and signed-in player at 375 and 1280, checking the five rows in order (names, points and records, worked out by hand from the fixture, and different from the ladder's ratings so they can only come from the season), the title and season line, the columns, the link, that the ladder is unchanged, that the card sits under the ladder in the same column and width, no sideways scroll and no page errors; table tennis shows the ladder alone; and an empty season shows the short message. The mock got a `norr` switch for an empty season. One old check changed: "on a tall screen the banner takes the spare height" assumed a page about 1420px tall, and the tennis visitor page is now taller, so it is checked in a 2600px window (the other banner checks still run at every size).
+- **Sabotage check:** I broke it 8 ways on purpose (shown for table tennis too, the card above the ladder, the ladder replaced instead of kept, standings read from the ladder ratings, sorted by wins only, the games-won tie-break dropped, another season's rows not guarded, and an empty season showing an empty table) and every one fails a check.
+- **Looked at, not just tested:** I opened the real tennis home as a visitor and as a signed-in player at 375 and 1280 pixels and looked at it.
+- **Results:** JS 63, database 126 (0 skipped), browser 1051 checks pass, and the production build is clean.
 
 ## Quick start
 

@@ -1,4 +1,4 @@
-// src/lib/homeStats.ts — v0.0.9.1
+// src/lib/homeStats.ts — v0.0.9.2
 //
 // Small pure helpers behind the home page's numbers. They only describe data the app already
 // has (completed matches, rating history, names); nothing here is invented or scheduled.
@@ -142,4 +142,40 @@ const SCENES: Record<'table' | 'court', HeroScene> = {
 /** The picture (file, size and crops) for a sport's art, as `heroCopy` names it. The one place these are written down. */
 export function heroScene(art: 'table' | 'court'): HeroScene {
   return art === 'table' ? SCENES.table : SCENES.court
+}
+
+// ── v0.0.9.2: the round robin standings under the ladder on a tennis league's home page ──────────────────────
+
+/** A season's participant row as the home page reads it. */
+export interface RoundRobinInput {
+  profile_id: string
+  rr_points?: number | null
+  wins?: number | null
+  losses?: number | null
+  points_for?: number | null
+  profile?: { display_name?: string | null; username?: string | null } | null
+}
+
+export interface RoundRobinRow { rank: number; profile_id: string; name: string; points: number; wins: number; losses: number }
+
+/**
+ * The top of the round robin standings, in the order the Leaderboard page uses: round robin points, then wins, then total
+ * games won (points_for). Ranks are 1, 2, 3... in that order, like the Leaderboard (tied players are not given a shared rank).
+ */
+export function roundRobinTop(rows: RoundRobinInput[], limit = 5): RoundRobinRow[] {
+  const n = (v: number | null | undefined) => v ?? 0
+  return [...rows]
+    .sort((a, b) => n(b.rr_points) - n(a.rr_points) || n(b.wins) - n(a.wins) || n(b.points_for) - n(a.points_for))
+    .slice(0, limit)
+    .map((r, i) => ({
+      rank: i + 1,
+      profile_id: r.profile_id,
+      name: r.profile?.display_name || r.profile?.username || 'Player',
+      points: n(r.rr_points), wins: n(r.wins), losses: n(r.losses),
+    }))
+}
+
+/** Only a tennis league shows the round robin standings on the home page; table tennis (and the rest) keep the ladder alone. */
+export function showsRoundRobinBoard(sportKey: string | null | undefined): boolean {
+  return sportKey === 'tennis'
 }

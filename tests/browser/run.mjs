@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, elo = false, pingpong = false, noleague = false, byeweek = false, twoleagues = false, ua, standalone = false } = {}) {
+async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, elo = false, pingpong = false, norr = false, noleague = false, byeweek = false, twoleagues = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -42,7 +42,7 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
     for (const [k, v] of Object.entries(f)) v ? localStorage.setItem(k, '1') : localStorage.removeItem(k)
-  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove, notadmin, bracketerr, elo, pingpong, noleague, byeweek, twoleagues })
+  }, { anon, noladder, pending, streak, nonmember, ghost, crowd, above, farabove, notadmin, bracketerr, elo, pingpong, norr, noleague, byeweek, twoleagues })
   const p = await ctx.newPage(); p.errs = []
   p.on('pageerror', e => p.errs.push(e.message))
   await p.goto(BASE + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500)
@@ -965,7 +965,7 @@ try {
     const line = document.querySelector('.dusk-line em').getBoundingClientRect()
     return { gap: Math.round((document.documentElement.scrollHeight - pad) - (d.bottom + scrollY)), h: Math.round(d.height), inside: line.top >= d.top - 0.5 && line.bottom <= d.bottom + 0.5, wide: Math.round(d.width), iw: innerWidth, sw: document.documentElement.scrollWidth }
   })
-  for (const [width, height] of [[375, 800], [320, 568], [1280, 800], [1280, 1500], [1920, 1200]]) {
+  for (const [width, height] of [[375, 800], [320, 568], [1280, 800], [1280, 1500], [1280, 2600], [1920, 1200]]) {
     for (const sportFlags of [{}, { pingpong: true }]) {
       const T = `band @${width}x${height}${sportFlags.pingpong ? ' table' : ' tennis'}`
       const p = await open('/', { width, anon: true, elo: true, ...sportFlags })
@@ -974,8 +974,9 @@ try {
       ok(Math.abs(g.gap) <= 1.5, `${T}: the page ends on the banner, no empty space under it (gap ${g.gap}px)`)
       ok(g.inside, `${T}: the slogan sits inside the banner`)
       ok(g.sw <= g.iw && g.wide >= g.iw - 1, `${T}: the banner spans the whole width and nothing scrolls sideways (${g.wide} of ${g.iw})`)
-      // the page itself is about 1420px tall at these widths, so only a window taller than that has spare height to fill
-      if (height >= 1500) ok(g.h > 160, `${T}: on a tall screen the banner takes the spare height (${g.h}px) instead of leaving a gap`)
+      // the page is about 1420px tall at these widths for table tennis and about 1900px for tennis (v0.0.9.2: the round robin card under the ladder),
+      // so only a window taller than that has spare height to fill
+      if (height >= 2600) ok(g.h > 160, `${T}: on a tall screen the banner takes the spare height (${g.h}px) instead of leaving a gap`)
       ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
       await close(p)
     }
@@ -1051,6 +1052,55 @@ try {
     const p = await open('/', { width: 1280, anon: true })
     await p.waitForSelector('img.hero-art', { timeout: 4000 }).catch(() => {})
     ok(await p.locator('.scene-backdrop').count() === 0 && await p.locator('img.hero-art').count() === 1, 'visitor home: the hero is unchanged and has no banner backdrop')
+    await close(p)
+  }
+
+  // ── 19. The round robin standings under the ladder, tennis only (v0.0.9.2) ─────────────────────────────────
+  // Fixture, by hand: rr_points 22, 19, 16, 13, 10, 7 and wins/losses 5-0, 4-1, 3-2, 2-3, 1-4, 0-5 for Alexandra R., Bartholomew N.,
+  // Cat, Dmitri V., Eloise F., Finn. The card shows the top five. (Ratings are 1180 down to 940, so these numbers can only come from the season.)
+  section('home: round robin standings under the ladder for tennis, not for table tennis')
+  const WANT = [['1', 'Alexandra R.', '22', '5–0'], ['2', 'Bartholomew N.', '19', '4–1'], ['3', 'Cat', '16', '3–2'], ['4', 'Dmitri V.', '13', '2–3'], ['5', 'Eloise F.', '10', '1–4']]
+  for (const who of ['player', 'visitor']) for (const width of [375, 1280]) {
+    const T = `tennis ${who} home @${width}`
+    const p = await open('/', { width, ...(who === 'visitor' ? { anon: true } : {}) })
+    await p.waitForSelector('[data-test="rr-card"] tbody tr', { timeout: 5000 }).catch(() => {})
+    const rr = await p.evaluate(() => {
+      const c = document.querySelector('[data-test="rr-card"]'), l = document.querySelector('[data-test="ladder-card"]')
+      if (!c || !l) return null
+      const rect = e => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), w: Math.round(r.width) } }
+      const t = e => e.innerText.replace(/\s+/g, ' ').trim(), raw = e => e.textContent.replace(/\s+/g, ' ').trim()   // raw: as written, before CSS upper-cases it
+      return { rows: [...c.querySelectorAll('tbody tr')].map(tr => [t(tr.querySelector('.rank')), t(tr.querySelector('.nm')), t(tr.querySelector('[data-test="rr-points"]')), t(tr.querySelector('.rec'))]),
+        title: raw(c.querySelector('h2')), sub: raw(c.querySelector('.panel-sub')), heads: [...c.querySelectorAll('th')].map(raw), link: c.querySelector('a.panel-link')?.getAttribute('href'),
+        cr: rect(c), lr: rect(l), ladderRows: l.querySelectorAll('tbody tr').length, ladderHeads: [...l.querySelectorAll('th')].map(raw),
+        sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }
+    })
+    ok(!!rr, `${T}: both the ladder card and the round robin card are on the page`)
+    if (rr) {
+      ok(JSON.stringify(rr.rows) === JSON.stringify(WANT), `${T}: the top five of the standings, in order (${JSON.stringify(rr.rows)})`)
+      ok(rr.title === 'Round robin standings' && rr.sub.startsWith('Autumn Season 2026'), `${T}: title and season (${rr.title} / ${rr.sub})`)
+      ok(JSON.stringify(rr.heads) === JSON.stringify(['#', 'Player', 'Points', 'W–L']), `${T}: columns (${rr.heads})`)
+      ok(rr.link === '/leaderboard', `${T}: View all goes to the Leaderboard (${rr.link})`)
+      ok(rr.ladderRows === 5 && rr.ladderHeads.join('|') === '#|Player|Rating|Change', `${T}: the ladder is unchanged (${rr.ladderRows} rows, ${rr.ladderHeads})`)
+      ok(rr.cr.top >= rr.lr.bottom, `${T}: the round robin card sits under the ladder (ladder ends ${rr.lr.bottom}, card starts ${rr.cr.top})`)
+      ok(Math.abs(rr.cr.left - rr.lr.left) <= 1 && Math.abs(rr.cr.w - rr.lr.w) <= 1, `${T}: in the same column, same width (${JSON.stringify([rr.cr, rr.lr])})`)
+      ok(rr.sw <= rr.cw, `${T}: no sideways scroll`)
+    }
+    ok(p.errs.length === 0, `${T}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  for (const who of ['player', 'visitor']) {
+    const p = await open('/', { width: 1280, pingpong: true, ...(who === 'visitor' ? { anon: true } : {}) })
+    await p.waitForSelector('[data-test="ladder-card"] tbody tr', { timeout: 5000 }).catch(() => {})
+    ok(await p.locator('[data-test="ladder-card"]').count() === 1 && await p.locator('[data-test="rr-card"]').count() === 0, `table tennis ${who} home: the ladder alone, no round robin card`)
+    ok(p.errs.length === 0, `table tennis ${who} home: no page errors ${p.errs}`)
+    await close(p)
+  }
+  for (const who of ['player', 'visitor']) {
+    const p = await open('/', { width: 375, norr: true, ...(who === 'visitor' ? { anon: true } : {}) })
+    await p.waitForSelector('[data-test="rr-card"]', { timeout: 5000 }).catch(() => {})
+    const e = await p.evaluate(() => ({ rows: document.querySelectorAll('[data-test="rr-card"] tbody tr').length, msg: document.querySelector('[data-test="rr-empty"]')?.textContent?.trim() }))
+    ok(e.rows === 0 && e.msg === 'Standings appear once the first week of the season starts.', `tennis ${who} home, nobody enrolled yet: a short message, not an empty table (${JSON.stringify(e)})`)
+    ok(p.errs.length === 0, `tennis ${who} home, nobody enrolled: no page errors ${p.errs}`)
     await close(p)
   }
 } finally {

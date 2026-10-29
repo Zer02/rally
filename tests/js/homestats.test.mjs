@@ -125,3 +125,36 @@ test('heroScene: files and banner crops are written down once and match the desi
   // every sport's art resolves to one of the two
   for (const surface of ['court', 'table']) assert.equal(h.heroScene(h.heroCopy({ surface, label: 'X' }).art).art, surface === 'table' ? 'table' : 'court')
 })
+
+// ── v0.0.9.2: the round robin standings under the ladder (tennis only) ──────────────────────────────────────
+const P = (id, rr_points, wins, losses, points_for, profile) => ({ profile_id: id, rr_points, wins, losses, points_for, profile })
+
+test('roundRobinTop: points, then wins, then games won; the top five by default', () => {
+  // given out of order. By hand: D 22 pts 6 wins; C 22 pts 5 wins 44 games; B 22 pts 5 wins 40 games; E 16; A 10; F has nothing (null counts as 0).
+  const input = [
+    P('A', 10, 2, 3, 30, { display_name: 'Ann Lee', username: 'ann' }),
+    P('B', 22, 5, 0, 40, { display_name: 'Bo Tan', username: 'bo' }),
+    P('C', 22, 5, 1, 44, { display_name: null, username: 'cy' }),
+    P('D', 22, 6, 0, 10, { display_name: 'Di Wu', username: 'di' }),
+    P('E', 16, 3, 2, 20, { display_name: 'Ed Ng', username: 'ed' }),
+    P('F', null, null, null, null, null),
+  ]
+  const before = JSON.stringify(input)
+  const top = h.roundRobinTop(input)
+  assert.deepEqual(top.map(r => r.profile_id), ['D', 'C', 'B', 'E', 'A'])
+  assert.deepEqual(top.map(r => r.rank), [1, 2, 3, 4, 5])
+  assert.deepEqual(top.map(r => r.points), [22, 22, 22, 16, 10])
+  assert.deepEqual(top.map(r => `${r.wins}-${r.losses}`), ['6-0', '5-1', '5-0', '3-2', '2-3'])
+  assert.equal(top[1].name, 'cy', 'no display name: the username')
+  assert.equal(top[0].name, 'Di Wu')
+  assert.equal(JSON.stringify(input), before, 'the input is not reordered')
+  assert.deepEqual(h.roundRobinTop(input, 3).map(r => r.profile_id), ['D', 'C', 'B'])
+  const all = h.roundRobinTop(input, 10)
+  assert.equal(all.length, 6); assert.deepEqual({ ...all[5] }, { rank: 6, profile_id: 'F', name: 'Player', points: 0, wins: 0, losses: 0 })
+  assert.deepEqual(h.roundRobinTop([]), [])
+})
+
+test('showsRoundRobinBoard: tennis only', () => {
+  assert.equal(h.showsRoundRobinBoard('tennis'), true)
+  for (const k of ['pingpong', 'pickleball', 'padel', 'squash', 'badminton', '', null, undefined]) assert.equal(h.showsRoundRobinBoard(k), false, String(k))
+})

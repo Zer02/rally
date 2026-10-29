@@ -1,5 +1,5 @@
 <!--
-  HomeDashboard — v0.0.7.6 (greeting is a picture banner since v0.0.9.1). A signed-in player's day on one screen: where they stand in the
+  HomeDashboard — v0.0.7.6 (greeting is a picture banner since v0.0.9.1; tennis shows the round robin standings under the ladder since v0.0.9.2). A signed-in player's day on one screen: where they stand in the
   season, their matches this week, their level, and the two things they do most.
   Everything here is read from stores the other pages already use; nothing new on the server.
 -->
@@ -91,6 +91,7 @@
     </RouterLink>
 
     <HomeLadderCard v-if="homeLoaded" class="ladder-card" :rows="ladder" />
+    <HomeRoundRobinCard v-if="homeLoaded && showRr" class="rr-card" :rows="roundRobin" :season-name="homeSeason?.name" />
 
     <!-- The two things players do most (the rest is in the tab bar) -->
     <div class="actions">
@@ -111,9 +112,10 @@ import { useLeagueStore } from '@/stores/leagues'
 import JoinLeagueCard from '@/components/league/JoinLeagueCard.vue'
 import HomeStatStrip from '@/components/home/HomeStatStrip.vue'
 import HomeLadderCard from '@/components/home/HomeLadderCard.vue'
+import HomeRoundRobinCard from '@/components/home/HomeRoundRobinCard.vue'
 import SceneBackdrop from '@/components/ui/SceneBackdrop.vue'
 import { useHomeData } from '@/composables/useHomeData'
-import { heroCopy } from '@/lib/homeStats'
+import { heroCopy, showsRoundRobinBoard } from '@/lib/homeStats'
 import { levelProgress } from '@/lib/xp'
 import { winStreak, headToHead, headToHeadText } from '@/lib/form'
 import type { Profile, TournamentMatch } from '@/types'
@@ -127,7 +129,9 @@ const playersStore = usePlayersStore()
 const leagueStore = useLeagueStore()
 
 // The league's numbers and the top of the ladder, the same as a visitor sees on the welcome page.
-const { leagueId, loaded: homeLoaded, players, matches, matchesWeek, streak: dayStreak, ladder } = useHomeData()
+const { leagueId, loaded: homeLoaded, players, matches, matchesWeek, streak: dayStreak, ladder, season: homeSeason, roundRobin } = useHomeData()
+// a tennis league also shows the round robin standings, under the ladder
+const showRr = computed(() => showsRoundRobinBoard(sport.value.key))
 
 const ready = ref(false)
 async function load() {
@@ -264,6 +268,7 @@ const lp = computed(() => levelProgress(me.value?.pass_xp ?? 0, sport.value))  /
   .level-card  { grid-column: 1; grid-row: 2; }
   .week-card   { grid-column: 2; grid-row: 1 / span 2; }
   .ladder-card { grid-column: 1 / -1; grid-row: 3; }
+  .rr-card     { grid-column: 1 / -1; grid-row: 4; }
   .actions     { grid-column: 1 / -1; max-width: 26rem; }
 }
 @media (min-width: 700px) and (max-width: 899px) {

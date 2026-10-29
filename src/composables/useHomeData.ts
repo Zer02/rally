@@ -1,4 +1,4 @@
-// src/composables/useHomeData.ts — v0.0.8.6
+// src/composables/useHomeData.ts — v0.0.9.2 (adds the round robin standings)
 //
 // The numbers on the home page, for visitors and players alike: how many players and matches
 // the league has, the day streak, the top of the ladder with this week's change, and what the
@@ -8,7 +8,8 @@
 import { computed, ref, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useLeagueStore } from '@/stores/leagues'
-import { countWithin, dayStreak, ratingChange } from '@/lib/homeStats'
+import { countWithin, dayStreak, ratingChange, roundRobinTop } from '@/lib/homeStats'
+import type { RoundRobinRow } from '@/lib/homeStats'
 
 export interface LadderRow {
   rank: number
@@ -27,6 +28,7 @@ export interface SeasonSummary {
 }
 
 const LADDER_SIZE = 5
+const RR_SIZE = 5
 const ROW_LIMIT = 2000
 
 export function useHomeData() {
@@ -44,6 +46,7 @@ export function useHomeData() {
   const streak = ref(0)
   const ladder = ref<LadderRow[]>([])
   const season = ref<SeasonSummary | null>(null)
+  const roundRobin = ref<RoundRobinRow[]>([])   // the top of this season's round robin standings
 
   let run = 0
   async function load() {
@@ -51,7 +54,7 @@ export function useHomeData() {
     const mine = ++run
     if (!id) {
       players.value = matches.value = matchesWeek.value = streak.value = 0
-      ladder.value = []; season.value = null; loaded.value = true
+      ladder.value = []; season.value = null; roundRobin.value = []; loaded.value = true
       return
     }
     const now = new Date()
@@ -98,11 +101,23 @@ export function useHomeData() {
       }))
 
       season.value = await loadSeason(tour.data as { id: string; name: string } | null)
+      roundRobin.value = await loadRoundRobin(tour.data as { id: string } | null, mine)
     } catch {
       // The home page is a welcome, not a dependency: on any failure show what we have.
     } finally {
       if (mine === run) loaded.value = true
     }
+  }
+
+  // The round robin standings: the season's participants, ranked the way the Leaderboard page ranks them.
+  async function loadRoundRobin(t: { id: string } | null, mine: number): Promise<RoundRobinRow[]> {
+    if (!t) return []
+    const { data } = await supabase.from('tournament_participants')
+      .select('profile_id, tournament_id, rr_points, wins, losses, points_for, profile:profiles(id, username, display_name)')
+      .eq('tournament_id', t.id)
+    if (mine !== run) return roundRobin.value
+    // the query already asks for this season; the filter is a second guard so another season's rows can never be shown
+    return roundRobinTop(((data ?? []) as any[]).filter(r => r.tournament_id === t.id), RR_SIZE)
   }
 
   async function loadSeason(t: { id: string; name: string } | null): Promise<SeasonSummary | null> {
@@ -124,5 +139,5 @@ export function useHomeData() {
   }
 
   watch(leagueId, load, { immediate: true })
-  return { loaded, leagueId, players, matches, matchesWeek, streak, ladder, season, reload: load }
+  return { loaded, leagueId, players, matches, matchesWeek, streak, ladder, season, roundRobin, reload: load }
 }

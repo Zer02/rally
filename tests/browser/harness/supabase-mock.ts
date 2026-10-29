@@ -23,6 +23,7 @@ function builder(table: string) {
     player_a_id: TABLES.players[5].profile_id, player_b_id: null, player_a2_id: null, player_b2_id: null, format: 'singles', score_a: null, score_b: null,
     winner_id: null, status: 'bye', reported_by: null, completed_at: null, created_at: new Date().toISOString(), player_a: null, player_b: null, player_a2: null, player_b2: null })
   // 'pingpong' = the league plays a table sport; 'noleague' = the site has no leagues yet
+  if (table === 'tournament_participants' && flag('norr')) rows = []   // v0.0.9.2: a season with nobody enrolled yet
   if (table === 'leagues' && flag('pingpong')) rows = rows.map((r: any) => ({ ...r, sport: 'pingpong' }))
   // a signed-in player's record carries its league too, and that is where the signed-in home and profile read the sport
   if (table === 'players' && flag('pingpong')) rows = rows.map((r: any) => ({ ...r, league: r.league ? { ...r.league, sport: 'pingpong' } : r.league }))

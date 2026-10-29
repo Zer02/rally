@@ -1,5 +1,5 @@
 <!--
-  HomeWelcome — v0.0.8.6 (picture from heroScene since v0.0.9.1). What a visitor (not signed in) sees, in the style of the new mockups: a hero with the
+  HomeWelcome — v0.0.8.6 (picture from heroScene since v0.0.9.1; tennis shows the round robin standings under the ladder since v0.0.9.2). What a visitor (not signed in) sees, in the style of the new mockups: a hero with the
   pitch, two buttons and an illustration; the league's numbers; the top of the ladder beside the round robin's
   week; and a row of what Rally does. Numbers come from tables anyone can read, so a visitor sees the same as a
   member. When no league is known yet, the numbers and cards are left out and the pitch stands on its own.
@@ -24,7 +24,10 @@
     <template v-if="leagueId && loaded">
       <HomeStatStrip :players="players" :matches="matches" :matches-week="matchesWeek" :streak="streak" />
       <div class="panels">
-        <HomeLadderCard :rows="ladder" />
+        <div class="boards">
+          <HomeLadderCard :rows="ladder" />
+          <HomeRoundRobinCard v-if="showRr" :rows="roundRobin" :season-name="season?.name" />
+        </div>
         <HomeSeasonCard :season="season" :strip="scene.src" />
       </div>
     </template>
@@ -41,16 +44,17 @@ import { useSport } from '@/composables/useSport'
 import { useLeagueStore } from '@/stores/leagues'
 import { getSport } from '@/lib/sports'
 import { useHomeData } from '@/composables/useHomeData'
-import { heroCopy, heroScene } from '@/lib/homeStats'
+import { heroCopy, heroScene, showsRoundRobinBoard } from '@/lib/homeStats'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import HomeStatStrip from './HomeStatStrip.vue'
 import HomeLadderCard from './HomeLadderCard.vue'
+import HomeRoundRobinCard from './HomeRoundRobinCard.vue'
 import HomeSeasonCard from './HomeSeasonCard.vue'
 import HomeFeatures from './HomeFeatures.vue'
 import DuskBanner from './DuskBanner.vue'
 
 const { sport } = useSport()
-const { leagueId, loaded, players, matches, matchesWeek, streak, ladder, season } = useHomeData()
+const { leagueId, loaded, players, matches, matchesWeek, streak, ladder, season, roundRobin } = useHomeData()
 // The sport of the league being shown. A visitor with no league remembered gets the site's only league,
 // so use the sport of that league (not the generic one) when we know it.
 const leagueStore = useLeagueStore()
@@ -59,6 +63,8 @@ const shownSport = computed(() => {
   return l ? getSport(l.sport) : sport.value
 })
 const copy = computed(() => heroCopy(shownSport.value))
+// a tennis league also shows the round robin standings, under the ladder
+const showRr = computed(() => showsRoundRobinBoard(shownSport.value.key))
 // The hero picture: a dusk tennis court for court sports, an outdoor ping pong table for table sports.
 // The files, their sizes and their crops live in heroScene, which the signed-in home and the profile header share.
 const scene = computed(() => heroScene(copy.value.art))
@@ -78,6 +84,7 @@ const scene = computed(() => heroScene(copy.value.art))
 .hero-img { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; width: var(--block, 72%); pointer-events: none;
   -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.45) 24%, #000 52%), linear-gradient(to top, transparent 0%, #000 12%);
   -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.45) 24%, #000 52%), linear-gradient(to top, transparent 0%, #000 12%); mask-composite: intersect; }
+.boards { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
 .panels { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1.25rem; margin-top: 1.25rem; align-items: stretch; }
 
 @media (max-width: 800px) {
