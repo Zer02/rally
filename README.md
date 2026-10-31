@@ -1,6 +1,6 @@
 # RALLY 🏓
 
-> Current version: **v0.0.9.2**
+> Current version: **v0.0.9.3**
 
 Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no complexity — just a fast, clean app for ~20–50 players in a shared space.
 
@@ -919,6 +919,19 @@ Building-scale ping pong rating tracker. Vue 3 + Vite + Supabase. No SSR, no com
 - **Sabotage check:** I broke it 8 ways on purpose (shown for table tennis too, the card above the ladder, the ladder replaced instead of kept, standings read from the ladder ratings, sorted by wins only, the games-won tie-break dropped, another season's rows not guarded, and an empty season showing an empty table) and every one fails a check.
 - **Looked at, not just tested:** I opened the real tennis home as a visitor and as a signed-in player at 375 and 1280 pixels and looked at it.
 - **Results:** JS 63, database 126 (0 skipped), browser 1051 checks pass, and the production build is clean.
+
+### v0.0.9.3 — The bottom bar no longer disappears after you sign in
+
+> After signing in on a phone, the bottom tab bar could stay hidden until you refreshed or moved to another page. It is fixed. Frontend only: no migration.
+
+- **Cause:** the bar hides itself while a box you type into has focus (so it never floats over the keyboard). That "typing" state was only switched off when the browser reported that focus had left the box. Signing in with the keyboard's Go / Enter key replaces the sign-in form with the next page while the password box still has focus, and some phone browsers send no "focus left" report when a focused box is removed. The bar then believed you were still typing. Tapping the Sign in button was fine, because the button takes focus first.
+- **Fix:** `BottomTabBar.vue` now also checks what really has focus whenever the page's contents change, and clears "typing" as soon as no typing box has focus. It still hides while you type and still stays put when you move from one box to the next. The same fix covers any box that disappears while focused without a page change (for example a score form that closes).
+- **Changed:** `src/components/layout/BottomTabBar.vue`. **Tests only:** `tests/browser/harness/supabase-mock.ts` now has a working fake sign-in, and `tests/browser/run.mjs` has a new section.
+- **Manual steps:** none beyond deploying the frontend. This zip also contains everything from v0.0.9.1 and v0.0.9.2.
+- **Tests:** browser, at phone size: sign in with the Enter key and by tapping the button, in a normal browser and in a simulated browser that sends no "focus left" report when a focused box is removed (the page's `removeChild` and `remove` are wrapped to swallow it). Each checks that you land on the leaderboard, that the bar is showing, that it is the signed-in bar (Progress and Profile, not Sign in), and that there are no page errors. Separate checks cover a typing box that is added, focused and removed with no page change, moving focus from one box to the next (the bar must not flash back), and the bar returning once nothing is focused.
+- **Sabotage check:** against the previous component, the simulated Enter / Go sign-in fails (url `/leaderboard`, bar not shown) and so does the removed-box check. A version of the fix that clears "typing" on any page change, without looking at focus, fails the "hides while a typing box has focus" checks. The first version of my removed-box test used a removal the simulation did not cover and passed on the old component, so I widened the simulation until it failed there.
+- **Not confirmed on a real phone:** I reproduced this with a simulated browser, not on Safari or your phone. If the bar still disappears after signing in on your phone with this version, tell me which phone and browser and whether you used the Go key or tapped the button.
+- **Results:** JS 63, database 126 (0 skipped), browser 1079 checks pass, and the production build is clean.
 
 ## Quick start
 

@@ -9,6 +9,7 @@
 // Inserting a players row (joining a league) really adds it, so the page can move on afterwards.
 import { TABLES, USER, PENDING, STREAK_WINS, NEWCOMER, NEWCOMER_PROFILE, GHOST_MATCH, CROWD_PROFILES, CROWD_PLAYERS, ABOVE, FARABOVE, ELO_HOME } from './fixtures'
 const flag = (k: string) => localStorage.getItem(k) === '1'
+const authListeners: any[] = []   // the sign-in listeners (see auth.signInWithPassword below)
 function builder(table: string) {
   let rows = (table === 'matches' && flag('noladder') ? [] : TABLES[table] ?? []).slice()
   if (table === 'tournament_matches' && flag('pending')) rows.push(PENDING)
@@ -79,6 +80,8 @@ export const supabase: any = {
   auth: {
     getSession: () => Promise.resolve({ data: { session: flag('anon') ? null : { user: flag('nonmember') ? NEWCOMER : USER } } }),
     getUser: () => Promise.resolve({ data: { user: flag('anon') ? null : flag('nonmember') ? NEWCOMER : USER } }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), signOut: () => Promise.resolve({}),
+    // v0.0.9.3: a sign-in that works like Supabase's: it clears the signed-out switch and tells every listener about the new session
+    onAuthStateChange: (cb: any) => { authListeners.push(cb); return { data: { subscription: { unsubscribe() {} } } } }, signOut: () => Promise.resolve({}),
+    signInWithPassword: async () => { localStorage.removeItem('anon'); for (const cb of authListeners) await cb('SIGNED_IN', { user: USER }); return { data: {}, error: null } },
   },
 }

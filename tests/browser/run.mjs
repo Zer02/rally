@@ -30,7 +30,7 @@ let pass = 0, fail = 0
 const ok = (cond, msg) => { if (cond) pass++; else { fail++; console.log('  FAIL', msg) } }
 const section = name => console.log('▸', name)
 
-async function open(path, { width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, elo = false, pingpong = false, norr = false, noleague = false, byeweek = false, twoleagues = false, ua, standalone = false } = {}) {
+async function open(path, { noRemovalFocusout = false, width = 375, anon = false, noladder = false, pending = false, streak = false, nonmember = false, ghost = false, crowd = false, above = false, farabove = false, notadmin = false, bracketerr = false, elo = false, pingpong = false, norr = false, noleague = false, byeweek = false, twoleagues = false, ua, standalone = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, hasTouch: width < 700, ...(ua ? { userAgent: ua } : {}) })
   // Pretend the page is running as an installed app (display-mode: standalone).
   if (standalone) await ctx.addInitScript(() => {
@@ -38,6 +38,14 @@ async function open(path, { width = 375, anon = false, noladder = false, pending
     window.matchMedia = q => /display-mode:\s*standalone/.test(q)
       ? { matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }
       : real(q)
+  })
+  // Pretend to be a phone browser that sends no focusout/blur when a focused box is removed from the page (the cause of the vanishing bar, v0.0.9.3).
+  if (noRemovalFocusout) await ctx.addInitScript(() => {
+    let removing = 0; const rc = Node.prototype.removeChild
+    Node.prototype.removeChild = function (c) { removing++; try { return rc.call(this, c) } finally { removing-- } }
+    const rm = Element.prototype.remove; Element.prototype.remove = function () { removing++; try { return rm.call(this) } finally { removing-- } }
+    const stop = e => { if (removing) e.stopImmediatePropagation() }
+    window.addEventListener('focusout', stop, true); window.addEventListener('blur', stop, true)
   })
   await ctx.addInitScript(f => {
     localStorage.setItem('rally.currentLeague', '00000000-0000-0000-0000-0000000000aa')
@@ -1102,6 +1110,42 @@ try {
     ok(e.rows === 0 && e.msg === 'Standings appear once the first week of the season starts.', `tennis ${who} home, nobody enrolled yet: a short message, not an empty table (${JSON.stringify(e)})`)
     ok(p.errs.length === 0, `tennis ${who} home, nobody enrolled: no page errors ${p.errs}`)
     await close(p)
+  }
+
+  // ── 19. The bottom bar after signing in (v0.0.9.3) ───────────────────────────────────────────────────────
+  section('bottom bar: back after signing in, even when the browser sends no focus-left event')
+  for (const [label, sim] of [['a normal browser', false], ['a browser that sends no focus-left event when a focused box is removed', true]])
+  for (const how of ['the Enter / Go key', 'tapping the Sign in button']) {
+    const p = await open('/login', { anon: true, noRemovalFocusout: sim })
+    ok(await p.locator('.tabbar').count() === 0, `${label}, ${how}: no bar on the sign-in page itself`)
+    await p.fill('#login-email', 'a@b.co'); await p.fill('#login-password', 'secret123')
+    if (how.startsWith('the Enter')) await p.press('#login-password', 'Enter'); else await p.locator('form button[type=submit]').first().tap()
+    await p.waitForURL(/leaderboard/, { timeout: 5000 }).catch(() => {}); await p.waitForTimeout(600)
+    const st = await p.evaluate(() => ({ url: location.pathname, shown: !!document.querySelector('.tabbar') && getComputedStyle(document.querySelector('.tabbar')).display !== 'none', active: document.activeElement?.tagName }))
+    ok(st.url === '/leaderboard', `${label}, ${how}: lands on the leaderboard (${st.url})`)
+    ok(st.shown && (await p.locator('.tabbar').isVisible()), `${label}, ${how}: the bottom bar is showing straight after signing in (${JSON.stringify(st)})`)
+    ok(JSON.stringify(await p.$$eval('.tabbar .tab', t => t.map(x => x.getAttribute('href')))) === '["/leaderboard","/matches","/tournament","/progress","/profile"]', `${label}, ${how}: and it is the signed-in bar (Progress and Profile, not Sign in)`)
+    ok(p.errs.length === 0, `${label}, ${how}: no page errors ${p.errs}`)
+    await close(p)
+  }
+  {
+    // The same thing without a page change: a typing box that disappears while it has focus must not leave the bar hidden.
+    for (const sim of [false, true]) {
+      const p = await open('/leaderboard', { noRemovalFocusout: sim })
+      const tag = sim ? 'no focus-left event' : 'normal'
+      await p.evaluate(() => { const i = document.createElement('input'); i.id = 'tmp-typing'; i.type = 'text'; document.body.appendChild(i); i.focus() })
+      await p.waitForTimeout(250)
+      ok(!(await p.locator('.tabbar').isVisible()), `${tag}: the bar still hides while a typing box has focus`)
+      await p.evaluate(() => document.getElementById('tmp-typing').remove()); await p.waitForTimeout(300)
+      ok(await p.locator('.tabbar').isVisible(), `${tag}: the bar comes back when the focused typing box is removed`)
+      // moving focus from one box to the next must not flash the bar
+      await p.evaluate(() => { for (const id of ['t1', 't2']) { const i = document.createElement('input'); i.id = id; i.type = 'text'; document.body.appendChild(i) } document.getElementById('t1').focus() }); await p.waitForTimeout(250)
+      await p.evaluate(() => document.getElementById('t2').focus()); await p.waitForTimeout(300)
+      ok(!(await p.locator('.tabbar').isVisible()), `${tag}: the bar stays hidden when focus moves from one typing box to the next`)
+      await p.evaluate(() => document.activeElement.blur()); await p.waitForTimeout(300)
+      ok(await p.locator('.tabbar').isVisible(), `${tag}: and returns once nothing is focused`)
+      await close(p)
+    }
   }
 } finally {
   await browser.close(); await server.close()

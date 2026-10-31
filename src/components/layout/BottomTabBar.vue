@@ -1,5 +1,5 @@
 <!--
-  BottomTabBar — v0.0.6.9. The five pages people use most, one tap away at
+  BottomTabBar — v0.0.6.9 (stuck-bar fix in v0.0.9.3). The five pages people use most, one tap away at
   the bottom of the screen on a phone (the top bar and its menu stay; the
   menu still holds Challenge, Referee and Sign out). Signed-out visitors get
   the three public pages plus Sign in.
@@ -14,6 +14,11 @@
       on-screen keyboard and eats the space needed to type a score. Dropdowns,
       checkboxes and buttons do not open a keyboard, so the bar stays put for
       them (v0.0.6.7 hid it for dropdowns too, which was a mistake).
+    - v0.0.9.3: that rule must never outlive the box. Some phone browsers do NOT tell the page that
+      a focused box was removed (signing in with the keyboard's Go/Enter key replaces the sign-in
+      form with the next page while the password box still has focus), so "typing" stayed on and the
+      bar stayed hidden until a refresh. The bar now also checks what really has focus whenever the
+      page's contents change, and drops "typing" the moment no typing box has focus.
     - Adds the `has-tabbar` class to <body> so pages get bottom padding and the
       last card is never hidden behind the bar.
 -->
@@ -80,9 +85,17 @@ function onFocusOut() {
   window.clearTimeout(blurTimer)
   blurTimer = window.setTimeout(() => { typing.value = bringsUpKeyboard(document.activeElement) }, 120)
 }
-onMounted(() => { document.addEventListener('focusin', onFocusIn); document.addEventListener('focusout', onFocusOut) })
+// A box that is removed while it has focus (the sign-in form replaced by the next page, a score form that closes) may
+// send no "focus left" event at all. So when the page changes while "typing" is on, look at what really has focus.
+let watcher: MutationObserver | undefined
+function recheckTyping() { if (typing.value && !bringsUpKeyboard(document.activeElement)) { window.clearTimeout(blurTimer); typing.value = false } }
+onMounted(() => {
+  document.addEventListener('focusin', onFocusIn); document.addEventListener('focusout', onFocusOut)
+  watcher = new MutationObserver(recheckTyping); watcher.observe(document.body, { childList: true, subtree: true })
+})
 onBeforeUnmount(() => {
   document.removeEventListener('focusin', onFocusIn); document.removeEventListener('focusout', onFocusOut)
+  watcher?.disconnect()
   window.clearTimeout(blurTimer); document.body.classList.remove('has-tabbar')
 })
 </script>
